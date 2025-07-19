@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Communication Dashboard - Camp Power-Up 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            font-size: 2.5em;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .card-subtitle {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-block {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .action-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .action-card:hover {
+            transform: scale(1.05);
+        }
+
+        .action-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .action-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .recent-activity {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .activity-icon {
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-time {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📧 Communication Dashboard</h1>
+        <p>Manage all parent communications for Camp Power-Up 2025</p>
+    </div>
+
+    <div class="container">
+        <!-- Overview Stats -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div>
+                        <div class="card-title">Communication Stats</div>
+                        <div class="card-subtitle">Today's activity</div>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="emailsSent">12</div>
+                        <div class="stat-label">Emails Sent</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="smssSent">5</div>
+                        <div class="stat-label">SMS Sent</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="portalViews">28</div>
+                        <div class="stat-label">Portal Views</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="responsesReceived">7</div>
+                        <div class="stat-label">Responses</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">👥</div>
+                    <div>
+                        <div class="card-title">Parent Engagement</div>
+                        <div class="card-subtitle">Communication reach</div>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalParents">45</div>
+                        <div class="stat-label">Total Parents</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="activeParents">42</div>
+                        <div class="stat-label">Active Today</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="emailOpen">87%</div>
+                        <div class="stat-label">Email Open Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="smsResponse">95%</div>
+                        <div class="stat-label">SMS Response Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚡</div>
+                <div>
+                    <div class="card-title">Quick Actions</div>
+                    <div class="card-subtitle">Common communication tasks</div>
+                </div>
+            </div>
+            <div class="quick-actions">
+                <div class="action-card" onclick="openSendMessage('email')">
+                    <div class="action-icon">📧</div>
+                    <div class="action-title">Send Email</div>
+                    <div>Compose and send emails to parents</div>
+                </div>
+                <div class="action-card" onclick="openSendMessage('sms')">
+                    <div class="action-icon">📱</div>
+                    <div class="action-title">Send SMS</div>
+                    <div>Quick SMS to parents</div>
+                </div>
+                <div class="action-card" onclick="viewPortal()">
+                    <div class="action-icon">🌐</div>
+                    <div class="action-title">Parent Portal</div>
+                    <div>Manage portal content</div>
+                </div>
+                <div class="action-card" onclick="viewTemplates()">
+                    <div class="action-icon">📝</div>
+                    <div class="action-title">Templates</div>
+                    <div>Manage message templates</div>
+                </div>
+                <div class="action-card" onclick="scheduleMessage()">
+                    <div class="action-icon">⏰</div>
+                    <div class="action-title">Schedule</div>
+                    <div>Schedule future messages</div>
+                </div>
+                <div class="action-card" onclick="viewReports()">
+                    <div class="action-icon">📈</div>
+                    <div class="action-title">Reports</div>
+                    <div>Communication analytics</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity and Pre-built Campaigns -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🕒</div>
+                    <div>
+                        <div class="card-title">Recent Activity</div>
+                        <div class="card-subtitle">Latest communications</div>
+                    </div>
+                </div>
+                <div class="recent-activity">
+                    <div class="activity-item">
+                        <div class="activity-icon">📧</div>
+                        <div class="activity-content">
+                            <strong>Welcome emails sent</strong><br>
+                            <small>Sent to 8 new families</small>
+                        </div>
+                        <div class="activity-time">2 hours ago</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">📱</div>
+                        <div class="activity-content">
+                            <strong>Pickup reminder SMS</strong><br>
+                            <small>Sent to all parents</small>
+                        </div>
+                        <div class="activity-time">4 hours ago</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">🌐</div>
+                        <div class="activity-content">
+                            <strong>Portal post published</strong><br>
+                            <small>"Today's Gaming Tournament Results"</small>
+                        </div>
+                        <div class="activity-time">6 hours ago</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">💰</div>
+                        <div class="activity-content">
+                            <strong>Payment reminders sent</strong><br>
+                            <small>Sent to 3 families</small>
+                        </div>
+                        <div class="activity-time">1 day ago</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🚀</div>
+                    <div>
+                        <div class="card-title">Pre-built Campaigns</div>
+                        <div class="card-subtitle">Ready-to-send messages</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="sendCampaign('welcome')">
+                    📧 Send Welcome Emails (New Families)
+                </button>
+                <button class="btn btn-warning btn-block" onclick="sendCampaign('payment_reminder')">
+                    💳 Send Payment Reminders
+                </button>
+                <button class="btn btn-info btn-block" onclick="sendCampaign('daily_update')">
+                    📝 Send Daily Activity Update
+                </button>
+                <button class="btn btn-success btn-block" onclick="sendCampaign('pickup_reminder')">
+                    📱 Send Pickup Reminder SMS
+                </button>
+                <button class="btn btn-primary btn-block" onclick="sendCampaign('camp_complete')">
+                    🎉 Send Camp Completion Certificates
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Message Modal -->
+    <div id="sendMessageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Send Message</h2>
+            <form id="messageForm">
+                <div style="margin: 20px 0;">
+                    <label><strong>Recipients:</strong></label><br>
+                    <select id="recipientType" onchange="updateRecipients()">
+                        <option value="all">All Parents</option>
+                        <option value="new">New Camper Parents Only</option>
+                        <option value="returning">Returning Camper Parents Only</option>
+                        <option value="unpaid">Unpaid Registrations</option>
+                        <option value="custom">Custom List</option>
+                    </select>
+                </div>
+                
+                <div id="customRecipients" style="display: none; margin: 20px 0;">
+                    <label><strong>Email Addresses:</strong></label><br>
+                    <textarea id="customEmailList" placeholder="Enter email addresses, one per line"></textarea>
+                </div>
+
+                <div id="emailFields">
+                    <div style="margin: 20px 0;">
+                        <label><strong>Subject:</strong></label><br>
+                        <input type="text" id="messageSubject" style="width: 100%; padding: 8px;">
+                    </div>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <label><strong>Message:</strong></label><br>
+                    <textarea id="messageBody" rows="8" style="width: 100%; padding: 8px;" placeholder="Type your message here..."></textarea>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <label><strong>Use Template:</strong></label><br>
+                    <select id="templateSelect" onchange="loadTemplate()">
+                        <option value="">None - Custom Message</option>
+                        <option value="welcome_email">Welcome Email</option>
+                        <option value="payment_reminder">Payment Reminder</option>
+                        <option value="daily_update">Daily Update</option>
+                        <option value="pickup_reminder">Pickup Reminder</option>
+                        <option value="emergency_alert">Emergency Alert</option>
+                        <option value="camp_complete">Camp Completion</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-primary" onclick="sendMessage()">Send Message</button>
+                <button type="button" class="btn btn-warning" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentMessageType = 'email';
+
+        function openSendMessage(type) {
+            currentMessageType = type;
+            document.getElementById('modalTitle').textContent = 
+                type === 'email' ? 'Send Email' : 'Send SMS';
+            
+            // Show/hide email-specific fields
+            document.getElementById('emailFields').style.display = 
+                type === 'email' ? 'block' : 'none';
+            
+            document.getElementById('sendMessageModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('sendMessageModal').style.display = 'none';
+        }
+
+        function updateRecipients() {
+            const type = document.getElementById('recipientType').value;
+            const customDiv = document.getElementById('customRecipients');
+            customDiv.style.display = type === 'custom' ? 'block' : 'none';
+        }
+
+        function loadTemplate() {
+            const template = document.getElementById('templateSelect').value;
+            if (!template) return;
+
+            // Template content would be loaded from the backend
+            const templates = {
+                welcome_email: {
+                    subject: 'Welcome to Camp Power-Up 2025! 🎮⚡',
+                    body: 'Dear [Parent Name],\n\nWelcome to Camp Power-Up 2025! We\'re excited to have [Child Name] join us...'
+                },
+                payment_reminder: {
+                    subject: 'Payment Reminder - Camp Power-Up 2025 💳',
+                    body: 'Hi [Parent Name],\n\nThis is a friendly reminder that payment for [Child Name]\'s registration...'
+                },
+                pickup_reminder: {
+                    subject: '',
+                    body: 'Camp Power-Up reminder: Pickup for [Child Name] is at 3:00 PM today. Thanks! 🏕️'
+                }
+            };
+
+            if (templates[template]) {
+                if (currentMessageType === 'email') {
+                    document.getElementById('messageSubject').value = templates[template].subject;
+                }
+                document.getElementById('messageBody').value = templates[template].body;
+            }
+        }
+
+        function sendMessage() {
+            const recipientType = document.getElementById('recipientType').value;
+            const subject = document.getElementById('messageSubject').value;
+            const body = document.getElementById('messageBody').value;
+            const customEmails = document.getElementById('customEmailList').value;
+
+            if (!body.trim()) {
+                alert('Please enter a message');
+                return;
+            }
+
+            if (currentMessageType === 'email' && !subject.trim()) {
+                alert('Please enter a subject');
+                return;
+            }
+
+            // Send the message
+            const data = {
+                type: currentMessageType,
+                recipientType: recipientType,
+                subject: subject,
+                message: body,
+                customEmails: customEmails.split('\n').filter(email => email.trim())
+            };
+
+            // This would make an API call to send the message
+            console.log('Sending message:', data);
+            
+            alert(`${currentMessageType.toUpperCase()} ${recipientType === 'custom' ? 'to custom list' : 'to ' + recipientType + ' parents'} sent successfully!`);
+            closeModal();
+            
+            // Reset form
+            document.getElementById('messageForm').reset();
+        }
+
+        function sendCampaign(type) {
+            const campaigns = {
+                welcome: 'Welcome emails to new families',
+                payment_reminder: 'Payment reminders to unpaid registrations',
+                daily_update: 'Daily activity updates to all parents',
+                pickup_reminder: 'Pickup reminder SMS to all parents',
+                camp_complete: 'Camp completion emails with certificates'
+            };
+
+            if (confirm(`Send ${campaigns[type]}?`)) {
+                // This would make an API call
+                alert(`${campaigns[type]} sent successfully!`);
+            }
+        }
+
+        function viewPortal() {
+            window.open('/portal', '_blank');
+        }
+
+        function viewTemplates() {
+            window.open('/templates', '_blank');
+        }
+
+        function scheduleMessage() {
+            alert('Schedule Message feature coming soon!');
+        }
+
+        function viewReports() {
+            alert('Communication Reports feature coming soon!');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('sendMessageModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
