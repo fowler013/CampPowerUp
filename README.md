@@ -44,6 +44,7 @@ The dashboard provides insights into:
 4. **Add your data**
    - Place your CSV file in the `data/` folder
    - Update the `CSV_FILE_PATH` in `app.py` if needed
+   - A `sample_data.csv` is provided for testing
 
 5. **Run the application**
    ```bash
