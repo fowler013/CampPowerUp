@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Power Up Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 { 
+            margin: 0;
+            color: #2c3e50; 
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+        
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            padding: 25px;
+            transition: transform 0.3s ease;
+        }
+        
+        .chart-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .chart-card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-weight: 300;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        
+        .special-needs {
+            margin: 30px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+        
+        .special-needs h2 {
+            color: #e74c3c;
+            margin-top: 0;
+        }
+        
+        .special-needs-item {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .special-needs-name {
+            font-weight: bold;
+            color: #d63031;
+        }
+        
+        .special-needs-type {
+            color: #0984e3;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏕️ Camp Power-Up Dashboard</h1>
+    </div>
+    
+    <div id="stats-container" class="stats-container">
+        <!-- Stats will be loaded here -->
+    </div>
+    
+    <div class="chart-container">
+        <div class="chart-card">
+            <h2>📊 Age Distribution</h2>
+            <canvas id="ageChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>🎓 Grade Distribution</h2>
+            <canvas id="gradeChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>🔄 Returning vs New Campers</h2>
+            <canvas id="returningChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>🎮 Nintendo Switch Status</h2>
+            <canvas id="switchChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>🎯 Most Popular Games</h2>
+            <canvas id="gamesChart"></canvas>
+        </div>
+    </div>
+    
+    <div id="special-needs" class="special-needs">
+        <h2>⚠️ Special Needs & Considerations</h2>
+        <div id="special-needs-content">Loading...</div>
+    </div>
+
+    <div id="game-preferences" class="special-needs">
+        <h2>🎮 Game Preferences & Restrictions</h2>
+        <div id="game-preferences-content">Loading...</div>
+    </div>
+
+    <script>
+        // Load statistics
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(stats => {
+                const statsContainer = document.getElementById('stats-container');
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.total_campers}</div>
+                        <div class="stat-label">Total Campers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.returning_campers}</div>
+                        <div class="stat-label">Returning Campers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.with_allergies}</div>
+                        <div class="stat-label">With Allergies</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.with_sensory_issues}</div>
+                        <div class="stat-label">Sensory Needs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.bringing_switch}</div>
+                        <div class="stat-label">Bringing Switch</div>
+                    </div>
+                `;
+            })
+            .catch(error => console.error('Error loading stats:', error));
+
+        // Load special needs
+        fetch('/api/special_needs')
+            .then(response => response.json())
+            .then(specialNeeds => {
+                const container = document.getElementById('special-needs-content');
+                if (specialNeeds.length === 0) {
+                    container.innerHTML = '<p>No special needs reported.</p>';
+                } else {
+                    container.innerHTML = specialNeeds.map(item => `
+                        <div class="special-needs-item">
+                            <div class="special-needs-name">${item.name}</div>
+                            <div class="special-needs-type">${item.type}</div>
+                            <div>${item.description}</div>
+                        </div>
+                    `).join('');
+                }
+            })
+            .catch(error => console.error('Error loading special needs:', error));
+
+        // Load game preferences
+        fetch('/api/games')
+            .then(response => response.json())
+            .then(games => {
+                const container = document.getElementById('game-preferences-content');
+                if (games.length === 0) {
+                    container.innerHTML = '<p>No game preferences reported.</p>';
+                } else {
+                    container.innerHTML = games.map(camper => {
+                        let gameInfo = '';
+                        if (camper.game_behavior && camper.game_behavior !== 'Not specified') {
+                            gameInfo += `<strong>Gaming Style:</strong> ${camper.game_behavior}<br>`;
+                        }
+                        if (camper.favorite_games) gameInfo += `<strong>Favorites:</strong> ${camper.favorite_games}<br>`;
+                        if (camper.top_5_games) gameInfo += `<strong>Top 5:</strong> ${camper.top_5_games}<br>`;
+                        if (camper.console_games) gameInfo += `<strong>Console Games:</strong> ${camper.console_games}<br>`;
+                        if (camper.rating_restrictions && camper.rating_restrictions !== 'Not specified') {
+                            gameInfo += `<strong>⚠️ Restrictions:</strong> ${camper.rating_restrictions}`;
+                        }
+                        
+                        return gameInfo ? `
+                            <div class="special-needs-item">
+                                <div class="special-needs-name">${camper.name}</div>
+                                <div>${gameInfo}</div>
+                            </div>
+                        ` : '';
+                    }).join('');
+                }
+            })
+            .catch(error => console.error('Error loading game preferences:', error));
+
+        // Chart creation function
+        function createChart(canvasId, chartType, endpoint, colors = null) {
+            fetch(`/api/data/${endpoint}`)
+                .then(response => response.json())
+                .then(data => {
+                    const labels = data.map(item => item[0]);
+                    const values = data.map(item => item[1]);
+                    const ctx = document.getElementById(canvasId).getContext('2d');
+                    
+                    const defaultColors = [
+                        '#667eea', '#764ba2', '#f093fb', '#f5576c', 
+                        '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'
+                    ];
+                    
+                    new Chart(ctx, {
+                        type: chartType,
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Count',
+                                data: values,
+                                backgroundColor: colors || defaultColors.slice(0, values.length),
+                                borderColor: colors || defaultColors.slice(0, values.length),
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: chartType === 'pie'
+                                }
+                            },
+                            scales: chartType === 'bar' ? {
+                                y: { 
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(0,0,0,0.1)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            } : {}
+                        }
+                    });
+                })
+                .catch(error => console.error(`Error loading ${endpoint}:`, error));
+        }
+
+        // Create all charts
+        createChart('ageChart', 'bar', 'age_distribution');
+        createChart('gradeChart', 'bar', 'grade_distribution');
+        createChart('returningChart', 'pie', 'returning_status', ['#667eea', '#f5576c']);
+        createChart('switchChart', 'pie', 'switch_status', ['#43e97b', '#f093fb', '#cccccc']);
+        createChart('gamesChart', 'bar', 'popular_games');
+    </script>
+</body>
+</html>
