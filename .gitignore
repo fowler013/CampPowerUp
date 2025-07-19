@@ -32,6 +32,14 @@ env/
 *.sqlite
 *.sqlite3
 
+# Camp Data - NEVER commit sensitive information
+data/*.csv
+data/*.xlsx
+data/*.xls
+*.csv
+camp_power_up.db
+camper_data.db
+
 # IDE
 .vscode/
 .idea/
