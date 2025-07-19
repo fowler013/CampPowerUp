@@ -38,7 +38,7 @@ app = Flask(__name__)
 app.secret_key = 'camp_power_up_communication_2025'
 
 # Configuration
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'camp.db')
+DATABASE_PATH = os.path.abspath(os.path.join('..', 'data', 'camp.db'))
 COMMUNICATION_DB = 'communication.db'
 
 # Email Configuration (you'll need to set these up)
@@ -531,7 +531,7 @@ if __name__ == '__main__':
     
     print("📧 Email templates loaded")
     print("📱 SMS system ready")
-    print("🌐 Parent portal available at: http://127.0.0.1:5003")
-    print("🔧 Admin dashboard available at: http://127.0.0.1:5003/admin")
+    print("🌐 Parent portal available at: http://127.0.0.1:5004")
+    print("🔧 Admin dashboard available at: http://127.0.0.1:5004/admin")
     
-    app.run(debug=True, port=5003)
+    app.run(debug=True, port=5004)

@@ -61,9 +61,9 @@ python3 app.py
 ```
 
 5. Access the system:
-   - **Communication Dashboard**: http://127.0.0.1:5003
-   - **Send Messages**: http://127.0.0.1:5003/send_message
-   - **Parent Portal**: http://127.0.0.1:5003/portal
+   - **Communication Dashboard**: http://127.0.0.1:5004
+   - **Send Messages**: http://127.0.0.1:5004/send_message
+   - **Parent Portal**: http://127.0.0.1:5004/portal
 
 ## 📋 Email Setup Guide
 
