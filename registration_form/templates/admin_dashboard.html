@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Admin - Camp Power-Up 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .stats-bar {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 250px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .registrations-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 2px solid #ddd;
+            font-weight: 500;
+        }
+
+        .registration-card {
+            border-bottom: 1px solid #eee;
+            padding: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .registration-card:hover {
+            background: #f8f9fa;
+        }
+
+        .registration-card:last-child {
+            border-bottom: none;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .camper-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .submission-id {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .card-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-group {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .status-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .badge-returning {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-new {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .badge-allergies {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-sensory {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-switch {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .special-notes {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .search-box input {
+                width: 100%;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏕️ Camp Power-Up Registration Admin</h1>
+        <p>Manage and review camp registrations</p>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" id="totalRegistrations">{{ registrations|length }}</div>
+            <div class="stat-label">Total Registrations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="returningCampers">
+                {{ registrations|selectattr('is_returning_camper')|list|length }}
+            </div>
+            <div class="stat-label">Returning Campers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="specialNeeds">
+                {{ registrations|selectattr('has_allergies')|list|length + registrations|selectattr('has_sensory_issues')|list|length }}
+            </div>
+            <div class="stat-label">Special Needs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="switchOwners">
+                {{ registrations|selectattr('bringing_own_switch')|list|length }}
+            </div>
+            <div class="stat-label">Bringing Switch</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by name, email, or submission ID...">
+                <button class="btn btn-primary" onclick="searchRegistrations()">🔍 Search</button>
+                <button class="btn btn-primary" onclick="clearSearch()">Clear</button>
+            </div>
+            <div>
+                <a href="/" class="btn btn-success">➕ New Registration</a>
+                <button class="btn btn-primary" onclick="exportData()">📊 Export Data</button>
+                <a href="../" class="btn btn-warning">📈 View Dashboard</a>
+            </div>
+        </div>
+
+        <div class="registrations-table">
+            <div class="table-header">
+                <h3>Recent Registrations ({{ registrations|length }} total)</h3>
+            </div>
+
+            <div id="registrationsList">
+                {% for registration in registrations %}
+                <div class="registration-card" data-search-text="{{ registration.child_first_name }} {{ registration.child_last_name }} {{ registration.parent_email }} {{ registration.submission_id }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="camper-name">
+                                {{ registration.child_first_name }} {{ registration.child_last_name }}
+                            </div>
+                            <div class="submission-id">{{ registration.submission_id }}</div>
+                        </div>
+                        <div class="status-badges">
+                            {% if registration.is_returning_camper %}
+                                <span class="badge badge-returning">Returning Camper</span>
+                            {% else %}
+                                <span class="badge badge-new">New Camper</span>
+                            {% endif %}
+                            
+                            {% if registration.has_allergies %}
+                                <span class="badge badge-allergies">Allergies</span>
+                            {% endif %}
+                            
+                            {% if registration.has_sensory_issues %}
+                                <span class="badge badge-sensory">Sensory Needs</span>
+                            {% endif %}
+                            
+                            {% if registration.bringing_own_switch %}
+                                <span class="badge badge-switch">Bringing Switch</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card-details">
+                        <div class="detail-group">
+                            <div class="detail-label">Contact Information</div>
+                            <div class="detail-value">
+                                <strong>Email:</strong> {{ registration.parent_email }}<br>
+                                {% if registration.parent_phone %}
+                                <strong>Phone:</strong> {{ registration.parent_phone }}<br>
+                                {% endif %}
+                                <strong>Age:</strong> {{ registration.child_age }} years old<br>
+                                <strong>Grade:</strong> {{ registration.child_grade or 'Not specified' }}
+                            </div>
+                        </div>
+
+                        <div class="detail-group">
+                            <div class="detail-label">Registration Details</div>
+                            <div class="detail-value">
+                                <strong>Submitted:</strong> {{ registration.timestamp }}<br>
+                                <strong>Payment Status:</strong> {{ registration.payment_status|title }}<br>
+                                <strong>Total Fee:</strong> 
+                                {% if registration.is_returning_camper %}
+                                    $180 (Returning)
+                                {% else %}
+                                    $200 (New)
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if registration.favorite_games or registration.gaming_behavior %}
+                        <div class="detail-group">
+                            <div class="detail-label">Gaming Information</div>
+                            <div class="detail-value">
+                                {% if registration.favorite_games %}
+                                <strong>Favorite Games:</strong> {{ registration.favorite_games }}<br>
+                                {% endif %}
+                                {% if registration.gaming_behavior %}
+                                <strong>Gaming Behavior:</strong> {{ registration.gaming_behavior }}<br>
+                                {% endif %}
+                                {% if registration.game_restrictions %}
+                                <strong>Restrictions:</strong> {{ registration.game_restrictions }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if registration.emergency_contact_name %}
+                        <div class="detail-group">
+                            <div class="detail-label">Emergency Contact</div>
+                            <div class="detail-value">
+                                <strong>Name:</strong> {{ registration.emergency_contact_name }}<br>
+                                <strong>Phone:</strong> {{ registration.emergency_contact_phone or 'Not provided' }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if registration.allergy_details or registration.sensory_details or registration.additional_notes %}
+                    <div class="special-notes">
+                        <strong>⚠️ Important Notes:</strong><br>
+                        {% if registration.allergy_details %}
+                        <strong>Allergies/Medical:</strong> {{ registration.allergy_details }}<br>
+                        {% endif %}
+                        {% if registration.sensory_details %}
+                        <strong>Sensory Needs:</strong> {{ registration.sensory_details }}<br>
+                        {% endif %}
+                        {% if registration.additional_notes %}
+                        <strong>Additional Notes:</strong> {{ registration.additional_notes }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="card-actions">
+                        <a href="/confirmation/{{ registration.submission_id }}" class="btn btn-primary">👁️ View Full Details</a>
+                        <button class="btn btn-success" onclick="markPaid('{{ registration.submission_id }}')">💰 Mark Paid</button>
+                        <button class="btn btn-warning" onclick="sendReminder('{{ registration.submission_id }}')">📧 Send Reminder</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function searchRegistrations() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.registration-card');
+            
+            cards.forEach(card => {
+                const searchText = card.getAttribute('data-search-text').toLowerCase();
+                if (searchText.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            const cards = document.querySelectorAll('.registration-card');
+            cards.forEach(card => {
+                card.style.display = 'block';
+            });
+        }
+
+        function markPaid(submissionId) {
+            if (confirm('Mark this registration as paid?')) {
+                // In a real implementation, this would make an API call
+                alert('Feature coming soon! For now, manually track payments.');
+            }
+        }
+
+        function sendReminder(submissionId) {
+            if (confirm('Send payment reminder email?')) {
+                // In a real implementation, this would send an email
+                alert('Feature coming soon! For now, contact families manually.');
+            }
+        }
+
+        function exportData() {
+            // In a real implementation, this would generate a CSV or PDF
+            alert('Export feature coming soon! For now, you can copy data manually.');
+        }
+
+        // Real-time search
+        document.getElementById('searchInput').addEventListener('input', searchRegistrations);
+
+        // Enter key search
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchRegistrations();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Power-Up Registration 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .pricing-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #28a745;
+            margin: 20px 0;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .required {
+            color: #dc3545;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-item input[type="radio"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .weeks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .week-option {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .week-option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .week-option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .success-message {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .submit-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .payment-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .payment-method {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏕️ Camp Power-Up 2025</h1>
+            <p>Gaming Camp Registration Form</p>
+        </div>
+
+        <div class="pricing-info">
+            <h3>💰 Registration Fees</h3>
+            <p><strong>Returning Campers:</strong> $50 deposit + $130 final payment = $180 total</p>
+            <p><strong>New Campers:</strong> $50 deposit + $150 final payment = $200 total</p>
+            <p><small>Final payment due before June 8th. Camp runs June 9th-13th, 10am-3pm daily.</small></p>
+        </div>
+
+        <form id="registrationForm" class="form-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="section">
+                <h2 class="section-title">📧 Contact Information</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="parent_email">Parent/Guardian Email <span class="required">*</span></label>
+                        <input type="email" id="parent_email" name="parent_email" required>
+                        <div class="error-message" id="parent_email_error"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="parent_phone">Parent/Guardian Phone</label>
+                        <input type="tel" id="parent_phone" name="parent_phone" placeholder="(555) 123-4567">
+                        <div class="error-message" id="parent_phone_error"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emergency_contact_name">Emergency Contact Name</label>
+                        <input type="text" id="emergency_contact_name" name="emergency_contact_name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="emergency_contact_phone">Emergency Contact Phone</label>
+                        <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" placeholder="(555) 123-4567">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camper Information Section -->
+            <div class="section">
+                <h2 class="section-title">👤 Camper Information</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="child_first_name">Child's First Name <span class="required">*</span></label>
+                        <input type="text" id="child_first_name" name="child_first_name" required>
+                        <div class="error-message" id="child_first_name_error"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="child_last_name">Child's Last Name <span class="required">*</span></label>
+                        <input type="text" id="child_last_name" name="child_last_name" required>
+                        <div class="error-message" id="child_last_name_error"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="child_age">Child's Age <span class="required">*</span></label>
+                        <input type="number" id="child_age" name="child_age" min="5" max="18" required>
+                        <div class="error-message" id="child_age_error"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="child_grade">Child's Grade Level</label>
+                        <select id="child_grade" name="child_grade">
+                            <option value="">Select Grade</option>
+                            <option value="Kindergarten">Kindergarten</option>
+                            <option value="1st">1st Grade</option>
+                            <option value="2nd">2nd Grade</option>
+                            <option value="3rd">3rd Grade</option>
+                            <option value="4th">4th Grade</option>
+                            <option value="5th">5th Grade</option>
+                            <option value="6th">6th Grade</option>
+                            <option value="7th">7th Grade</option>
+                            <option value="8th">8th Grade</option>
+                            <option value="9th">9th Grade</option>
+                            <option value="10th">10th Grade</option>
+                            <option value="11th">11th Grade</option>
+                            <option value="12th">12th Grade</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Child's Gender</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="gender_male" name="child_gender" value="Male">
+                            <label for="gender_male">Male</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="gender_female" name="child_gender" value="Female">
+                            <label for="gender_female">Female</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="gender_other" name="child_gender" value="Other">
+                            <label for="gender_other">Other</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="gender_prefer_not" name="child_gender" value="Prefer not to say">
+                            <label for="gender_prefer_not">Prefer not to say</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Has your child attended Camp Power-Up before?</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" id="returning_yes" name="is_returning_camper" value="true">
+                            <label for="returning_yes">Yes (Returning Camper - $180 total)</label>
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" id="returning_no" name="is_returning_camper" value="false">
+                            <label for="returning_no">No (New Camper - $200 total)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gaming Information Section -->
+            <div class="section">
+                <h2 class="section-title">🎮 Gaming Information</h2>
+                
+                <div class="form-group">
+                    <label for="gaming_behavior">Describe your child's gaming behavior with others</label>
+                    <textarea id="gaming_behavior" name="gaming_behavior" rows="3" placeholder="How are they at taking turns? Are they a good sport? How do they interact with other gamers?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="game_restrictions">Are there any game ratings your child is not allowed to play?</label>
+                    <textarea id="game_restrictions" name="game_restrictions" rows="2" placeholder="E.g., No M-rated games, no violent games, etc."></textarea>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="bringing_own_switch" name="bringing_own_switch" value="true">
+                    <label for="bringing_own_switch">My child will be bringing their own Nintendo Switch</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="favorite_games">What games does your child enjoy playing?</label>
+                    <textarea id="favorite_games" name="favorite_games" rows="3" placeholder="List their favorite games, preferred genres, or gaming interests"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="console_experience">Console gaming experience</label>
+                    <textarea id="console_experience" name="console_experience" rows="2" placeholder="What gaming systems have they used? What games have they played?"></textarea>
+                </div>
+            </div>
+
+            <!-- Health & Safety Section -->
+            <div class="section">
+                <h2 class="section-title">🏥 Health & Safety</h2>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="has_allergies" name="has_allergies" value="true">
+                    <label for="has_allergies">My child has allergies or medical conditions</label>
+                </div>
+
+                <div class="form-group" id="allergy_details_group" style="display: none;">
+                    <label for="allergy_details">Please describe allergies or medical conditions</label>
+                    <textarea id="allergy_details" name="allergy_details" rows="3" placeholder="Please list any allergies, medical conditions, medications, or special care instructions"></textarea>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="has_sensory_issues" name="has_sensory_issues" value="true">
+                    <label for="has_sensory_issues">My child has sensory processing needs</label>
+                </div>
+
+                <div class="form-group" id="sensory_details_group" style="display: none;">
+                    <label for="sensory_details">Please describe sensory needs</label>
+                    <textarea id="sensory_details" name="sensory_details" rows="3" placeholder="Please describe any sensory sensitivities, processing needs, or accommodations that would be helpful"></textarea>
+                </div>
+            </div>
+
+            <!-- Permissions & Additional Info Section -->
+            <div class="section">
+                <h2 class="section-title">📋 Permissions & Additional Information</h2>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="photo_permission" name="photo_permission" value="true">
+                    <label for="photo_permission">I grant permission for my child to be photographed/videotaped for promotional materials</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="marketing_permission" name="marketing_permission" value="true">
+                    <label for="marketing_permission">I would like to receive updates about future Camp Power-Up events</label>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tshirt_size">T-Shirt Size</label>
+                        <select id="tshirt_size" name="tshirt_size">
+                            <option value="">Select Size</option>
+                            <option value="Youth XS">Youth XS</option>
+                            <option value="Youth S">Youth S</option>
+                            <option value="Youth M">Youth M</option>
+                            <option value="Youth L">Youth L</option>
+                            <option value="Youth XL">Youth XL</option>
+                            <option value="Adult S">Adult S</option>
+                            <option value="Adult M">Adult M</option>
+                            <option value="Adult L">Adult L</option>
+                            <option value="Adult XL">Adult XL</option>
+                            <option value="Adult XXL">Adult XXL</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="how_heard_about_camp">How did you hear about Camp Power-Up?</label>
+                        <select id="how_heard_about_camp" name="how_heard_about_camp">
+                            <option value="">Select...</option>
+                            <option value="Friend/Family">Friend or Family</option>
+                            <option value="Social Media">Social Media</option>
+                            <option value="School">School</option>
+                            <option value="Previous Camper">Previous Camper</option>
+                            <option value="Online Search">Online Search</option>
+                            <option value="Community Event">Community Event</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="additional_notes">Additional Notes or Questions</label>
+                    <textarea id="additional_notes" name="additional_notes" rows="3" placeholder="Anything else you'd like us to know about your child or any questions you have about camp"></textarea>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="payment-info">
+                <h3>💳 Payment Information</h3>
+                <p>After submitting this form, you can send your $50 deposit via:</p>
+                <div class="payment-methods">
+                    <div class="payment-method">Cash App<br><strong>$TevinFowler</strong></div>
+                    <div class="payment-method">Venmo<br><strong>@Brandon-Ballard</strong></div>
+                    <div class="payment-method">Venmo<br><strong>@Tevin-Fowler</strong></div>
+                    <div class="payment-method">PayPal<br><strong>@misterbrandon</strong></div>
+                </div>
+                <p><small>Please include your child's name in the payment memo.</small></p>
+            </div>
+
+            <!-- Submit Section -->
+            <div class="submit-section">
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    🚀 Submit Registration
+                </button>
+                <button type="button" class="submit-btn" id="saveBtn" style="background: #6c757d;">
+                    💾 Save Draft
+                </button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Submitting your registration...</p>
+                </div>
+                
+                <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                    By submitting this form, you agree to the Camp Power-Up terms and conditions.
+                </p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Form validation and submission logic
+        const form = document.getElementById('registrationForm');
+        const progressFill = document.getElementById('progressFill');
+        const submitBtn = document.getElementById('submitBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const loading = document.getElementById('loading');
+
+        // Show/hide conditional fields
+        document.getElementById('has_allergies').addEventListener('change', function() {
+            const detailsGroup = document.getElementById('allergy_details_group');
+            detailsGroup.style.display = this.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('has_sensory_issues').addEventListener('change', function() {
+            const detailsGroup = document.getElementById('sensory_details_group');
+            detailsGroup.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Progress tracking
+        function updateProgress() {
+            const inputs = form.querySelectorAll('input[required], select[required]');
+            const filled = Array.from(inputs).filter(input => input.value.trim() !== '').length;
+            const progress = (filled / inputs.length) * 100;
+            progressFill.style.width = progress + '%';
+        }
+
+        // Add event listeners to all form inputs
+        form.addEventListener('input', updateProgress);
+        form.addEventListener('change', updateProgress);
+
+        // Auto-save functionality
+        function saveFormData() {
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            localStorage.setItem('campPowerUpDraft', JSON.stringify(data));
+        }
+
+        // Load saved form data
+        function loadFormData() {
+            const saved = localStorage.getItem('campPowerUpDraft');
+            if (saved) {
+                const data = JSON.parse(saved);
+                Object.entries(data).forEach(([key, value]) => {
+                    const field = form.querySelector(`[name="${key}"]`);
+                    if (field) {
+                        if (field.type === 'checkbox') {
+                            field.checked = value === 'true';
+                        } else if (field.type === 'radio') {
+                            const radio = form.querySelector(`[name="${key}"][value="${value}"]`);
+                            if (radio) radio.checked = true;
+                        } else {
+                            field.value = value;
+                        }
+                    }
+                });
+                updateProgress();
+            }
+        }
+
+        // Save draft
+        saveBtn.addEventListener('click', function() {
+            saveFormData();
+            alert('Draft saved successfully!');
+        });
+
+        // Auto-save while typing
+        let saveTimeout;
+        form.addEventListener('input', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveFormData, 2000); // Save after 2 seconds of inactivity
+        });
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+            
+            // Collect form data
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            // Convert checkboxes to proper boolean values
+            const checkboxes = ['has_allergies', 'has_sensory_issues', 'photo_permission', 'marketing_permission', 'bringing_own_switch'];
+            checkboxes.forEach(checkbox => {
+                data[checkbox] = formData.has(checkbox) ? 'true' : 'false';
+            });
+
+            try {
+                const response = await fetch('/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Clear saved draft
+                    localStorage.removeItem('campPowerUpDraft');
+                    
+                    // Redirect to confirmation page
+                    window.location.href = `/confirmation/${result.submission_id}`;
+                } else {
+                    // Show errors
+                    alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error submitting form: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Load saved data on page load
+        window.addEventListener('load', loadFormData);
+
+        // Phone number formatting
+        const phoneInputs = document.querySelectorAll('input[type="tel"]');
+        phoneInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                let value = this.value.replace(/\D/g, '');
+                if (value.length >= 6) {
+                    value = value.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+                } else if (value.length >= 3) {
+                    value = value.replace(/(\d{3})(\d{0,3})/, '($1) $2');
+                }
+                this.value = value;
+            });
+        });
+
+        // Initial progress update
+        updateProgress();
+    </script>
+</body>
+</html>
