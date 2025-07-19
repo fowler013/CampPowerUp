@@ -11,7 +11,6 @@
             margin: 0; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
         }
         
         .header {
@@ -21,9 +20,9 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
-        h1 { 
+        .header h1 {
             margin: 0;
-            color: #2c3e50; 
+            color: #333;
             font-size: 2.5em;
             font-weight: 300;
         }
@@ -32,17 +31,17 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            padding: 30px 20px;
+            padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
         }
         
         .stat-card {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 25px;
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
         }
         
@@ -51,22 +50,23 @@
         }
         
         .stat-number {
-            font-size: 3em;
+            font-size: 2.5em;
             font-weight: bold;
             color: #667eea;
-            margin: 0;
+            margin: 10px 0;
         }
         
         .stat-label {
             color: #666;
-            font-size: 1.1em;
-            margin-top: 10px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .chart-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 30px;
+            gap: 20px;
             padding: 20px;
             max-width: 1400px;
             margin: 0 auto;
@@ -74,9 +74,9 @@
         
         .chart-card {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 20px;
             transition: transform 0.3s ease;
         }
         
@@ -86,43 +86,214 @@
         
         .chart-card h2 {
             margin-top: 0;
-            color: #2c3e50;
-            font-weight: 300;
-            font-size: 1.5em;
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 500;
+        }
+
+        /* Group Assignment Styles */
+        .groups-section {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .section-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .section-header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 1.8em;
+        }
+
+        .group-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .group-controls label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .group-controls select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .group-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .groups-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .group-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .group-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .group-size {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .group-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .group-stat {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
         }
-        
+
+        .camper-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .camper-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .camper-name {
+            font-weight: 500;
+        }
+
+        .camper-tags {
+            display: flex;
+            gap: 5px;
+        }
+
+        .tag {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            color: white;
+        }
+
+        .tag-returning { background: #28a745; }
+        .tag-new { background: #6c757d; }
+        .tag-special { background: #dc3545; }
+        .tag-switch { background: #17a2b8; }
+
         .special-needs {
-            margin: 30px 20px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
             max-width: 1200px;
-            margin: 30px auto;
+            margin: 20px auto;
+            padding: 0 20px;
         }
         
         .special-needs h2 {
-            color: #e74c3c;
-            margin-top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            margin: 0 0 20px 0;
+            padding: 20px;
+            border-radius: 12px;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
-        .special-needs-item {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
+        .special-needs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
         }
         
-        .special-needs-name {
-            font-weight: bold;
-            color: #d63031;
+        .special-need-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 4px solid #dc3545;
         }
-        
-        .special-needs-type {
-            color: #0984e3;
-            font-style: italic;
+
+        @media (max-width: 768px) {
+            .section-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .group-controls {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
@@ -137,35 +308,58 @@
     
     <div class="chart-container">
         <div class="chart-card">
-            <h2>📊 Age Distribution</h2>
+            <h2>Age Distribution</h2>
             <canvas id="ageChart"></canvas>
         </div>
         <div class="chart-card">
-            <h2>🎓 Grade Distribution</h2>
+            <h2>Grade Distribution</h2>
             <canvas id="gradeChart"></canvas>
         </div>
         <div class="chart-card">
-            <h2>🔄 Returning vs New Campers</h2>
+            <h2>Returning vs New Campers</h2>
             <canvas id="returningChart"></canvas>
         </div>
         <div class="chart-card">
-            <h2>🎮 Nintendo Switch Status</h2>
+            <h2>Switch Ownership</h2>
             <canvas id="switchChart"></canvas>
         </div>
         <div class="chart-card">
-            <h2>🎯 Most Popular Games</h2>
+            <h2>Most Popular Games</h2>
             <canvas id="gamesChart"></canvas>
         </div>
     </div>
-    
-    <div id="special-needs" class="special-needs">
-        <h2>⚠️ Special Needs & Considerations</h2>
-        <div id="special-needs-content">Loading...</div>
+
+    <!-- Group Assignment Section -->
+    <div class="groups-section">
+        <div class="section-header">
+            <h2>🏕️ Group Assignment & Planning</h2>
+            <div class="group-controls">
+                <label for="groupSize">Target Group Size:</label>
+                <select id="groupSize">
+                    <option value="6">6 campers</option>
+                    <option value="8" selected>8 campers</option>
+                    <option value="10">10 campers</option>
+                    <option value="12">12 campers</option>
+                </select>
+                <button id="generateGroups" class="btn-primary">Generate Groups</button>
+                <button id="exportGroups" class="btn-secondary">Export to PDF</button>
+            </div>
+        </div>
+
+        <div id="groupStats" class="group-stats">
+            <!-- Group statistics will be loaded here -->
+        </div>
+
+        <div id="groupsContainer" class="groups-container">
+            <!-- Groups will be loaded here -->
+        </div>
     </div>
 
-    <div id="game-preferences" class="special-needs">
-        <h2>🎮 Game Preferences & Restrictions</h2>
-        <div id="game-preferences-content">Loading...</div>
+    <div id="special-needs" class="special-needs">
+        <h2>⚠️ Special Attention Required</h2>
+        <div id="specialNeedsList">
+            <!-- Special needs campers will be loaded here -->
+        </div>
     </div>
 
     <script>
@@ -307,6 +501,109 @@
         createChart('returningChart', 'pie', 'returning_status', ['#667eea', '#f5576c']);
         createChart('switchChart', 'pie', 'switch_status', ['#43e97b', '#f093fb', '#cccccc']);
         createChart('gamesChart', 'bar', 'popular_games');
+
+        // Group Management Functions
+        function generateGroups() {
+            const groupSize = document.getElementById('groupSize').value;
+            const button = document.getElementById('generateGroups');
+            
+            button.textContent = 'Generating...';
+            button.disabled = true;
+            
+            Promise.all([
+                fetch(`/api/groups?size=${groupSize}`).then(response => response.json()),
+                fetch('/api/group_stats').then(response => response.json())
+            ])
+            .then(([groups, stats]) => {
+                displayGroupStats(stats);
+                displayGroups(groups);
+                button.textContent = 'Generate Groups';
+                button.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error generating groups:', error);
+                button.textContent = 'Generate Groups';
+                button.disabled = false;
+            });
+        }
+
+        function displayGroupStats(stats) {
+            const container = document.getElementById('groupStats');
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_groups}</div>
+                    <div class="stat-label">Total Groups</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.avg_group_size}</div>
+                    <div class="stat-label">Avg Group Size</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_special_needs}</div>
+                    <div class="stat-label">Special Needs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_switches_needed}</div>
+                    <div class="stat-label">Switches Needed</div>
+                </div>
+            `;
+        }
+
+        function displayGroups(groups) {
+            const container = document.getElementById('groupsContainer');
+            container.innerHTML = groups.map(group => `
+                <div class="group-card">
+                    <div class="group-header">
+                        <div class="group-name">${group.group_name}</div>
+                        <div class="group-size">${group.stats.total_campers} campers</div>
+                    </div>
+                    
+                    <div class="group-stats-grid">
+                        <div class="group-stat">
+                            <strong>Age Range:</strong><br>${group.stats.age_range}
+                        </div>
+                        <div class="group-stat">
+                            <strong>Avg Age:</strong><br>${group.stats.avg_age}
+                        </div>
+                        <div class="group-stat">
+                            <strong>Returning:</strong><br>${group.stats.returning_campers}
+                        </div>
+                        <div class="group-stat">
+                            <strong>Switches:</strong><br>${group.stats.switches_available}/${group.stats.total_campers}
+                        </div>
+                    </div>
+
+                    ${group.stats.popular_games.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>Popular Games:</strong> 
+                            ${group.stats.popular_games.map(g => g.game).join(', ')}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="camper-list">
+                        ${group.campers.map(camper => `
+                            <div class="camper-item">
+                                <div class="camper-name">${camper.name} (${camper.age})</div>
+                                <div class="camper-tags">
+                                    ${camper.returning ? '<span class="tag tag-returning">Returning</span>' : '<span class="tag tag-new">New</span>'}
+                                    ${camper.bringing_switch ? '<span class="tag tag-switch">Switch</span>' : ''}
+                                    ${camper.special_needs ? '<span class="tag tag-special">Special</span>' : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Event Listeners
+        document.getElementById('generateGroups').addEventListener('click', generateGroups);
+        document.getElementById('groupSize').addEventListener('change', generateGroups);
+
+        // Auto-generate groups on page load
+        window.addEventListener('load', function() {
+            setTimeout(generateGroups, 1000); // Wait for other data to load first
+        });
     </script>
 </body>
 </html>
