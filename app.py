@@ -516,6 +516,60 @@ def get_group_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/game_library')
+def game_library():
+    """Game library management page."""
+    return render_template('game_library.html')
+
+@app.route('/api/game_library/stats')
+def get_game_library_stats():
+    """Get game library statistics."""
+    try:
+        from game_library import get_game_library_stats
+        stats = get_game_library_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/game_library/process')
+def process_game_library():
+    """Process camper game data and populate library."""
+    try:
+        from game_library import process_camper_games
+        game_counts = process_camper_games()
+        return jsonify({
+            "success": True,
+            "message": f"Processed {len(game_counts)} unique games",
+            "top_games": game_counts.most_common(10)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/game_library/update', methods=['POST'])
+def update_game():
+    """Update game availability or camp copies."""
+    try:
+        data = request.get_json()
+        game_id = data.get('game_id')
+        camp_copies = data.get('camp_copies', 0)
+        availability_status = data.get('availability_status', 'Available')
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE games 
+            SET camp_copies = ?, availability_status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (camp_copies, availability_status, game_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "Game updated successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     print("🏕️ Camp Power-Up Data Management System")
     print("=" * 50)

@@ -21,10 +21,34 @@
         }
         
         .header h1 {
-            margin: 0;
+            margin: 0 0 15px 0;
             color: #333;
             font-size: 2.5em;
             font-weight: 300;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: #667eea;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .nav-link:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
         .stats-container {
@@ -300,6 +324,11 @@
 <body>
     <div class="header">
         <h1>🏕️ Camp Power-Up Dashboard</h1>
+        <div class="nav-links">
+            <a href="/game_library" class="nav-link">🎮 Game Library</a>
+            <a href="http://127.0.0.1:5001" class="nav-link">📝 Registration Form</a>
+            <a href="http://127.0.0.1:5004" class="nav-link">📧 Communication</a>
+        </div>
     </div>
     
     <div id="stats-container" class="stats-container">
