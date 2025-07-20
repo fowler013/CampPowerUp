@@ -21,7 +21,7 @@ The dashboard provides insights into:
 - Gaming behavior and social skills
 
 ## 🚀 Quick Start
-
+ 
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
