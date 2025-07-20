@@ -65,6 +65,7 @@ def init_registration_db():
             game_restrictions TEXT,
             bringing_own_switch BOOLEAN DEFAULT FALSE,
             favorite_games TEXT,
+            games_owned TEXT,  -- New field for explicit game ownership
             console_experience TEXT,
             
             -- Health & Safety
@@ -160,11 +161,11 @@ def submit_registration():
                 emergency_contact_phone, child_first_name, child_last_name,
                 child_age, child_grade, child_gender, is_returning_camper,
                 camp_weeks, gaming_behavior, game_restrictions, bringing_own_switch,
-                favorite_games, console_experience, has_allergies, allergy_details,
+                favorite_games, games_owned, console_experience, has_allergies, allergy_details,
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             submission_id,
             form_data.get('parent_email'),
@@ -182,6 +183,7 @@ def submit_registration():
             form_data.get('game_restrictions'),
             form_data.get('bringing_own_switch') == 'true',
             form_data.get('favorite_games'),
+            form_data.get('games_owned'),  # New field
             form_data.get('console_experience'),
             form_data.get('has_allergies') == 'true',
             form_data.get('allergy_details'),
@@ -241,7 +243,7 @@ def sync_to_main_database(form_data, submission_id):
                 )
             ''')
             
-            # Insert data
+            # Insert camper data
             cursor.execute('''
                 INSERT INTO campers (
                     submission_id, first_name, last_name, age, grade, is_returning,
@@ -268,10 +270,164 @@ def sync_to_main_database(form_data, submission_id):
                 'Yes' if form_data.get('photo_permission') == 'true' else 'No'
             ))
             
+            # Get the camper_id for game library integration
+            camper_id = cursor.lastrowid
+            
+            # Process game data for game library integration
+            process_camper_games_for_library(cursor, camper_id, form_data, submission_id)
+            
             conn.commit()
             conn.close()
     except Exception as e:
         print(f"Error syncing to main database: {e}")
+
+def process_camper_games_for_library(cursor, camper_id, form_data, submission_id):
+    """Process and add camper's games to the game library system."""
+    try:
+        # Ensure game library tables exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                total_owned INTEGER DEFAULT 0,
+                available INTEGER DEFAULT 0,
+                checked_out INTEGER DEFAULT 0,
+                category TEXT DEFAULT 'Unknown',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS camper_games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_id INTEGER,
+                game_id INTEGER,
+                submission_id TEXT,
+                source TEXT DEFAULT 'registration',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (camper_id) REFERENCES campers (id),
+                FOREIGN KEY (game_id) REFERENCES games (id),
+                UNIQUE(camper_id, game_id)
+            )
+        ''')
+        
+        # Extract games from both games_owned and favorite_games fields
+        games_owned = form_data.get('games_owned', '')
+        favorite_games = form_data.get('favorite_games', '')
+        console_experience = form_data.get('console_experience', '')
+        
+        # Prioritize explicit games_owned field, then supplement with other fields
+        primary_game_text = games_owned.strip()
+        supplementary_text = f"{favorite_games} {console_experience}".strip()
+        
+        games = []
+        
+        # Process explicit games_owned field first (higher confidence)
+        if primary_game_text:
+            owned_games = extract_games_from_text(primary_game_text, high_confidence=True)
+            games.extend(owned_games)
+            print(f"🎮 Found {len(owned_games)} games from 'games_owned' field")
+        
+        # Then process other fields (lower confidence, avoid duplicates)
+        if supplementary_text:
+            additional_games = extract_games_from_text(supplementary_text, high_confidence=False)
+            # Only add games not already found
+            new_games = [g for g in additional_games if g not in games]
+            games.extend(new_games)
+            print(f"🎯 Found {len(new_games)} additional games from other fields")
+            
+            for game_name in games:
+                # Insert or update game in games table
+                cursor.execute('''
+                    INSERT OR IGNORE INTO games (name, total_owned, available) 
+                    VALUES (?, 1, 1)
+                ''', (game_name,))
+                
+                # Update count if game already exists
+                cursor.execute('''
+                    UPDATE games 
+                    SET total_owned = total_owned + 1, available = available + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE name = ? AND id NOT IN (
+                        SELECT game_id FROM camper_games WHERE camper_id = ?
+                    )
+                ''', (game_name, camper_id))
+                
+                # Get game_id
+                cursor.execute('SELECT id FROM games WHERE name = ?', (game_name,))
+                game_result = cursor.fetchone()
+                if game_result:
+                    game_id = game_result[0]
+                    
+                    # Link camper to game
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO camper_games 
+                        (camper_id, game_id, submission_id, source) 
+                        VALUES (?, ?, ?, 'registration')
+                    ''', (camper_id, game_id, submission_id))
+                    
+        print(f"✅ Processed games for camper {camper_id}: {len(games) if 'games' in locals() else 0} games found")
+        
+    except Exception as e:
+        print(f"❌ Error processing games for library: {e}")
+
+def extract_games_from_text(text, high_confidence=True):
+    """Extract game names from free-form text input."""
+    if not text:
+        return []
+    
+    # Common game names and patterns
+    known_games = [
+        'Minecraft', 'Fortnite', 'Roblox', 'Among Us', 'Fall Guys',
+        'Super Mario', 'Pokemon', 'Zelda', 'Smash Bros', 'Mario Kart',
+        'Overwatch', 'Rocket League', 'Splatoon', 'Animal Crossing',
+        'Stardew Valley', 'Terraria', 'Valorant', 'Apex Legends',
+        'Destiny', 'Call of Duty', 'FIFA', 'NBA 2K', 'Madden',
+        'Monopoly', 'Scrabble', 'Chess', 'Checkers', 'UNO',
+        'Settlers of Catan', 'Catan', 'Risk', 'Clue', 'Sorry',
+        'Yahtzee', 'Battleship', 'Connect 4', 'Jenga', 'Twister',
+        'Pictionary', 'Trivial Pursuit', 'Life', 'Apples to Apples',
+        'Cards Against Humanity', 'Exploding Kittens', 'Ticket to Ride'
+    ]
+    
+    games_found = []
+    text_lower = text.lower()
+    
+    # Look for known games first (high confidence)
+    for game in known_games:
+        if game.lower() in text_lower:
+            games_found.append(game)
+    
+    if high_confidence:
+        # For explicit "games owned" field, be more aggressive in extraction
+        # Split by common separators
+        import re
+        
+        # Split by commas, newlines, semicolons
+        potential_games = re.split(r'[,\n;]+', text)
+        
+        for item in potential_games:
+            item = item.strip()
+            if len(item) > 2 and item not in games_found:
+                # Clean up the game name
+                cleaned = re.sub(r'^\W+|\W+$', '', item)  # Remove leading/trailing punctuation
+                if len(cleaned) > 2:
+                    games_found.append(cleaned.title())  # Title case for consistency
+    else:
+        # For other fields, be more conservative
+        potential_games = re.findall(r'\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b', text)
+        
+        # Filter out common non-game words
+        exclude_words = ['Yes', 'No', 'The', 'And', 'Or', 'But', 'Very', 'Really', 'Pretty', 'Good', 'Bad', 'Fun', 'Great', 'Love', 'Like', 'Play', 'Game', 'Games', 'Nintendo', 'Switch', 'Xbox', 'PlayStation']
+        
+        for potential in potential_games:
+            if (potential not in exclude_words and 
+                len(potential) > 3 and 
+                potential not in games_found):
+                games_found.append(potential)
+    
+    return list(set(games_found))  # Remove duplicates
 
 @app.route('/admin')
 def admin_dashboard():
