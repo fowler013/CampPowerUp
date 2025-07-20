@@ -273,15 +273,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏕️ Camp Power-Up 2025</h1>
-            <p>Gaming Camp Registration Form</p>
+            <h1>{{ camp_title }}</h1>
+            <p>{{ camp_subtitle }}</p>
         </div>
 
         <div class="pricing-info">
             <h3>💰 Registration Fees</h3>
-            <p><strong>Returning Campers:</strong> $50 deposit + $130 final payment = $180 total</p>
-            <p><strong>New Campers:</strong> $50 deposit + $150 final payment = $200 total</p>
-            <p><small>Final payment due before June 8th. Camp runs June 9th-13th, 10am-3pm daily.</small></p>
+            <p><strong>{{ pricing.returning_text }}</strong></p>
+            <p><strong>{{ pricing.new_text }}</strong></p>
+            <p><small>{{ pricing.payment_deadline }}</small></p>
         </div>
 
         <form id="registrationForm" class="form-container">
@@ -393,11 +393,11 @@
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" id="returning_yes" name="is_returning_camper" value="true">
-                            <label for="returning_yes">Yes (Returning Camper - $180 total)</label>
+                            <label for="returning_yes">Yes (Returning Camper - ${{ config.pricing.returning_camper.total }} total)</label>
                         </div>
                         <div class="radio-item">
                             <input type="radio" id="returning_no" name="is_returning_camper" value="false">
-                            <label for="returning_no">No (New Camper - $200 total)</label>
+                            <label for="returning_no">No (New Camper - ${{ config.pricing.new_camper.total }} total)</label>
                         </div>
                     </div>
                 </div>
