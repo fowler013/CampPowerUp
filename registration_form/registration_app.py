@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
 
-app = Flask(__name__, template_folder='./templates')
+app = Flask(__name__)
 app.secret_key = 'camp_power_up_registration_2025'
 
 # Configuration
@@ -60,9 +60,6 @@ def init_registration_db():
             
             -- Camp Information
             is_returning_camper BOOLEAN DEFAULT FALSE,
-            previous_year TEXT,  -- When they last attended
-            previous_instructor TEXT,  -- Staff they remember
-            returning_camper_details TEXT,  -- Memories/activities from previous years
             camp_weeks TEXT,  -- JSON array of selected weeks
             
             -- Gaming Information
@@ -97,44 +94,9 @@ def init_registration_db():
     conn.commit()
     conn.close()
 
-def check_returning_camper_validity(child_first_name, child_last_name, parent_email):
-    """Check if a camper claiming to be returning actually has past registrations."""
-    conn = sqlite3.connect('registration_submissions.db')
-    cursor = conn.cursor()
-    
-    # Check for exact name and email match
-    cursor.execute('''
-        SELECT COUNT(*) FROM registrations 
-        WHERE LOWER(child_first_name) = LOWER(?) 
-        AND LOWER(child_last_name) = LOWER(?) 
-        AND LOWER(parent_email) = LOWER(?)
-        AND timestamp < datetime('now', '-1 day')  -- Must be from a previous session
-    ''', (child_first_name.strip(), child_last_name.strip(), parent_email.strip()))
-    
-    exact_matches = cursor.fetchone()[0]
-    
-    # Also check for just name match (in case email changed)
-    cursor.execute('''
-        SELECT COUNT(*) FROM registrations 
-        WHERE LOWER(child_first_name) = LOWER(?) 
-        AND LOWER(child_last_name) = LOWER(?)
-        AND timestamp < datetime('now', '-1 day')
-    ''', (child_first_name.strip(), child_last_name.strip()))
-    
-    name_matches = cursor.fetchone()[0]
-    
-    conn.close()
-    
-    return {
-        'exact_matches': exact_matches,
-        'name_matches': name_matches,
-        'is_likely_returning': exact_matches > 0 or name_matches > 0
-    }
-
 def validate_form_data(data):
     """Validate form submission data."""
     errors = []
-    warnings = []
     
     # Required fields
     required_fields = [
@@ -169,24 +131,7 @@ def validate_form_data(data):
         if len(phone) != 10:
             errors.append("Please enter a valid 10-digit phone number")
     
-    # Returning camper validation
-    if data.get('is_returning_camper') == 'true':
-        # Require verification fields for returning campers
-        if not data.get('previous_year') or str(data.get('previous_year')).strip() == '':
-            errors.append("Please specify when your child last attended Camp Power-Up.")
-        
-        # Check against database
-        if data.get('child_first_name') and data.get('child_last_name') and data.get('parent_email'):
-            validation_result = check_returning_camper_validity(
-                data['child_first_name'], 
-                data['child_last_name'], 
-                data['parent_email']
-            )
-            
-            if not validation_result['is_likely_returning']:
-                errors.append("⚠️ VALIDATION ERROR: No previous registration found for this camper. Please select 'No - This is my child's first time' if this is their first time at Camp Power-Up. If you believe this is an error, please contact us directly.")
-    
-    return errors, warnings
+    return errors
 
 @app.route('/')
 def registration_form():
@@ -211,7 +156,7 @@ def submit_registration():
         form_data = request.get_json() if request.is_json else request.form.to_dict()
         
         # Validate data
-        errors, warnings = validate_form_data(form_data)
+        errors = validate_form_data(form_data)
         if errors:
             return jsonify({'success': False, 'errors': errors}), 400
         
@@ -227,13 +172,12 @@ def submit_registration():
                 submission_id, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
                 child_age, child_grade, child_gender, is_returning_camper,
-                previous_year, previous_instructor, returning_camper_details,
                 camp_weeks, gaming_behavior, game_restrictions, bringing_own_switch,
                 favorite_games, games_owned, console_experience, has_allergies, allergy_details,
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             submission_id,
             form_data.get('parent_email'),
@@ -246,9 +190,6 @@ def submit_registration():
             form_data.get('child_grade'),
             form_data.get('child_gender'),
             form_data.get('is_returning_camper') == 'true',
-            form_data.get('previous_year') if form_data.get('is_returning_camper') == 'true' else None,
-            form_data.get('previous_instructor') if form_data.get('is_returning_camper') == 'true' else None,
-            form_data.get('returning_camper_details') if form_data.get('is_returning_camper') == 'true' else None,
             json.dumps(form_data.get('camp_weeks', [])),
             form_data.get('gaming_behavior'),
             form_data.get('game_restrictions'),
@@ -566,7 +507,10 @@ def update_config():
 
 def update_config_file():
     """Write the current CAMP_CONFIG back to the camp_config.py file."""
-    import json
+    import pprint
+    
+    # Format the config dictionary as Python code (not JSON)
+    config_str = pprint.pformat(CAMP_CONFIG, indent=4, width=80)
     
     config_content = f'''#!/usr/bin/env python3
 """
@@ -583,7 +527,7 @@ LAST UPDATED: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 from datetime import datetime
 
 # Current Camp Session Configuration
-CAMP_CONFIG = {json.dumps(CAMP_CONFIG, indent=4)}
+CAMP_CONFIG = {config_str}
 
 # Dynamic text generation functions
 def get_camp_title():
@@ -664,7 +608,7 @@ def api_registrations():
 def confirmation(submission_id):
     """Show confirmation page with registration details"""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -693,152 +637,6 @@ def confirmation(submission_id):
         
     except Exception as e:
         return f"Error retrieving registration: {str(e)}", 500
-
-@app.route('/admin/verify-returning-campers')
-def verify_returning_campers():
-    """Admin tool to review returning camper claims."""
-    conn = sqlite3.connect(REGISTRATION_DB)
-    cursor = conn.cursor()
-    
-    # Get all registrations claiming to be returning campers
-    cursor.execute('''
-        SELECT 
-            id, submission_id, child_first_name, child_last_name, parent_email,
-            previous_year, previous_instructor, returning_camper_details,
-            timestamp
-        FROM registrations 
-        WHERE is_returning_camper = 1
-        ORDER BY timestamp DESC
-    ''')
-    
-    returning_campers = cursor.fetchall()
-    verified_campers = []
-    
-    for camper in returning_campers:
-        # Check if this camper has previous registrations
-        validation_result = check_returning_camper_validity(
-            camper[2], camper[3], camper[4]  # first_name, last_name, email
-        )
-        
-        verified_campers.append({
-            'id': camper[0],
-            'submission_id': camper[1],
-            'name': f"{camper[2]} {camper[3]}",
-            'email': camper[4],
-            'previous_year': camper[5],
-            'previous_instructor': camper[6],
-            'details': camper[7],
-            'timestamp': camper[8],
-            'validation': validation_result,
-            'verified': validation_result['is_likely_returning']
-        })
-    
-    conn.close()
-    
-    # Create simple HTML response
-    html = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Returning Camper Verification</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .verified { background: #d4edda; border-left: 4px solid #28a745; }
-            .unverified { background: #f8d7da; border-left: 4px solid #dc3545; }
-            .camper { padding: 15px; margin: 10px 0; border-radius: 5px; }
-            .warning { color: #721c24; font-weight: bold; }
-            .details { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 3px; }
-            .back-btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-        </style>
-    </head>
-    <body>
-        <h1>🔍 Returning Camper Verification Report</h1>
-        <a href="/admin" class="back-btn">← Back to Admin Panel</a>
-        <p>This report shows all registrations claiming returning camper status and their verification status.</p>
-    '''
-    
-    if not verified_campers:
-        html += '<p><em>No returning camper registrations found.</em></p>'
-    
-    for camper in verified_campers:
-        status_class = 'verified' if camper['verified'] else 'unverified'
-        status_text = '✅ VERIFIED' if camper['verified'] else '⚠️ NEEDS REVIEW'
-        
-        html += f'''
-        <div class="camper {status_class}">
-            <h3>{camper['name']} - {status_text}</h3>
-            <p><strong>Email:</strong> {camper['email']}</p>
-            <p><strong>Registration ID:</strong> {camper['submission_id']}</p>
-            <p><strong>Submitted:</strong> {camper['timestamp']}</p>
-            
-            <div class="details">
-                <p><strong>Previous Year Claimed:</strong> {camper['previous_year'] or 'Not provided'}</p>
-                <p><strong>Staff Remembered:</strong> {camper['previous_instructor'] or 'Not provided'}</p>
-                <p><strong>Previous Experience:</strong> {camper['details'] or 'Not provided'}</p>
-            </div>
-            
-            <p><strong>Database Check:</strong> 
-                {camper['validation']['exact_matches']} exact matches, 
-                {camper['validation']['name_matches']} name matches
-            </p>
-            
-            {f'<p class="warning">⚠️ ACTION REQUIRED: Contact this family to verify attendance or request additional payment.</p>' if not camper['verified'] else ''}
-        </div>
-        '''
-    
-    html += '''
-        <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 5px;">
-            <h3>📋 Action Items for Unverified Claims:</h3>
-            <ol>
-                <li>Contact the family directly to verify previous attendance</li>
-                <li>Check with previous year staff if names are provided</li>
-                <li>Request payment adjustment if claim is invalid</li>
-                <li>Update registration record with verification status</li>
-            </ol>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return html
-
-@app.route('/admin/registration-stats')
-def registration_stats():
-    """Show registration statistics including pricing breakdown."""
-    conn = sqlite3.connect(REGISTRATION_DB)
-    cursor = conn.cursor()
-    
-    # Get counts
-    cursor.execute('SELECT COUNT(*) FROM registrations WHERE is_returning_camper = 1')
-    returning_count = cursor.fetchone()[0]
-    
-    cursor.execute('SELECT COUNT(*) FROM registrations WHERE is_returning_camper = 0')
-    new_count = cursor.fetchone()[0]
-    
-    # Calculate potential revenue impact
-    new_price = CAMP_CONFIG['pricing']['new_camper']['total']
-    returning_price = CAMP_CONFIG['pricing']['returning_camper']['total']
-    
-    total_registrations = returning_count + new_count
-    current_revenue = (returning_count * returning_price) + (new_count * new_price)
-    if_all_new_revenue = total_registrations * new_price
-    potential_lost_revenue = if_all_new_revenue - current_revenue
-    
-    return jsonify({
-        'total_registrations': total_registrations,
-        'returning_campers': returning_count,
-        'new_campers': new_count,
-        'pricing': {
-            'new_camper_price': new_price,
-            'returning_camper_price': returning_price,
-            'discount_amount': new_price - returning_price
-        },
-        'revenue': {
-            'current_total': current_revenue,
-            'potential_if_all_new': if_all_new_revenue,
-            'potential_lost': potential_lost_revenue
-        }
-    })
 
 if __name__ == '__main__':
     init_registration_db()

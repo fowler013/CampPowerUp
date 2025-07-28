@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Configuration Admin</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .admin-container {
+            padding: 40px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .current-config {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quick-configs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quick-config {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-config:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .quick-config.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏕️ Camp Configuration Admin</h1>
+            <p>Manage Dynamic Camp Session Settings</p>
+        </div>
+
+        <div class="admin-container">
+            <!-- Current Configuration Display -->
+            <div class="current-config">
+                <h3>📊 Current Configuration</h3>
+                <p><strong>Camp:</strong> {{ config.camp_name }}</p>
+                <p><strong>Dates:</strong> {{ config.camp_dates }} ({{ config.camp_days }} days)</p>
+                <p><strong>Hours:</strong> {{ config.daily_hours }}</p>
+                <p><strong>Returning Camper:</strong> ${{ config.pricing.returning_camper.total }}</p>
+                <p><strong>New Camper:</strong> ${{ config.pricing.new_camper.total }}</p>
+            </div>
+
+            <!-- Quick Configuration Templates -->
+            <div class="section">
+                <h3>⚡ Quick Configuration Templates</h3>
+                <p>Click a template to load predefined settings:</p>
+                
+                <div class="quick-configs">
+                    <div class="quick-config" onclick="loadQuickConfig('summer_5_day')">
+                        <h4>🌞 Summer 5-Day</h4>
+                        <p>5 days, 10am-3pm</p>
+                        <p>Returning: $180 | New: $200</p>
+                    </div>
+                    
+                    <div class="quick-config" onclick="loadQuickConfig('spring_break_3_day')">
+                        <h4>🌸 Spring Break 3-Day</h4>
+                        <p>3 days, 9am-2pm</p>
+                        <p>Returning: $120 | New: $135</p>
+                    </div>
+                    
+                    <div class="quick-config" onclick="loadQuickConfig('holiday_4_day')">
+                        <h4>🎄 Holiday 4-Day</h4>
+                        <p>4 days, 10am-3pm</p>
+                        <p>Returning: $150 | New: $165</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <form id="configForm">
+                <!-- Basic Info -->
+                <div class="section">
+                    <h3>📝 Basic Information</h3>
+                    <div class="form-group">
+                        <label for="camp_name">Camp Name</label>
+                        <input type="text" id="camp_name" name="camp_name" value="{{ config.camp_name }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="camp_subtitle">Camp Subtitle</label>
+                        <input type="text" id="camp_subtitle" name="camp_subtitle" value="{{ config.camp_subtitle }}">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="camp_dates">Camp Dates</label>
+                            <input type="text" id="camp_dates" name="camp_dates" value="{{ config.camp_dates }}" placeholder="June 9th-13th">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="camp_days">Number of Days</label>
+                            <input type="number" id="camp_days" name="camp_days" value="{{ config.camp_days }}" min="1" max="10">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="daily_hours">Daily Hours</label>
+                            <input type="text" id="daily_hours" name="daily_hours" value="{{ config.daily_hours }}" placeholder="10am-3pm">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="final_payment_due">Final Payment Due</label>
+                            <input type="text" id="final_payment_due" name="final_payment_due" value="{{ config.final_payment_due }}" placeholder="June 8th">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing -->
+                <div class="section">
+                    <h3>💰 Pricing Structure</h3>
+                    
+                    <h4>Returning Campers</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="returning_deposit">Deposit</label>
+                            <input type="number" id="returning_deposit" name="returning_deposit" value="{{ config.pricing.returning_camper.deposit }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="returning_final">Final Payment</label>
+                            <input type="number" id="returning_final" name="returning_final" value="{{ config.pricing.returning_camper.final_payment }}">
+                        </div>
+                    </div>
+                    
+                    <h4>New Campers</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new_deposit">Deposit</label>
+                            <input type="number" id="new_deposit" name="new_deposit" value="{{ config.pricing.new_camper.deposit }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_final">Final Payment</label>
+                            <input type="number" id="new_final" name="new_final" value="{{ config.pricing.new_camper.final_payment }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <button type="submit" class="btn">💾 Save Configuration</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">🔄 Reset</button>
+                    <button type="button" class="btn btn-secondary" onclick="previewChanges()">👁️ Preview</button>
+                </div>
+            </form>
+
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const quickConfigs = {
+            summer_5_day: {
+                camp_name: "Camp Power-Up 2025 - Summer Session",
+                camp_subtitle: "Gaming Camp Registration Form",
+                camp_dates: "June 9th-13th",
+                camp_days: 5,
+                daily_hours: "10am-3pm",
+                final_payment_due: "June 8th",
+                returning_deposit: 50,
+                returning_final: 130,
+                new_deposit: 50,
+                new_final: 150
+            },
+            spring_break_3_day: {
+                camp_name: "Camp Power-Up 2025 - Spring Break",
+                camp_subtitle: "Gaming Camp Registration Form",
+                camp_dates: "March 15th-17th",
+                camp_days: 3,
+                daily_hours: "9am-2pm",
+                final_payment_due: "March 14th",
+                returning_deposit: 40,
+                returning_final: 80,
+                new_deposit: 40,
+                new_final: 95
+            },
+            holiday_4_day: {
+                camp_name: "Camp Power-Up 2025 - Holiday Gaming",
+                camp_subtitle: "Gaming Camp Registration Form",
+                camp_dates: "December 26th-29th",
+                camp_days: 4,
+                daily_hours: "10am-3pm",
+                final_payment_due: "December 25th",
+                returning_deposit: 45,
+                returning_final: 105,
+                new_deposit: 45,
+                new_final: 120
+            }
+        };
+
+        function loadQuickConfig(configName) {
+            const config = quickConfigs[configName];
+            if (!config) return;
+
+            // Remove selected class from all quick configs
+            document.querySelectorAll('.quick-config').forEach(el => el.classList.remove('selected'));
+            
+            // Add selected class to clicked config
+            event.target.closest('.quick-config').classList.add('selected');
+
+            // Populate form
+            Object.entries(config).forEach(([key, value]) => {
+                const input = document.getElementById(key);
+                if (input) {
+                    input.value = value;
+                }
+            });
+
+            showStatus('Template loaded successfully!', 'success');
+        }
+
+        function resetForm() {
+            window.location.reload();
+        }
+
+        function previewChanges() {
+            const formData = new FormData(document.getElementById('configForm'));
+            const data = Object.fromEntries(formData);
+            
+            // Calculate totals
+            const returningTotal = parseInt(data.returning_deposit) + parseInt(data.returning_final);
+            const newTotal = parseInt(data.new_deposit) + parseInt(data.new_final);
+            
+            const preview = `
+                <h4>Preview:</h4>
+                <p><strong>${data.camp_name}</strong></p>
+                <p>${data.camp_dates} (${data.camp_days} days) - ${data.daily_hours}</p>
+                <p>Returning: $${data.returning_deposit} + $${data.returning_final} = $${returningTotal}</p>
+                <p>New: $${data.new_deposit} + $${data.new_final} = $${newTotal}</p>
+                <p>Final payment due: ${data.final_payment_due}</p>
+            `;
+            
+            showStatus(preview, 'success');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = `status ${type}`;
+        }
+
+        // Form submission
+        document.getElementById('configForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch('/admin/update-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('✅ Configuration updated successfully! Changes will take effect immediately.', 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showStatus('❌ Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Error updating configuration: ' + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
