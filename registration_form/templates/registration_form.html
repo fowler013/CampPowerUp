@@ -404,6 +404,39 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Returning Camper Verification (only shown if returning camper is selected) -->
+                <div id="returning_verification" style="display: none;" class="form-group">
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <h4 style="color: #856404; margin-bottom: 10px;">🔍 Returning Camper Verification</h4>
+                        <p style="color: #856404; font-size: 14px; margin-bottom: 15px;">
+                            To qualify for returning camper pricing, please help us verify your child's previous attendance:
+                        </p>
+                        
+                        <div class="form-group">
+                            <label for="previous_year">What year(s) did your child last attend Camp Power-Up? <span class="required">*</span></label>
+                            <input type="text" id="previous_year" name="previous_year" placeholder="e.g., Summer 2024, 2023 and 2024" style="width: 100%;">
+                            <small style="color: #666;">This helps us verify your child's previous attendance.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="previous_instructor">Do you remember any instructors or staff from previous years?</label>
+                            <input type="text" id="previous_instructor" name="previous_instructor" placeholder="e.g., Mr. Johnson, Sarah, etc." style="width: 100%;">
+                            <small style="color: #666;">Optional, but helps us confirm attendance.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="returning_camper_details">Tell us about your child's favorite activity or memory from previous Camp Power-Up sessions:</label>
+                            <textarea id="returning_camper_details" name="returning_camper_details" rows="3" placeholder="What did they enjoy most? Any specific games or activities they loved?" style="width: 100%;"></textarea>
+                            <small style="color: #666;">This helps us personalize their experience and verify attendance.</small>
+                        </div>
+                        
+                        <p style="color: #d63384; font-size: 13px; font-weight: bold; margin-top: 10px;">
+                            ⚠️ Note: Registrations claiming returning camper status will be verified against our records. 
+                            If we cannot confirm previous attendance, you will be contacted to pay the difference.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- Gaming Information Section -->
@@ -562,7 +595,7 @@
         const saveBtn = document.getElementById('saveBtn');
         const loading = document.getElementById('loading');
 
-        // Show/hide conditional fields
+                // Show/hide conditional fields
         document.getElementById('has_allergies').addEventListener('change', function() {
             const detailsGroup = document.getElementById('allergy_details_group');
             detailsGroup.style.display = this.checked ? 'block' : 'none';
@@ -571,6 +604,30 @@
         document.getElementById('has_sensory_issues').addEventListener('change', function() {
             const detailsGroup = document.getElementById('sensory_details_group');
             detailsGroup.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Show/hide returning camper verification fields
+        document.querySelectorAll('input[name="is_returning_camper"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                const verificationDiv = document.getElementById('returning_verification');
+                const previousYearField = document.getElementById('previous_year');
+                
+                if (this.value === 'true') {
+                    verificationDiv.style.display = 'block';
+                    previousYearField.required = true;
+                    
+                    // Add visual feedback
+                    verificationDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    verificationDiv.style.display = 'none';
+                    previousYearField.required = false;
+                    
+                    // Clear verification fields when switching to new camper
+                    document.getElementById('previous_year').value = '';
+                    document.getElementById('previous_instructor').value = '';
+                    document.getElementById('returning_camper_details').value = '';
+                }
+            });
         });
 
         // Camper status selection feedback

@@ -319,7 +319,17 @@
                 <a href="/" class="btn btn-success">➕ New Registration</a>
                 <button class="btn btn-primary" onclick="exportData()">📊 Export Data</button>
                 <a href="../" class="btn btn-warning">📈 View Dashboard</a>
+                <a href="/admin/verify-returning-campers" class="btn" style="background: #dc3545; color: white;">🔍 Verify Returning Campers</a>
             </div>
+        </div>
+
+        <!-- Fraud Prevention Alert -->
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h4 style="color: #856404; margin: 0 0 10px 0;">🛡️ Fraud Prevention Alert</h4>
+            <p style="color: #856404; margin: 0;">
+                <strong>Important:</strong> Some registrations may claim "returning camper" status fraudulently to get the discount. 
+                Use the <a href="/admin/verify-returning-campers" style="color: #dc3545; font-weight: bold;">"Verify Returning Campers"</a> tool above to check all claims against your database.
+            </p>
         </div>
 
         <div class="registrations-table">
