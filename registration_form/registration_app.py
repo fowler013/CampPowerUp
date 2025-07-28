@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
 
-app = Flask(__name__, template_folder='./templates')
+app = Flask(__name__)
 app.secret_key = 'camp_power_up_registration_2025'
 
 # Configuration
@@ -507,7 +507,10 @@ def update_config():
 
 def update_config_file():
     """Write the current CAMP_CONFIG back to the camp_config.py file."""
-    import json
+    import pprint
+    
+    # Format the config dictionary as Python code (not JSON)
+    config_str = pprint.pformat(CAMP_CONFIG, indent=4, width=80)
     
     config_content = f'''#!/usr/bin/env python3
 """
@@ -524,7 +527,7 @@ LAST UPDATED: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 from datetime import datetime
 
 # Current Camp Session Configuration
-CAMP_CONFIG = {json.dumps(CAMP_CONFIG, indent=4)}
+CAMP_CONFIG = {config_str}
 
 # Dynamic text generation functions
 def get_camp_title():
