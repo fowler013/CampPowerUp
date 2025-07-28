@@ -605,7 +605,7 @@ def api_registrations():
 def confirmation(submission_id):
     """Show confirmation page with registration details"""
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
         cursor.execute('''
