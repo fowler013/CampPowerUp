@@ -389,15 +389,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Has your child attended Camp Power-Up before?</label>
+                    <label>Has your child attended Camp Power-Up before? <span class="required">*</span></label>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                        ℹ️ Choose "Yes" only if your child has previously attended Camp Power-Up. Choose "No" for first-time campers.
+                    </p>
                     <div class="radio-group">
                         <div class="radio-item">
-                            <input type="radio" id="returning_yes" name="is_returning_camper" value="true">
-                            <label for="returning_yes">Yes (Returning Camper - ${{ config.pricing.returning_camper.total }} total)</label>
+                            <input type="radio" id="returning_yes" name="is_returning_camper" value="true" required>
+                            <label for="returning_yes">✅ Yes - My child has attended Camp Power-Up before (Returning Camper - ${{ config.pricing.returning_camper.total }} total)</label>
                         </div>
                         <div class="radio-item">
-                            <input type="radio" id="returning_no" name="is_returning_camper" value="false">
-                            <label for="returning_no">No (New Camper - ${{ config.pricing.new_camper.total }} total)</label>
+                            <input type="radio" id="returning_no" name="is_returning_camper" value="false" required>
+                            <label for="returning_no">🆕 No - This is my child's first time at Camp Power-Up (New Camper - ${{ config.pricing.new_camper.total }} total)</label>
                         </div>
                     </div>
                 </div>
@@ -568,6 +571,28 @@
         document.getElementById('has_sensory_issues').addEventListener('change', function() {
             const detailsGroup = document.getElementById('sensory_details_group');
             detailsGroup.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Camper status selection feedback
+        document.querySelectorAll('input[name="is_returning_camper"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                const radioItems = document.querySelectorAll('.radio-item');
+                radioItems.forEach(item => {
+                    item.style.backgroundColor = '';
+                    item.style.border = '2px solid #ddd';
+                });
+                
+                if (this.checked) {
+                    const parentItem = this.closest('.radio-item');
+                    if (this.value === 'true') {
+                        parentItem.style.backgroundColor = '#e8f5e8';
+                        parentItem.style.border = '2px solid #28a745';
+                    } else {
+                        parentItem.style.backgroundColor = '#e3f2fd';
+                        parentItem.style.border = '2px solid #2196f3';
+                    }
+                }
+            });
         });
 
         // Progress tracking
