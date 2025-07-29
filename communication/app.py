@@ -284,8 +284,6 @@ def get_parent_contacts():
             SELECT 
                 child_first_name,
                 child_last_name,
-                parent_first_name,
-                parent_last_name,
                 parent_email,
                 parent_phone,
                 is_returning_camper,
@@ -298,11 +296,11 @@ def get_parent_contacts():
         for row in cursor.fetchall():
             contacts.append({
                 'child_name': f"{row[0]} {row[1]}",
-                'parent_name': f"{row[2]} {row[3]}" if row[2] and row[3] else "Parent",
-                'email': row[4],
-                'phone': row[5],
-                'is_returning': bool(row[6]),
-                'registration_date': row[7]
+                'parent_name': f"Parent of {row[0]}",  # Use child's name since no parent name in DB
+                'email': row[2],
+                'phone': row[3],
+                'is_returning': bool(row[4]),
+                'registration_date': row[5]
             })
         
         conn.close()
@@ -322,8 +320,6 @@ def get_parent_by_email(email):
             SELECT 
                 child_first_name,
                 child_last_name,
-                parent_first_name,
-                parent_last_name,
                 parent_email,
                 parent_phone,
                 is_returning_camper
@@ -339,10 +335,10 @@ def get_parent_by_email(email):
         if row:
             return {
                 'child_name': f"{row[0]} {row[1]}",
-                'parent_name': f"{row[2]} {row[3]}" if row[2] and row[3] else "Parent",
-                'email': row[4],
-                'phone': row[5],
-                'is_returning': bool(row[6])
+                'parent_name': f"Parent of {row[0]}",  # Use child's name since no parent name in DB
+                'email': row[2],
+                'phone': row[3],
+                'is_returning': bool(row[4])
             }
         return None
         
