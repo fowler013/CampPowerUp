@@ -43,12 +43,12 @@ DATABASE_PATH = os.path.abspath(os.path.join('..', 'camp_power_up.db'))
 REGISTRATION_DB_PATH = os.path.abspath(os.path.join('..', 'registration_form', 'registration_submissions.db'))
 COMMUNICATION_DB = 'communication.db'
 
-# Email Configuration (you'll need to set these up)
+# Email Configuration - Gmail Setup
 EMAIL_CONFIG = {
-    'smtp_server': 'smtp.gmail.com',  # Change to your email provider
+    'smtp_server': 'smtp.gmail.com',
     'smtp_port': 587,
-    'email': 'your-camp-email@gmail.com',  # Change to your camp email
-    'password': 'your-app-password',  # Use app password for Gmail
+    'email': 'camppowerup2025@gmail.com',
+    'password': 'dwyaqauvrkndpzys',
     'sender_name': 'Camp Power-Up Team'
 }
 
