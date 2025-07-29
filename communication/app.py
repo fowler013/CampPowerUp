@@ -38,7 +38,9 @@ app = Flask(__name__)
 app.secret_key = 'camp_power_up_communication_2025'
 
 # Configuration
-DATABASE_PATH = os.path.abspath(os.path.join('..', 'data', 'camp.db'))
+# Use the main camp database that contains all the registration data
+DATABASE_PATH = os.path.abspath(os.path.join('..', 'camp_power_up.db'))
+REGISTRATION_DB_PATH = os.path.abspath(os.path.join('..', 'registration_form', 'registration_submissions.db'))
 COMMUNICATION_DB = 'communication.db'
 
 # Email Configuration (you'll need to set these up)
@@ -272,6 +274,82 @@ The Camp Power-Up Team 🏕️⚡''',
     conn.commit()
     conn.close()
 
+def get_parent_contacts():
+    """Get all parent contact information from the registration database"""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT 
+                child_first_name,
+                child_last_name,
+                parent_first_name,
+                parent_last_name,
+                parent_email,
+                parent_phone,
+                is_returning_camper,
+                timestamp
+            FROM registrations 
+            ORDER BY timestamp DESC
+        ''')
+        
+        contacts = []
+        for row in cursor.fetchall():
+            contacts.append({
+                'child_name': f"{row[0]} {row[1]}",
+                'parent_name': f"{row[2]} {row[3]}" if row[2] and row[3] else "Parent",
+                'email': row[4],
+                'phone': row[5],
+                'is_returning': bool(row[6]),
+                'registration_date': row[7]
+            })
+        
+        conn.close()
+        return contacts
+        
+    except Exception as e:
+        print(f"Error getting parent contacts: {e}")
+        return []
+
+def get_parent_by_email(email):
+    """Get specific parent information by email"""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT 
+                child_first_name,
+                child_last_name,
+                parent_first_name,
+                parent_last_name,
+                parent_email,
+                parent_phone,
+                is_returning_camper
+            FROM registrations 
+            WHERE parent_email = ?
+            ORDER BY timestamp DESC
+            LIMIT 1
+        ''', (email,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'child_name': f"{row[0]} {row[1]}",
+                'parent_name': f"{row[2]} {row[3]}" if row[2] and row[3] else "Parent",
+                'email': row[4],
+                'phone': row[5],
+                'is_returning': bool(row[6])
+            }
+        return None
+        
+    except Exception as e:
+        print(f"Error getting parent by email: {e}")
+        return None
+
 class EmailSender:
     """Handle email sending functionality"""
     
@@ -388,8 +466,53 @@ def get_camper_data():
 
 @app.route('/')
 def communication_dashboard():
-    """Main communication dashboard"""
-    return render_template('communication_dashboard.html')
+    """Main communication dashboard with real data"""
+    try:
+        # Get actual parent contacts from registration database
+        parent_contacts = get_parent_contacts()
+        
+        # Get communication stats
+        conn = sqlite3.connect(COMMUNICATION_DB)
+        cursor = conn.cursor()
+        
+        # Count total communications sent
+        cursor.execute('SELECT COUNT(*) FROM communication_logs WHERE status = "sent"')
+        total_sent = cursor.fetchone()[0]
+        
+        # Count emails vs SMS
+        cursor.execute('SELECT type, COUNT(*) FROM communication_logs WHERE status = "sent" GROUP BY type')
+        comm_types = dict(cursor.fetchall())
+        
+        # Get recent communications
+        cursor.execute('''
+            SELECT timestamp, type, recipient, subject, status 
+            FROM communication_logs 
+            ORDER BY timestamp DESC 
+            LIMIT 10
+        ''')
+        recent_comms = cursor.fetchall()
+        
+        conn.close()
+        
+        stats = {
+            'total_parents': len(parent_contacts),
+            'returning_campers': len([p for p in parent_contacts if p['is_returning']]),
+            'new_campers': len([p for p in parent_contacts if not p['is_returning']]),
+            'total_sent': total_sent,
+            'emails_sent': comm_types.get('email', 0),
+            'sms_sent': comm_types.get('sms', 0),
+            'recent_communications': recent_comms
+        }
+        
+        return render_template('communication_dashboard.html', 
+                             parent_contacts=parent_contacts,
+                             stats=stats)
+                             
+    except Exception as e:
+        print(f"Error in communication dashboard: {e}")
+        return render_template('communication_dashboard.html', 
+                             parent_contacts=[],
+                             stats={})
 
 @app.route('/send_message', methods=['GET', 'POST'])
 def send_message():
