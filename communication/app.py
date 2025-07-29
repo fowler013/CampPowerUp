@@ -644,6 +644,116 @@ def communication_stats():
     
     return jsonify({'stats': stats})
 
+# ===== API ENDPOINTS FOR FRONTEND INTEGRATION =====
+
+@app.route('/api/parent-contacts', methods=['GET'])
+def api_get_parent_contacts():
+    """API endpoint to get all parent contact information"""
+    try:
+        contacts = get_parent_contacts()
+        return jsonify({
+            'success': True,
+            'data': contacts,
+            'total': len(contacts)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/send-email', methods=['POST'])
+def api_send_email():
+    """API endpoint to send individual emails"""
+    try:
+        data = request.json
+        recipients = data.get('recipients', [])
+        subject = data.get('subject', '')
+        message = data.get('message', '')
+        
+        if not recipients or not subject or not message:
+            return jsonify({
+                'success': False,
+                'error': 'Recipients, subject, and message are required'
+            }), 400
+        
+        email_sender = EmailSender()
+        results = []
+        
+        for recipient in recipients:
+            success, result = email_sender.send_email(recipient, subject, message)
+            
+            # Log the communication
+            log_communication(
+                'email', recipient, subject, message,
+                'sent' if success else 'failed'
+            )
+            
+            results.append({
+                'recipient': recipient,
+                'success': success,
+                'message': result
+            })
+        
+        success_count = sum(1 for r in results if r['success'])
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'summary': {
+                'total_sent': len(recipients),
+                'successful': success_count,
+                'failed': len(recipients) - success_count
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/communication-stats', methods=['GET'])
+def api_get_communication_stats():
+    """API endpoint to get communication statistics"""
+    try:
+        # Get parent contacts stats
+        contacts = get_parent_contacts()
+        
+        # Get communication logs stats
+        conn = sqlite3.connect(COMMUNICATION_DB)
+        cursor = conn.cursor()
+        
+        # Count total communications sent
+        cursor.execute('SELECT COUNT(*) FROM communication_logs WHERE status = "sent"')
+        total_sent = cursor.fetchone()[0]
+        
+        # Count by type
+        cursor.execute('SELECT type, COUNT(*) FROM communication_logs WHERE status = "sent" GROUP BY type')
+        comm_types = dict(cursor.fetchall())
+        
+        conn.close()
+        
+        stats = {
+            'total_parents': len(contacts),
+            'returning_campers': len([p for p in contacts if p['is_returning']]),
+            'new_campers': len([p for p in contacts if not p['is_returning']]),
+            'total_communications_sent': total_sent,
+            'emails_sent': comm_types.get('email', 0),
+            'sms_sent': comm_types.get('sms', 0)
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     print("🏕️ Camp Power-Up Communication System")
     print("=====================================")
