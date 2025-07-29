@@ -52,11 +52,11 @@ EMAIL_CONFIG = {
     'sender_name': 'Camp Power-Up Team'
 }
 
-# SMS Configuration (using a service like Twilio)
+# SMS Configuration (using Twilio)
 SMS_CONFIG = {
-    'account_sid': 'your-twilio-sid',
-    'auth_token': 'your-twilio-token',
-    'from_number': '+1234567890'  # Your Twilio phone number
+    'account_sid': os.getenv('TWILIO_ACCOUNT_SID', 'your-twilio-sid'),
+    'auth_token': os.getenv('TWILIO_AUTH_TOKEN', 'your-twilio-token'),
+    'from_number': os.getenv('TWILIO_PHONE_NUMBER', '+1234567890')  # Your Twilio phone number
 }
 
 def init_communication_db():
@@ -399,27 +399,53 @@ class SMSSender:
     
     def __init__(self, config=SMS_CONFIG):
         self.config = config
+        self.client = None
+        self._initialize_client()
+    
+    def _initialize_client(self):
+        """Initialize Twilio client if credentials are provided"""
+        try:
+            if (self.config['account_sid'] != 'your-twilio-sid' and 
+                self.config['auth_token'] != 'your-twilio-token'):
+                from twilio.rest import Client
+                self.client = Client(self.config['account_sid'], self.config['auth_token'])
+                print("✅ Twilio SMS client initialized successfully")
+            else:
+                print("⚠️  Twilio credentials not configured - SMS will be simulated")
+        except Exception as e:
+            print(f"❌ Failed to initialize Twilio client: {str(e)}")
+            self.client = None
     
     def send_sms(self, to_number, message):
         """Send an SMS using Twilio"""
         try:
-            # This would integrate with Twilio or another SMS service
-            # For now, we'll log it and return success
-            print(f"SMS to {to_number}: {message}")
+            # Clean phone number (remove spaces, dashes, etc.)
+            clean_number = ''.join(filter(str.isdigit, str(to_number)))
+            if len(clean_number) == 10:
+                clean_number = '+1' + clean_number
+            elif len(clean_number) == 11 and clean_number.startswith('1'):
+                clean_number = '+' + clean_number
+            elif not clean_number.startswith('+'):
+                clean_number = '+1' + clean_number
             
-            # TODO: Implement actual SMS sending with Twilio
-            # from twilio.rest import Client
-            # client = Client(self.config['account_sid'], self.config['auth_token'])
-            # message = client.messages.create(
-            #     body=message,
-            #     from_=self.config['from_number'],
-            #     to=to_number
-            # )
-            
-            return True, "SMS sent successfully"
+            if self.client:
+                # Send real SMS via Twilio
+                message_obj = self.client.messages.create(
+                    body=message,
+                    from_=self.config['from_number'],
+                    to=clean_number
+                )
+                print(f"📱 SMS sent successfully to {clean_number} (SID: {message_obj.sid})")
+                return True, f"SMS sent successfully (SID: {message_obj.sid})"
+            else:
+                # Simulate SMS sending for testing
+                print(f"📱 [SIMULATED] SMS to {clean_number}: {message}")
+                return True, "SMS simulated successfully (Twilio not configured)"
             
         except Exception as e:
-            return False, f"Failed to send SMS: {str(e)}"
+            error_msg = f"Failed to send SMS to {to_number}: {str(e)}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
 
 def log_communication(comm_type, recipient, subject, message, status, template_used=None, camper_id=None, parent_email=None):
     """Log communication attempts"""
@@ -709,6 +735,63 @@ def api_send_email():
             'error': str(e)
         }), 500
 
+@app.route('/api/send-sms', methods=['POST'])
+def api_send_sms():
+    """API endpoint to send individual SMS messages"""
+    try:
+        data = request.json
+        recipients = data.get('recipients', [])
+        message = data.get('message', '')
+        
+        if not recipients or not message:
+            return jsonify({
+                'success': False,
+                'error': 'Recipients and message are required'
+            }), 400
+        
+        # Validate message length (SMS limit is typically 160 characters)
+        if len(message) > 160:
+            return jsonify({
+                'success': False,
+                'error': 'SMS message must be 160 characters or less'
+            }), 400
+        
+        sms_sender = SMSSender()
+        results = []
+        
+        for recipient in recipients:
+            success, result = sms_sender.send_sms(recipient, message)
+            
+            # Log the communication
+            log_communication(
+                'sms', recipient, 'SMS', message,
+                'sent' if success else 'failed'
+            )
+            
+            results.append({
+                'recipient': recipient,
+                'success': success,
+                'message': result
+            })
+        
+        success_count = sum(1 for r in results if r['success'])
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'summary': {
+                'total_sent': len(recipients),
+                'successful': success_count,
+                'failed': len(recipients) - success_count
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/communication-stats', methods=['GET'])
 def api_get_communication_stats():
     """API endpoint to get communication statistics"""
@@ -758,9 +841,12 @@ if __name__ == '__main__':
     init_communication_db()
     create_default_templates()
     
+    # Get port from environment or use default
+    port = int(os.getenv('PORT', 5004))
+    
     print("📧 Email templates loaded")
     print("📱 SMS system ready")
-    print("🌐 Parent portal available at: http://127.0.0.1:5004")
-    print("🔧 Admin dashboard available at: http://127.0.0.1:5004/admin")
+    print(f"🌐 Parent portal available at: http://127.0.0.1:{port}")
+    print(f"🔧 Admin dashboard available at: http://127.0.0.1:{port}/admin")
     
-    app.run(debug=True, port=5004)
+    app.run(debug=True, port=port)

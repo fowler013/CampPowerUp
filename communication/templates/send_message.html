@@ -287,7 +287,7 @@
 
                     <div id="customRecipients" style="display: none;">
                         <div class="form-group">
-                            <label for="customEmailList">Custom Email Addresses (comma or line separated):</label>
+                            <label for="customEmailList" id="customListLabel">Custom Email Addresses (comma or line separated):</label>
                             <textarea id="customEmailList" rows="4" placeholder="parent1@email.com, parent2@email.com&#10;parent3@email.com&#10;parent4@email.com" onchange="updateRecipientPreview()"></textarea>
                         </div>
                     </div>
@@ -404,6 +404,8 @@
             const sendButtonText = document.getElementById('sendButtonText');
             const previewSubject = document.getElementById('previewSubject');
             const smsWarning = document.getElementById('smsWarning');
+            const customListLabel = document.getElementById('customListLabel');
+            const customEmailList = document.getElementById('customEmailList');
             
             if (messageType === 'email') {
                 emailFields.style.display = 'block';
@@ -412,12 +414,17 @@
                 sendButtonText.textContent = '📧 Send Email Now';
                 previewSubject.style.display = 'block';
                 smsWarning.style.display = 'none';
+                customListLabel.textContent = 'Custom Email Addresses (comma or line separated):';
+                customEmailList.placeholder = 'parent1@email.com, parent2@email.com\nparent3@email.com\nparent4@email.com';
             } else {
                 emailFields.style.display = 'none';
                 messageContentTitle.textContent = '📱 SMS Content';
                 messageBodyLabel.textContent = 'SMS Message (160 chars recommended):';
                 sendButtonText.textContent = '📱 Send SMS Now';
                 previewSubject.style.display = 'none';
+                smsWarning.style.display = 'block';
+                customListLabel.textContent = 'Custom Phone Numbers (comma or line separated):';
+                customEmailList.placeholder = '+1234567890, (555) 123-4567\n555-987-6543\n+1-555-555-5555';
                 updateCharacterCount();
             }
             
@@ -620,58 +627,95 @@ The Camp Power-Up Team`
                 return;
             }
 
+            // SMS-specific validation
+            if (messageType === 'sms' && body.length > 160) {
+                alert('SMS messages must be 160 characters or less. Current length: ' + body.length);
+                return;
+            }
+
             if (recipientType === 'custom') {
                 if (!customEmails.trim()) {
-                    alert('Please enter at least one email address for custom recipients');
+                    const recipientLabel = messageType === 'sms' ? 'phone numbers' : 'email addresses';
+                    alert(`Please enter at least one ${recipientLabel} for custom recipients`);
                     return;
                 }
                 
-                // Parse and validate emails
-                const parsedEmails = customEmails
+                // Parse and validate based on message type
+                const parsedContacts = customEmails
                     .split(/[,\n]/)
-                    .map(email => email.trim())
-                    .filter(email => email);
+                    .map(contact => contact.trim())
+                    .filter(contact => contact);
                 
-                const validEmails = parsedEmails.filter(email => email.includes('@'));
-                const invalidEmails = parsedEmails.filter(email => !email.includes('@'));
-                
-                if (invalidEmails.length > 0) {
-                    alert(`Invalid email addresses found: ${invalidEmails.join(', ')}\n\nPlease fix these before sending.`);
-                    return;
-                }
-                
-                if (validEmails.length === 0) {
-                    alert('No valid email addresses found. Please enter at least one valid email.');
-                    return;
+                if (messageType === 'email') {
+                    const validEmails = parsedContacts.filter(email => email.includes('@'));
+                    const invalidEmails = parsedContacts.filter(email => !email.includes('@'));
+                    
+                    if (invalidEmails.length > 0) {
+                        alert(`Invalid email addresses found: ${invalidEmails.join(', ')}\n\nPlease fix these before sending.`);
+                        return;
+                    }
+                    
+                    if (validEmails.length === 0) {
+                        alert('No valid email addresses found. Please enter at least one valid email.');
+                        return;
+                    }
+                } else {
+                    // SMS validation - check for phone numbers
+                    const validPhones = parsedContacts.filter(phone => /[\d\-\(\)\+\s]{10,}/.test(phone));
+                    const invalidPhones = parsedContacts.filter(phone => !/[\d\-\(\)\+\s]{10,}/.test(phone));
+                    
+                    if (invalidPhones.length > 0) {
+                        alert(`Invalid phone numbers found: ${invalidPhones.join(', ')}\n\nPlease fix these before sending.`);
+                        return;
+                    }
+                    
+                    if (validPhones.length === 0) {
+                        alert('No valid phone numbers found. Please enter at least one valid phone number.');
+                        return;
+                    }
                 }
             }
 
             // Prepare recipients
             let recipients = [];
             if (recipientType === 'custom') {
-                // Handle both comma-separated and newline-separated emails
+                // Handle both comma-separated and newline-separated contacts
                 recipients = customEmails
                     .split(/[,\n]/)  // Split by both commas and newlines
-                    .map(email => email.trim())
-                    .filter(email => email && email.includes('@'));  // Only valid emails with @
+                    .map(contact => contact.trim())
+                    .filter(contact => {
+                        if (messageType === 'email') {
+                            return contact && contact.includes('@');
+                        } else {
+                            return contact && /[\d\-\(\)\+\s]{10,}/.test(contact);
+                        }
+                    });
             }
 
             // Show loading
             document.getElementById('loading').style.display = 'block';
             document.getElementById('messageForm').style.display = 'none';
 
+            // Choose API endpoint based on message type
+            const apiEndpoint = messageType === 'sms' ? '/api/send-sms' : '/api/send-email';
+            const requestBody = {
+                recipients: recipients,
+                message: body,
+                type: messageType
+            };
+
+            // Add subject for emails
+            if (messageType === 'email') {
+                requestBody.subject = subject;
+            }
+
             // Send via API
-            fetch('/api/send-email', {
+            fetch(apiEndpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    recipients: recipients,
-                    subject: subject,
-                    message: body,
-                    type: messageType
-                })
+                body: JSON.stringify(requestBody)
             })
             .then(response => response.json())
             .then(data => {
@@ -683,7 +727,7 @@ The Camp Power-Up Team`
                     updateRecipientPreview();
                     updatePreview();
                 } else {
-                    alert('Error sending message: ' + (data.message || 'Unknown error'));
+                    alert('Error sending message: ' + (data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
