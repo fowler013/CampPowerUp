@@ -575,5 +575,5 @@ if __name__ == '__main__':
     print("=" * 50)
     clean_and_combine_data()
     print("\n🚀 Starting web server...")
-    print("📱 Dashboard available at: http://127.0.0.1:5000")
-    app.run(debug=False, port=5000)
+    print("📱 Dashboard available at: http://127.0.0.1:5002")
+    app.run(debug=False, port=5002)
