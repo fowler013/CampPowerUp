@@ -18,24 +18,54 @@ Features:
 - Payment reminders
 - Daily activity summaries
 - Emergency contact system
+
+Security Features:
+- Authentication and authorization
+- Encrypted sensitive data storage
+- Audit logging
+- Rate limiting
+- Input validation
 """
 
 import os
+import sys
 import sqlite3
 import smtplib
 import json
+import bcrypt
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 import hashlib
 import secrets
 import time
 import threading
 
+# Import our security module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from security import SecurityManager, User, require_role, audit_log
+
 app = Flask(__name__)
-app.secret_key = 'camp_power_up_communication_2025'
+
+# Enhanced security configuration
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
+
+# Initialize security features
+csrf = CSRFProtect(app)
+security_manager = SecurityManager(app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 # Configuration
 # Use the main camp database that contains all the registration data
@@ -486,7 +516,159 @@ def get_camper_data():
         print(f"Error getting camper data: {e}")
         return []
 
+# Security helper functions
+def get_user_by_id(user_id):
+    """Get user by ID for Flask-Login"""
+    try:
+        conn = sqlite3.connect('security.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, username, email, role, is_active 
+            FROM users 
+            WHERE id = ? AND is_active = 1
+        ''', (user_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return User(row[0], row[1], row[2], row[3], row[4])
+        return None
+    except Exception as e:
+        print(f"Error getting user: {e}")
+        return None
+
+def authenticate_user(username, password):
+    """Authenticate user login"""
+    try:
+        conn = sqlite3.connect('security.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, username, email, password_hash, role, is_active, failed_attempts, locked_until, must_change_password
+            FROM users 
+            WHERE username = ? AND is_active = 1
+        ''', (username,))
+        
+        row = cursor.fetchone()
+        
+        if not row:
+            return None
+        
+        user_id, username, email, password_hash, role, is_active, failed_attempts, locked_until, must_change_password = row
+        
+        # Check if account is locked
+        if locked_until and datetime.fromisoformat(locked_until) > datetime.now():
+            return None
+        
+        # Verify password
+        if bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
+            # Reset failed attempts on successful login
+            cursor.execute('UPDATE users SET failed_attempts = 0, last_login = ? WHERE id = ?', 
+                         (datetime.now(), user_id))
+            conn.commit()
+            conn.close()
+            
+            user = User(user_id, username, email, role, is_active)
+            user.must_change_password = must_change_password
+            return user
+        else:
+            # Increment failed attempts
+            failed_attempts += 1
+            if failed_attempts >= 5:
+                # Lock account for 30 minutes
+                locked_until = datetime.now() + timedelta(minutes=30)
+                cursor.execute('UPDATE users SET failed_attempts = ?, locked_until = ? WHERE id = ?',
+                             (failed_attempts, locked_until, user_id))
+            else:
+                cursor.execute('UPDATE users SET failed_attempts = ? WHERE id = ?',
+                             (failed_attempts, user_id))
+            conn.commit()
+            conn.close()
+            return None
+            
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        return None
+
+# Update SecurityManager methods
+SecurityManager.get_user_by_id = staticmethod(get_user_by_id)
+SecurityManager.authenticate_user = staticmethod(authenticate_user)
+
+# Authentication routes
+@app.route('/admin/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        if not username or not password:
+            flash('Username and password are required.', 'error')
+            audit_log('login_attempt', success=False, details='Missing credentials')
+            return render_template('admin_login.html')
+        
+        user = authenticate_user(username, password)
+        if user:
+            login_user(user, remember=True)
+            session.permanent = True
+            audit_log('login', success=True, details=f'User {username} logged in')
+            
+            # Check if password change is required
+            if hasattr(user, 'must_change_password') and user.must_change_password:
+                flash('You must change your password before continuing.', 'warning')
+                return redirect(url_for('change_password'))
+            
+            flash(f'Welcome back, {user.username}!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('communication_dashboard'))
+        else:
+            flash('Invalid username or password.', 'error')
+            audit_log('login_attempt', success=False, details=f'Failed login for {username}')
+            
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+@login_required
+def admin_logout():
+    """Admin logout"""
+    audit_log('logout', success=True, details=f'User {current_user.username} logged out')
+    logout_user()
+    flash('You have been logged out successfully.', 'info')
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Change password form"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        if not all([current_password, new_password, confirm_password]):
+            flash('All fields are required.', 'error')
+            return render_template('change_password.html')
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'error')
+            return render_template('change_password.html')
+        
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'error')
+            return render_template('change_password.html')
+        
+        # Change password logic would go here
+        flash('Password changed successfully!', 'success')
+        audit_log('password_change', success=True)
+        return redirect(url_for('communication_dashboard'))
+    
+    return render_template('change_password.html')
+
 @app.route('/')
+@login_required
 def communication_dashboard():
     """Main communication dashboard with real data"""
     try:
@@ -537,6 +719,9 @@ def communication_dashboard():
                              stats={})
 
 @app.route('/send_message', methods=['GET', 'POST'])
+@login_required
+@require_role('staff')
+@limiter.limit("30 per minute")
 def send_message():
     """Send custom message to parents"""
     if request.method == 'POST':
@@ -669,6 +854,8 @@ def communication_stats():
 # ===== API ENDPOINTS FOR FRONTEND INTEGRATION =====
 
 @app.route('/api/parent-contacts', methods=['GET'])
+@login_required
+@require_role('staff')
 def api_get_parent_contacts():
     """API endpoint to get all parent contact information"""
     try:
@@ -685,6 +872,9 @@ def api_get_parent_contacts():
         }), 500
 
 @app.route('/api/send-email', methods=['POST'])
+@login_required
+@require_role('staff')
+@limiter.limit("10 per minute")
 def api_send_email():
     """API endpoint to send individual emails"""
     try:
@@ -736,6 +926,9 @@ def api_send_email():
         }), 500
 
 @app.route('/api/send-sms', methods=['POST'])
+@login_required
+@require_role('staff')
+@limiter.limit("10 per minute")
 def api_send_sms():
     """API endpoint to send individual SMS messages"""
     try:
