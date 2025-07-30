@@ -1,3 +1,23 @@
+# Camp Power-Up Security .gitignore
+# ==================================
+
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+
+# Security credentials and keys
+INITIAL_ADMIN_CREDENTIALS.txt
+*.key
+*.pem
+*.crt
+security_key.key
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]
