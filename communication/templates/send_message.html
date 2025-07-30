@@ -660,9 +660,10 @@ The Camp Power-Up Team`
                         return;
                     }
                 } else {
-                    // SMS validation - check for phone numbers
-                    const validPhones = parsedContacts.filter(phone => /[\d\-\(\)\+\s]{10,}/.test(phone));
-                    const invalidPhones = parsedContacts.filter(phone => !/[\d\-\(\)\+\s]{10,}/.test(phone));
+                    // SMS validation - check for phone numbers (flexible validation)
+                    const phoneRegex = /[\d\-\(\)\+\s\.]{7,}/;  // Allow various formats, require at least 7 digits
+                    const validPhones = parsedContacts.filter(phone => phoneRegex.test(phone));
+                    const invalidPhones = parsedContacts.filter(phone => !phoneRegex.test(phone));
                     
                     if (invalidPhones.length > 0) {
                         alert(`Invalid phone numbers found: ${invalidPhones.join(', ')}\n\nPlease fix these before sending.`);
@@ -687,7 +688,8 @@ The Camp Power-Up Team`
                         if (messageType === 'email') {
                             return contact && contact.includes('@');
                         } else {
-                            return contact && /[\d\-\(\)\+\s]{10,}/.test(contact);
+                            // Flexible phone number validation
+                            return contact && /[\d\-\(\)\+\s\.]{7,}/.test(contact);
                         }
                     });
             }
@@ -720,19 +722,25 @@ The Camp Power-Up Team`
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`${messageType.toUpperCase()} sent successfully to ${data.summary.successful} recipients!`);
+                    // Show a clear success message
+                    const successMessage = `🎉 ${messageType.toUpperCase()} SENT SUCCESSFULLY!\n\n` +
+                        `✅ Sent to ${data.summary.successful} recipients\n` +
+                        `📊 Total: ${data.summary.total_sent}\n` +
+                        `❌ Failed: ${data.summary.failed}`;
+                    
+                    alert(successMessage);
                     
                     // Reset form
                     document.getElementById('messageForm').reset();
                     updateRecipientPreview();
                     updatePreview();
                 } else {
-                    alert('Error sending message: ' + (data.error || 'Unknown error'));
+                    alert('❌ Error sending message: ' + (data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error sending message: ' + error.message);
+                alert('❌ Error sending message: ' + error.message);
             })
             .finally(() => {
                 document.getElementById('loading').style.display = 'none';

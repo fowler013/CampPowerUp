@@ -792,6 +792,80 @@ def api_send_sms():
             'error': str(e)
         }), 500
 
+@app.route('/sms-test')
+def sms_test():
+    """Simple SMS test page"""
+    return '''<!DOCTYPE html>
+<html>
+<head>
+    <title>SMS Test</title>
+</head>
+<body>
+    <h1>SMS Test Form</h1>
+    
+    <form>
+        <h3>Message Type</h3>
+        <input type="radio" name="messageType" value="email" checked> Email
+        <input type="radio" name="messageType" value="sms"> SMS
+        
+        <h3>Phone Numbers</h3>
+        <textarea id="phoneNumbers" placeholder="555-123-4567, 555-987-6543">555-123-4567</textarea>
+        
+        <h3>Message</h3>
+        <textarea id="message" placeholder="Your SMS message here">Test SMS message from Camp Power-Up!</textarea>
+        
+        <br><br>
+        <button type="button" onclick="testSMS()">Send SMS Test</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        function testSMS() {
+            const messageType = document.querySelector('input[name="messageType"]:checked').value;
+            const phoneNumbers = document.getElementById('phoneNumbers').value;
+            const message = document.getElementById('message').value;
+            
+            console.log('Testing SMS with:', {messageType, phoneNumbers, message});
+            
+            const recipients = phoneNumbers.split(',').map(p => p.trim());
+            
+            const requestBody = {
+                recipients: recipients,
+                message: message
+            };
+            
+            console.log('Request body:', JSON.stringify(requestBody, null, 2));
+            
+            fetch('/api/send-sms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                if (data.success) {
+                    alert('SMS test successful!');
+                } else {
+                    alert('SMS test failed: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+            });
+        }
+    </script>
+</body>
+</html>'''
+
 @app.route('/api/communication-stats', methods=['GET'])
 def api_get_communication_stats():
     """API endpoint to get communication statistics"""
