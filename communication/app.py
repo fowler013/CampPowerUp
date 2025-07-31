@@ -49,7 +49,39 @@ import threading
 
 # Import our security module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from security import SecurityManager, User, require_role, audit_log
+from security import SecurityManager, require_role, audit_log
+from flask_login import UserMixin
+
+# Define User class locally to avoid import issues
+class User(UserMixin):
+    """User model for Flask-Login"""
+    
+    def __init__(self, id, username, email, role, is_active=True, must_change_password=False):
+        self.id = id
+        self.username = username
+        self.email = email
+        self.role = role
+        self.is_active = is_active  # Simple attribute, no property
+        self.must_change_password = must_change_password
+    
+    def get_id(self):
+        return str(self.id)
+    
+    def has_role(self, role):
+        """Check if user has specific role"""
+        return self.role == role or self.role == 'admin'
+    
+    def can_access(self, resource):
+        """Check if user can access specific resource"""
+        role_permissions = {
+            'admin': ['all'],
+            'manager': ['communication', 'registration', 'reports'],
+            'staff': ['communication', 'registration'],
+            'viewer': ['reports']
+        }
+        
+        user_permissions = role_permissions.get(self.role, [])
+        return 'all' in user_permissions or resource in user_permissions
 
 app = Flask(__name__)
 
@@ -554,31 +586,36 @@ def authenticate_user(username, password):
         row = cursor.fetchone()
         
         if not row:
+            print(f"❌ No user found with username: {username}")
             return None
         
         user_id, username, email, password_hash, role, is_active, failed_attempts, locked_until, must_change_password = row
         
+        print(f"🔍 Authenticating user: {username}")
+        
         # Check if account is locked
         if locked_until and datetime.fromisoformat(locked_until) > datetime.now():
+            print(f"🔒 Account locked until: {locked_until}")
             return None
         
         # Verify password
         if bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
+            print(f"✅ Password verified for user: {username}")
             # Reset failed attempts on successful login
             cursor.execute('UPDATE users SET failed_attempts = 0, last_login = ? WHERE id = ?', 
-                         (datetime.now(), user_id))
+                         (datetime.now().isoformat(), user_id))
             conn.commit()
             conn.close()
             
-            user = User(user_id, username, email, role, is_active)
-            user.must_change_password = must_change_password
+            user = User(user_id, username, email, role, is_active, must_change_password)
             return user
         else:
+            print(f"❌ Password verification failed for user: {username}")
             # Increment failed attempts
             failed_attempts += 1
             if failed_attempts >= 5:
                 # Lock account for 30 minutes
-                locked_until = datetime.now() + timedelta(minutes=30)
+                locked_until = (datetime.now() + timedelta(minutes=30)).isoformat()
                 cursor.execute('UPDATE users SET failed_attempts = ?, locked_until = ? WHERE id = ?',
                              (failed_attempts, locked_until, user_id))
             else:
@@ -590,6 +627,8 @@ def authenticate_user(username, password):
             
     except Exception as e:
         print(f"Authentication error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # Update SecurityManager methods
@@ -599,6 +638,7 @@ SecurityManager.authenticate_user = staticmethod(authenticate_user)
 # Authentication routes
 @app.route('/admin/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
+@csrf.exempt
 def admin_login():
     """Admin login page"""
     if request.method == 'POST':

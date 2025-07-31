@@ -170,12 +170,13 @@ class SecurityManager:
 class User(UserMixin):
     """User model for Flask-Login"""
     
-    def __init__(self, id, username, email, role, is_active=True):
+    def __init__(self, id, username, email, role, is_active=True, must_change_password=False):
         self.id = id
         self.username = username
         self.email = email
         self.role = role
         self.is_active = is_active
+        self.must_change_password = must_change_password
     
     def get_id(self):
         return str(self.id)
