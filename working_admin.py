@@ -191,7 +191,11 @@ def admin_login():
             .btn:hover { background: #5a6fd8; }
             .alert { padding: 10px; border-radius: 5px; margin-bottom: 20px; }
             .alert-error { background: #fee; color: #c33; border: 1px solid #fcc; }
-            .credentials { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; font-size: 14px; }
+            .info-note { 
+                background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; 
+                font-size: 14px; color: #666; border: 1px solid #e9ecef;
+            }
+            .info-icon { margin-right: 8px; }
         </style>
     </head>
     <body>
@@ -221,10 +225,9 @@ def admin_login():
                 <button type="submit" class="btn">🚀 Login</button>
             </form>
             
-            <div class="credentials">
-                <strong>🔑 Test Credentials:</strong><br>
-                Username: <code>admin</code><br>
-                Password: <code>Gkp0Ob4o_b-LKSUq_PJ_dg</code>
+            <div class="info-note">
+                <i class="info-icon">ℹ️</i>
+                <small>Contact your system administrator for login credentials.</small>
             </div>
         </div>
     </body>
@@ -1051,7 +1054,7 @@ if __name__ == '__main__':
         print("❌ Database initialization failed")
         sys.exit(1)
     
-    print("🔗 Admin login: http://127.0.0.1:5006/admin/login")
-    print("🔑 Credentials: admin / admin123")
-    print("✅ Simple session-based authentication (no Flask-Login conflicts)")
-    app.run(host='127.0.0.1', port=5006, debug=True)
+    print("🔗 Admin portal: http://127.0.0.1:5009/admin/login")
+    print("✅ Secure authentication system active")
+    print("📊 Ready for camp management operations")
+    app.run(host='127.0.0.1', port=5009, debug=True)

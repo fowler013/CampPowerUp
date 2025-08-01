@@ -164,16 +164,18 @@ def print_service_info(processes):
             print(f"   📝 {service['description']}")
             print()
     
-    print("🔐 ADMIN CREDENTIALS")
+    print("🔐 SYSTEM STATUS")
     print("=" * 30)
-    print("👤 Username: admin")
-    print("🔑 Password: admin123")
+    print("✅ Authentication: Active")
+    print("✅ Security: Enabled") 
     print()
     print("🎯 QUICK ACCESS")
     print("=" * 20)
-    print("🏠 Admin Dashboard: http://127.0.0.1:5006/admin/login")
+    print("🏠 Admin Dashboard: http://127.0.0.1:5009/admin/login")
     print("📧 Communication: http://127.0.0.1:5007")
     print("📋 Registration: http://127.0.0.1:5008")
+    print()
+    print("ℹ️  Contact your system administrator for login credentials.")
     print()
 
 def monitor_services(processes):
