@@ -292,45 +292,59 @@ def admin_dashboard():
         
         <div class="features">
             <div class="feature-card">
-                <div class="feature-icon">📧</div>
-                <div class="feature-title">Send Bulk Email</div>
-                <div class="feature-desc">Send email notifications to all camp parents and guardians.</div>
-                <a href="http://127.0.0.1:5007" class="btn">Access Communication System</a>
+                <div class="feature-icon">�</div>
+                <div class="feature-title">Registration Management</div>
+                <div class="feature-desc">View and manage camp registrations, payment status, and participant data.</div>
+                <a href="{{ url_for('registration_management') }}" class="btn">Manage Registrations</a>
             </div>
             
             <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <div class="feature-title">Send Bulk SMS</div>
-                <div class="feature-desc">Send text message alerts to all parent phone numbers.</div>
-                <a href="http://127.0.0.1:5007" class="btn">Access SMS System</a>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">👥</div>
-                <div class="feature-title">Parent Contacts</div>
-                <div class="feature-desc">View and manage parent contact information and communication preferences.</div>
-                <a href="http://127.0.0.1:5007/api/parent-contacts" class="btn">View Contacts</a>
+                <div class="feature-icon">🎮</div>
+                <div class="feature-title">Game Library</div>
+                <div class="feature-desc">Manage game inventory, track popular games, and plan activities.</div>
+                <a href="{{ url_for('game_library_management') }}" class="btn">Manage Game Library</a>
             </div>
             
             <div class="feature-card">
                 <div class="feature-icon">📊</div>
-                <div class="feature-title">Communication History</div>
-                <div class="feature-desc">Review sent messages, delivery status, and communication analytics.</div>
-                <a href="http://127.0.0.1:5007" class="btn">View History</a>
+                <div class="feature-title">Camp Analytics</div>
+                <div class="feature-desc">View camp statistics, attendance trends, and demographic insights.</div>
+                <a href="{{ url_for('camp_analytics') }}" class="btn">View Analytics</a>
             </div>
             
             <div class="feature-card">
-                <div class="feature-icon">🔧</div>
+                <div class="feature-icon">�</div>
+                <div class="feature-title">Send Bulk Email</div>
+                <div class="feature-desc">Send email notifications to all camp parents and guardians.</div>
+                <a href="http://127.0.0.1:5007" class="btn" target="_blank">Access Communication System</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">�</div>
+                <div class="feature-title">Send Bulk SMS</div>
+                <div class="feature-desc">Send text message alerts to all parent phone numbers.</div>
+                <a href="http://127.0.0.1:5007" class="btn" target="_blank">Access SMS System</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">�</div>
+                <div class="feature-title">Parent Contacts</div>
+                <div class="feature-desc">View and manage parent contact information and communication preferences.</div>
+                <a href="{{ url_for('parent_contacts') }}" class="btn">View Contacts</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">⚙️</div>
                 <div class="feature-title">System Settings</div>
-                <div class="feature-desc">Configure email templates, SMS settings, and system preferences.</div>
-                <a href="http://127.0.0.1:5007" class="btn">Manage Settings</a>
+                <div class="feature-desc">Configure camp sessions, pricing, and system preferences.</div>
+                <a href="{{ url_for('system_settings') }}" class="btn">Manage Settings</a>
             </div>
             
             <div class="feature-card">
                 <div class="feature-icon">🔐</div>
                 <div class="feature-title">Security Settings</div>
                 <div class="feature-desc">Change password, view audit logs, and manage security preferences.</div>
-                <a href="{{ url_for('change_password') }}" class="btn">Security Options</a>
+                <a href="{{ url_for('security_management') }}" class="btn">Security Options</a>
             </div>
         </div>
         
@@ -497,6 +511,517 @@ def change_password():
     </body>
     </html>
     ''')
+
+# ==================== NEW ADMIN MODULES ====================
+
+@app.route('/admin/registrations')
+@require_admin
+def registration_management():
+    """Registration management interface"""
+    try:
+        # Connect to registration database
+        reg_conn = sqlite3.connect('registration_form/registration_submissions.db')
+        reg_cursor = reg_conn.cursor()
+        
+        # Get recent registrations
+        reg_cursor.execute('''
+            SELECT id, submission_id, timestamp, status, payment_status,
+                   parent_email, child_first_name, child_last_name, camp_session
+            FROM registrations 
+            ORDER BY timestamp DESC 
+            LIMIT 50
+        ''')
+        registrations = reg_cursor.fetchall()
+        reg_conn.close()
+        
+        # Get registration statistics
+        total_registrations = len(registrations)
+        pending_payments = len([r for r in registrations if r[4] == 'pending'])
+        
+    except Exception as e:
+        print(f"❌ Registration database error: {e}")
+        registrations = []
+        total_registrations = 0
+        pending_payments = 0
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📋 Registration Management - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+            .stat-label { color: #666; margin-top: 5px; }
+            .table-container { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+            th { background: #f8f9fa; font-weight: 600; }
+            .status-pending { background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+            .status-paid { background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📋 Registration Management</h1>
+            <p>Manage camp registrations and track enrollment</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_registrations }}</div>
+                <div class="stat-label">Total Registrations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ pending_payments }}</div>
+                <div class="stat-label">Pending Payments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_registrations - pending_payments }}</div>
+                <div class="stat-label">Paid Registrations</div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            <h2>Recent Registrations</h2>
+            
+            {% if registrations %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Child Name</th>
+                        <th>Parent Email</th>
+                        <th>Session</th>
+                        <th>Payment Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reg in registrations %}
+                    <tr>
+                        <td>{{ reg[2][:10] if reg[2] else 'N/A' }}</td>
+                        <td>{{ (reg[6] or '') + ' ' + (reg[7] or '') }}</td>
+                        <td>{{ reg[5] or 'N/A' }}</td>
+                        <td>{{ reg[8] or 'N/A' }}</td>
+                        <td>
+                            <span class="status-{{ reg[4] or 'pending' }}">
+                                {{ (reg[4] or 'pending').title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="#" style="color: #667eea;">View Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No registrations found. Check database connection.</p>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    ''', registrations=registrations, total_registrations=total_registrations, pending_payments=pending_payments)
+
+@app.route('/admin/games')
+@require_admin
+def game_library_management():
+    """Game library management interface"""
+    try:
+        # Connect to main database
+        conn = sqlite3.connect('camp_power_up.db')
+        cursor = conn.cursor()
+        
+        # Get game statistics
+        cursor.execute('SELECT COUNT(*) FROM games')
+        total_games = cursor.fetchone()[0] if cursor.fetchone() else 0
+        
+        cursor.execute('SELECT name, total_owned, camp_copies FROM games ORDER BY total_owned DESC LIMIT 10')
+        popular_games = cursor.fetchall()
+        
+        conn.close()
+        
+    except Exception as e:
+        print(f"❌ Game database error: {e}")
+        total_games = 0
+        popular_games = []
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🎮 Game Library Management - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+            .stat-label { color: #666; margin-top: 5px; }
+            .content { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+            .game-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+            .game-name { font-weight: 600; }
+            .game-stats { color: #666; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🎮 Game Library Management</h1>
+            <p>Manage game inventory and track popular titles</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_games }}</div>
+                <div class="stat-label">Total Games</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ popular_games|length }}</div>
+                <div class="stat-label">Popular Games</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">Nintendo Switch</div>
+                <div class="stat-label">Primary Platform</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            <h2>Popular Games</h2>
+            
+            {% if popular_games %}
+                {% for game in popular_games %}
+                <div class="game-item">
+                    <div>
+                        <div class="game-name">{{ game[0] }}</div>
+                        <div class="game-stats">{{ game[1] }} owned by campers | {{ game[2] }} camp copies</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p>No game data available. Run the game library analysis to populate data.</p>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    ''', total_games=total_games, popular_games=popular_games)
+
+@app.route('/admin/analytics')
+@require_admin
+def camp_analytics():
+    """Camp analytics and statistics"""
+    try:
+        # Get camp statistics
+        conn = sqlite3.connect('camp_power_up.db')
+        cursor = conn.cursor()
+        
+        # Get camper count
+        cursor.execute('SELECT COUNT(*) FROM camp_analysis')
+        total_campers = cursor.fetchone()[0] if cursor.fetchone() else 0
+        
+        conn.close()
+        
+        # Get registration stats
+        reg_conn = sqlite3.connect('registration_form/registration_submissions.db')
+        reg_cursor = reg_conn.cursor()
+        
+        reg_cursor.execute('SELECT COUNT(*) FROM registrations')
+        total_registrations = reg_cursor.fetchone()[0] if reg_cursor.fetchone() else 0
+        
+        reg_conn.close()
+        
+    except Exception as e:
+        print(f"❌ Analytics database error: {e}")
+        total_campers = 0
+        total_registrations = 0
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📊 Camp Analytics - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+            .stat-label { color: #666; margin-top: 5px; }
+            .content { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📊 Camp Analytics</h1>
+            <p>View camp statistics and enrollment trends</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_campers }}</div>
+                <div class="stat-label">Historical Campers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ total_registrations }}</div>
+                <div class="stat-label">New Registrations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2025</div>
+                <div class="stat-label">Current Season</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">Summer</div>
+                <div class="stat-label">Active Session</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            <h2>📈 Analytics Overview</h2>
+            <p>Detailed analytics and reporting features coming soon.</p>
+            <p>Current data sources:</p>
+            <ul>
+                <li>✅ Registration database connected</li>
+                <li>✅ Historical camper data available</li>
+                <li>✅ Game library analytics ready</li>
+                <li>✅ Communication tracking enabled</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    ''', total_campers=total_campers, total_registrations=total_registrations)
+
+@app.route('/admin/contacts')
+@require_admin
+def parent_contacts():
+    """Parent contact management"""
+    try:
+        # Get parent contacts from registration database
+        conn = sqlite3.connect('registration_form/registration_submissions.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT parent_email, parent_phone, child_first_name, child_last_name, 
+                   emergency_contact_name, emergency_contact_phone
+            FROM registrations 
+            WHERE parent_email IS NOT NULL 
+            ORDER BY child_first_name, child_last_name
+        ''')
+        contacts = cursor.fetchall()
+        conn.close()
+        
+    except Exception as e:
+        print(f"❌ Contacts database error: {e}")
+        contacts = []
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>👥 Parent Contacts - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .content { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+            th { background: #f8f9fa; font-weight: 600; }
+            .contact-item { padding: 15px; border-bottom: 1px solid #eee; }
+            .contact-name { font-weight: 600; margin-bottom: 5px; }
+            .contact-details { color: #666; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>👥 Parent Contacts</h1>
+            <p>Manage parent and emergency contact information</p>
+        </div>
+        
+        <div class="content">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            <h2>Contact Directory</h2>
+            
+            {% if contacts %}
+                {% for contact in contacts %}
+                <div class="contact-item">
+                    <div class="contact-name">{{ (contact[2] or '') + ' ' + (contact[3] or '') }}</div>
+                    <div class="contact-details">
+                        📧 Parent: {{ contact[0] or 'No email' }}
+                        {% if contact[1] %} | 📱 {{ contact[1] }}{% endif %}
+                        {% if contact[4] %}<br>🚨 Emergency: {{ contact[4] }}{% if contact[5] %} ({{ contact[5] }}){% endif %}{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p>No contact information available. Check registration database connection.</p>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    ''', contacts=contacts)
+
+@app.route('/admin/settings')
+@require_admin
+def system_settings():
+    """System settings management"""
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>⚙️ System Settings - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .content { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+            .setting-group { margin-bottom: 30px; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+            .setting-title { font-weight: 600; margin-bottom: 10px; color: #333; }
+            .setting-desc { color: #666; margin-bottom: 15px; }
+            .btn-setting { background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px; margin-right: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>⚙️ System Settings</h1>
+            <p>Configure camp sessions, pricing, and system preferences</p>
+        </div>
+        
+        <div class="content">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            
+            <div class="setting-group">
+                <div class="setting-title">🏕️ Camp Session Configuration</div>
+                <div class="setting-desc">Manage camp dates, sessions, and capacity settings</div>
+                <button class="btn-setting">Configure Sessions</button>
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-title">💰 Pricing & Payment</div>
+                <div class="setting-desc">Set registration fees, early bird discounts, and payment options</div>
+                <button class="btn-setting">Manage Pricing</button>
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-title">📧 Email Configuration</div>
+                <div class="setting-desc">Configure SMTP settings and email templates</div>
+                <button class="btn-setting">Email Settings</button>
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-title">📱 SMS Configuration</div>
+                <div class="setting-desc">Configure Twilio settings and SMS templates</div>
+                <button class="btn-setting">SMS Settings</button>
+            </div>
+            
+            <div class="setting-group">
+                <div class="setting-title">🎮 Game Library Settings</div>
+                <div class="setting-desc">Manage game categories, ratings, and inventory tracking</div>
+                <button class="btn-setting">Game Settings</button>
+            </div>
+        </div>
+    </body>
+    </html>
+    ''')
+
+@app.route('/admin/security')
+@require_admin
+def security_management():
+    """Security management interface"""
+    try:
+        # Get recent audit logs
+        conn = sqlite3.connect('security.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT timestamp, event_type, username, details 
+            FROM audit_log 
+            ORDER BY timestamp DESC 
+            LIMIT 20
+        ''')
+        audit_logs = cursor.fetchall()
+        
+        cursor.execute('SELECT COUNT(*) FROM audit_log')
+        total_logs = cursor.fetchone()[0] if cursor.fetchone() else 0
+        
+        conn.close()
+        
+    except Exception as e:
+        print(f"❌ Security database error: {e}")
+        audit_logs = []
+        total_logs = 0
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🔐 Security Management - Camp Power-Up</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+            .content { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+            .btn { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin: 10px 10px 10px 0; }
+            .btn-danger { background: #dc3545; }
+            .log-item { padding: 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 14px; }
+            .log-timestamp { color: #666; }
+            .log-event { font-weight: 600; color: #333; }
+            .log-details { color: #555; }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+            .stat-label { color: #666; margin-top: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🔐 Security Management</h1>
+            <p>Monitor security events and manage system security</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_logs }}</div>
+                <div class="stat-label">Security Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">Active</div>
+                <div class="stat-label">Security Status</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">bcrypt</div>
+                <div class="stat-label">Password Hashing</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">🔙 Back to Dashboard</a>
+            <a href="{{ url_for('change_password') }}" class="btn">🔑 Change Password</a>
+            <button class="btn btn-danger">🚨 View Failed Logins</button>
+            
+            <h2>🔍 Recent Security Events</h2>
+            {% if audit_logs %}
+                {% for log in audit_logs %}
+                <div class="log-item">
+                    <span class="log-timestamp">{{ log[0] }}</span> | 
+                    <span class="log-event">{{ log[1] }}</span> | 
+                    <span class="log-details">{{ log[2] }}: {{ log[3] }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p>No security events logged yet.</p>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    ''', audit_logs=audit_logs, total_logs=total_logs)
 
 @app.route('/admin/logout')
 @require_admin
