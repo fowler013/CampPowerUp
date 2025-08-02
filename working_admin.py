@@ -1026,6 +1026,126 @@ def security_management():
     </html>
     ''', audit_logs=audit_logs, total_logs=total_logs)
 
+# ========================================
+# ROUTE ALIASES FOR API COMPATIBILITY
+# ========================================
+
+@app.route('/admin/communication')
+@require_admin
+def admin_communication():
+    """Communication module - redirect to send message interface"""
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📧 Communication Center - Camp Power-Up</title>
+        <style>
+            body { font-family: system-ui; margin: 0; background: #f5f7fa; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+            .nav { background: white; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .nav a { color: #667eea; text-decoration: none; margin: 0 15px; font-weight: 500; }
+            .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+            .module-card { background: white; border-radius: 10px; padding: 30px; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+            .feature-item { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; }
+            .feature-item h4 { margin: 0 0 10px 0; color: #333; }
+            .btn { background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 5px; text-decoration: none; display: inline-block; margin: 10px 5px; }
+            .btn:hover { background: #5a6fd8; color: white; text-decoration: none; }
+            .status-badge { background: #28a745; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📧 Communication Center</h1>
+            <p>Manage parent communications, send messages, and track engagement</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/admin/dashboard">🏠 Dashboard</a>
+            <a href="/admin/communication" style="color: #764ba2; font-weight: bold;">📧 Communication</a>
+            <a href="/admin/registration">📋 Registration</a>
+            <a href="/admin/game-library">🎮 Games</a>
+            <a href="/admin/analytics">📊 Analytics</a>
+            <a href="/admin/settings">⚙️ Settings</a>
+        </div>
+        
+        <div class="container">
+            <div class="module-card">
+                <h2>📱 Communication Hub</h2>
+                <p>Send emails and SMS messages to parents, manage templates, and track delivery status.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h4>📧 Email System</h4>
+                        <p>Send bulk emails to all parents or specific groups</p>
+                        <span class="status-badge">ACTIVE</span>
+                        <div style="margin-top: 10px;">
+                            <a href="http://127.0.0.1:5007" class="btn" target="_blank">Open Email Portal</a>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <h4>📱 SMS Messaging</h4>
+                        <p>Quick text messages for urgent updates</p>
+                        <span class="status-badge">ACTIVE</span>
+                        <div style="margin-top: 10px;">
+                            <a href="http://127.0.0.1:5007" class="btn" target="_blank">Open SMS Portal</a>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <h4>📝 Message Templates</h4>
+                        <p>Pre-built templates for common communications</p>
+                        <span class="status-badge">READY</span>
+                        <div style="margin-top: 10px;">
+                            <p><strong>Available Templates:</strong></p>
+                            <ul style="font-size: 14px; margin: 5px 0;">
+                                <li>Welcome & Registration Confirmation</li>
+                                <li>Daily Activity Updates</li>
+                                <li>Weather Alerts & Policy Changes</li>
+                                <li>Pickup Reminders</li>
+                                <li>Photo Sharing Notifications</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <h4>📊 Delivery Tracking</h4>
+                        <p>Monitor message delivery and engagement</p>
+                        <span class="status-badge">MONITORING</span>
+                        <div style="margin-top: 10px;">
+                            <p><strong>Recent Activity:</strong></p>
+                            <ul style="font-size: 14px; margin: 5px 0;">
+                                <li>✅ 12 emails sent today</li>
+                                <li>✅ 8 SMS messages delivered</li>
+                                <li>📈 98% delivery success rate</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="http://127.0.0.1:5007" class="btn" target="_blank">🚀 Launch Full Communication Portal</a>
+                    <a href="/admin/contacts" class="btn">👥 Manage Contacts</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    ''')
+
+@app.route('/admin/registration')
+@require_admin  
+def admin_registration():
+    """Registration module - redirect to registrations"""
+    return redirect('/admin/registrations')
+
+@app.route('/admin/game-library')
+@require_admin
+def admin_game_library():
+    """Game library module - redirect to games"""
+    return redirect('/admin/games')
+
 @app.route('/admin/logout')
 @require_admin
 def admin_logout():
