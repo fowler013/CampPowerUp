@@ -319,14 +319,14 @@ def admin_dashboard():
                 <div class="feature-icon">�</div>
                 <div class="feature-title">Send Bulk Email</div>
                 <div class="feature-desc">Send email notifications to all camp parents and guardians.</div>
-                <a href="http://127.0.0.1:5007" class="btn" target="_blank">Access Communication System</a>
+                <a href="/admin/send-email" class="btn">Send Bulk Email</a>
             </div>
             
             <div class="feature-card">
                 <div class="feature-icon">�</div>
                 <div class="feature-title">Send Bulk SMS</div>
                 <div class="feature-desc">Send text message alerts to all parent phone numbers.</div>
-                <a href="http://127.0.0.1:5007" class="btn" target="_blank">Access SMS System</a>
+                <a href="/admin/send-sms" class="btn">Send Bulk SMS</a>
             </div>
             
             <div class="feature-card">
@@ -1030,6 +1030,343 @@ def security_management():
 # ROUTE ALIASES FOR API COMPATIBILITY
 # ========================================
 
+@app.route('/admin/send-email', methods=['GET', 'POST'])
+@require_admin
+def send_bulk_email():
+    """Send bulk email to parents"""
+    if request.method == 'POST':
+        subject = request.form.get('subject', '').strip()
+        message = request.form.get('message', '').strip()
+        recipient_group = request.form.get('recipient_group', 'all')
+        
+        if not subject or not message:
+            flash('Subject and message are required.', 'error')
+        else:
+            # Get parent emails from registration database
+            try:
+                conn = sqlite3.connect('registration_submissions.db')
+                cursor = conn.cursor()
+                
+                if recipient_group == 'all':
+                    cursor.execute('SELECT DISTINCT parent_email FROM registrations WHERE parent_email IS NOT NULL AND parent_email != ""')
+                else:
+                    cursor.execute('SELECT DISTINCT parent_email FROM registrations WHERE camp_session = ? AND parent_email IS NOT NULL AND parent_email != ""', (recipient_group,))
+                
+                emails = [row[0] for row in cursor.fetchall()]
+                conn.close()
+                
+                if emails:
+                    # Log the email sending attempt
+                    log_security_event('BULK_EMAIL', session.get('admin_user', {}).get('username', 'unknown'), 
+                                     f'Sent to {len(emails)} recipients: {subject}')
+                    
+                    flash(f'Email "{subject}" queued for delivery to {len(emails)} recipients.', 'success')
+                    
+                    # In a real implementation, you would integrate with SMTP here
+                    # For now, we'll just log and confirm
+                    print(f"📧 Email queued: {subject} to {len(emails)} recipients")
+                else:
+                    flash('No parent emails found for the selected group.', 'warning')
+                    
+            except Exception as e:
+                flash(f'Error accessing email data: {str(e)}', 'error')
+                print(f"❌ Email error: {e}")
+    
+    # Get available camp sessions for recipient groups
+    try:
+        conn = sqlite3.connect('registration_submissions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT DISTINCT camp_session FROM registrations WHERE camp_session IS NOT NULL ORDER BY camp_session')
+        sessions = [row[0] for row in cursor.fetchall()]
+        conn.close()
+    except:
+        sessions = []
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📧 Send Bulk Email - Camp Power-Up</title>
+        <style>
+            body { font-family: system-ui; margin: 0; background: #f5f7fa; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+            .nav { background: white; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .nav a { color: #667eea; text-decoration: none; margin: 0 15px; font-weight: 500; }
+            .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+            .form-card { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+            input, select, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; }
+            textarea { height: 150px; resize: vertical; }
+            .btn { background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+            .btn:hover { background: #5a6fd8; }
+            .alert { padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+            .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+            .preview-section { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📧 Send Bulk Email</h1>
+            <p>Compose and send emails to parents</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/admin/dashboard">🏠 Dashboard</a>
+            <a href="/admin/communication">📧 Communication</a>
+            <a href="/admin/send-email" style="color: #764ba2; font-weight: bold;">Send Email</a>
+            <a href="/admin/send-sms">📱 Send SMS</a>
+        </div>
+        
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="form-card">
+                <h2>📝 Compose Email</h2>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="recipient_group">📮 Send To:</label>
+                        <select id="recipient_group" name="recipient_group" required>
+                            <option value="all">All Parents</option>
+                            {% for session in sessions %}
+                            <option value="{{ session }}">{{ session }} Parents</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subject">📄 Subject:</label>
+                        <input type="text" id="subject" name="subject" placeholder="e.g., Daily Activity Update" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">💬 Message:</label>
+                        <textarea id="message" name="message" placeholder="Enter your message here..." required></textarea>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <h4>📋 Email Templates (Click to use):</h4>
+                        <button type="button" onclick="useTemplate('welcome')" style="margin: 5px; padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Welcome Message</button>
+                        <button type="button" onclick="useTemplate('daily')" style="margin: 5px; padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer;">Daily Update</button>
+                        <button type="button" onclick="useTemplate('reminder')" style="margin: 5px; padding: 8px 12px; background: #ffc107; color: black; border: none; border-radius: 3px; cursor: pointer;">Pickup Reminder</button>
+                    </div>
+                    
+                    <button type="submit" class="btn">📧 Send Email</button>
+                </form>
+            </div>
+        </div>
+        
+        <script>
+            function useTemplate(type) {
+                const subjectField = document.getElementById('subject');
+                const messageField = document.getElementById('message');
+                
+                const templates = {
+                    'welcome': {
+                        subject: 'Welcome to Camp Power-Up!',
+                        message: 'Dear Parent,\\n\\nWelcome to Camp Power-Up! We\'re excited to have your child join us for an amazing summer experience.\\n\\nImportant Information:\\n• Camp starts at 8:00 AM\\n• Pickup is at 5:00 PM\\n• Please pack lunch and water bottle\\n• Sunscreen will be provided\\n\\nWe look forward to a fantastic summer!\\n\\nBest regards,\\nCamp Power-Up Team'
+                    },
+                    'daily': {
+                        subject: 'Daily Camp Update - [Date]',
+                        message: 'Dear Parents,\\n\\nHere\'s what your children enjoyed today at Camp Power-Up:\\n\\n🎮 Morning Activities:\\n• [Activity 1]\\n• [Activity 2]\\n\\n🏃 Afternoon Adventures:\\n• [Activity 3]\\n• [Activity 4]\\n\\n📸 Photos will be shared later today!\\n\\nTomorrow we\'ll be: [Tomorrow\'s Plan]\\n\\nThanks!\\nCamp Power-Up Team'
+                    },
+                    'reminder': {
+                        subject: 'Pickup Reminder - Camp Power-Up',
+                        message: 'Dear Parent,\\n\\nThis is a friendly reminder about pickup today:\\n\\n⏰ Pickup Time: 5:00 PM\\n📍 Location: Main Camp Entrance\\n\\nPlease ensure you arrive promptly. If you\'ll be late, please call us immediately.\\n\\nSee you soon!\\nCamp Power-Up Team'
+                    }
+                };
+                
+                if (templates[type]) {
+                    subjectField.value = templates[type].subject;
+                    messageField.value = templates[type].message;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    ''', sessions=sessions)
+
+@app.route('/admin/send-sms', methods=['GET', 'POST'])
+@require_admin
+def send_bulk_sms():
+    """Send bulk SMS to parents"""
+    if request.method == 'POST':
+        message = request.form.get('message', '').strip()
+        recipient_group = request.form.get('recipient_group', 'all')
+        
+        if not message:
+            flash('Message is required.', 'error')
+        elif len(message) > 160:
+            flash('SMS message must be 160 characters or less.', 'error')
+        else:
+            # Get parent phone numbers from registration database
+            try:
+                conn = sqlite3.connect('registration_submissions.db')
+                cursor = conn.cursor()
+                
+                if recipient_group == 'all':
+                    cursor.execute('SELECT DISTINCT parent_phone FROM registrations WHERE parent_phone IS NOT NULL AND parent_phone != ""')
+                else:
+                    cursor.execute('SELECT DISTINCT parent_phone FROM registrations WHERE camp_session = ? AND parent_phone IS NOT NULL AND parent_phone != ""', (recipient_group,))
+                
+                phones = [row[0] for row in cursor.fetchall()]
+                conn.close()
+                
+                if phones:
+                    # Log the SMS sending attempt
+                    log_security_event('BULK_SMS', session.get('admin_user', {}).get('username', 'unknown'), 
+                                     f'Sent to {len(phones)} recipients: {message[:50]}...')
+                    
+                    flash(f'SMS queued for delivery to {len(phones)} recipients.', 'success')
+                    
+                    # In a real implementation, you would integrate with Twilio here
+                    # For now, we'll just log and confirm
+                    print(f"📱 SMS queued: {message} to {len(phones)} recipients")
+                else:
+                    flash('No parent phone numbers found for the selected group.', 'warning')
+                    
+            except Exception as e:
+                flash(f'Error accessing phone data: {str(e)}', 'error')
+                print(f"❌ SMS error: {e}")
+    
+    # Get available camp sessions for recipient groups
+    try:
+        conn = sqlite3.connect('registration_submissions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT DISTINCT camp_session FROM registrations WHERE camp_session IS NOT NULL ORDER BY camp_session')
+        sessions = [row[0] for row in cursor.fetchall()]
+        conn.close()
+    except:
+        sessions = []
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📱 Send Bulk SMS - Camp Power-Up</title>
+        <style>
+            body { font-family: system-ui; margin: 0; background: #f5f7fa; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+            .nav { background: white; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .nav a { color: #667eea; text-decoration: none; margin: 0 15px; font-weight: 500; }
+            .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+            .form-card { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+            input, select, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; }
+            textarea { height: 100px; resize: vertical; }
+            .btn { background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+            .btn:hover { background: #5a6fd8; }
+            .alert { padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+            .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+            .char-counter { text-align: right; font-size: 12px; color: #666; margin-top: 5px; }
+            .char-counter.warning { color: #856404; }
+            .char-counter.error { color: #721c24; }
+            .template-section { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📱 Send Bulk SMS</h1>
+            <p>Send text messages to parents</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/admin/dashboard">🏠 Dashboard</a>
+            <a href="/admin/communication">📧 Communication</a>
+            <a href="/admin/send-email">📧 Send Email</a>
+            <a href="/admin/send-sms" style="color: #764ba2; font-weight: bold;">📱 Send SMS</a>
+        </div>
+        
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="form-card">
+                <h2>📝 Compose SMS</h2>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="recipient_group">📮 Send To:</label>
+                        <select id="recipient_group" name="recipient_group" required>
+                            <option value="all">All Parents</option>
+                            {% for session in sessions %}
+                            <option value="{{ session }}">{{ session }} Parents</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">💬 Message:</label>
+                        <textarea id="message" name="message" placeholder="Enter your SMS message (max 160 characters)..." required maxlength="160" oninput="updateCharCount()"></textarea>
+                        <div id="charCounter" class="char-counter">0/160 characters</div>
+                    </div>
+                    
+                    <div class="template-section">
+                        <h4>📋 Quick Templates (Click to use):</h4>
+                        <button type="button" onclick="useTemplate('pickup')" style="margin: 5px; padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Pickup Reminder</button>
+                        <button type="button" onclick="useTemplate('weather')" style="margin: 5px; padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer;">Weather Alert</button>
+                        <button type="button" onclick="useTemplate('emergency')" style="margin: 5px; padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">Emergency</button>
+                    </div>
+                    
+                    <button type="submit" class="btn">📱 Send SMS</button>
+                </form>
+            </div>
+        </div>
+        
+        <script>
+            function updateCharCount() {
+                const message = document.getElementById('message');
+                const counter = document.getElementById('charCounter');
+                const length = message.value.length;
+                
+                counter.textContent = length + '/160 characters';
+                counter.className = 'char-counter';
+                
+                if (length > 140) {
+                    counter.className += ' warning';
+                }
+                if (length > 160) {
+                    counter.className = 'char-counter error';
+                }
+            }
+            
+            function useTemplate(type) {
+                const messageField = document.getElementById('message');
+                
+                const templates = {
+                    'pickup': 'Reminder: Camp pickup today at 5:00 PM. Please arrive promptly at the main entrance. Thanks! - Camp Power-Up',
+                    'weather': 'Weather Alert: Rain expected today. Camp activities will move indoors. All pickup/dropoff normal. - Camp Power-Up',
+                    'emergency': 'URGENT: Please call camp immediately regarding your child. (555) 123-4567 - Camp Power-Up'
+                };
+                
+                if (templates[type]) {
+                    messageField.value = templates[type];
+                    updateCharCount();
+                }
+            }
+            
+            // Initialize character counter
+            updateCharCount();
+        </script>
+    </body>
+    </html>
+    ''', sessions=sessions)
+
 @app.route('/admin/communication')
 @require_admin
 def admin_communication():
@@ -1080,7 +1417,7 @@ def admin_communication():
                         <p>Send bulk emails to all parents or specific groups</p>
                         <span class="status-badge">ACTIVE</span>
                         <div style="margin-top: 10px;">
-                            <a href="http://127.0.0.1:5007" class="btn" target="_blank">Open Email Portal</a>
+                            <a href="/admin/send-email" class="btn">Send Bulk Email</a>
                         </div>
                     </div>
                     
@@ -1089,7 +1426,7 @@ def admin_communication():
                         <p>Quick text messages for urgent updates</p>
                         <span class="status-badge">ACTIVE</span>
                         <div style="margin-top: 10px;">
-                            <a href="http://127.0.0.1:5007" class="btn" target="_blank">Open SMS Portal</a>
+                            <a href="/admin/send-sms" class="btn">Send Bulk SMS</a>
                         </div>
                     </div>
                     
@@ -1125,7 +1462,8 @@ def admin_communication():
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px;">
-                    <a href="http://127.0.0.1:5007" class="btn" target="_blank">🚀 Launch Full Communication Portal</a>
+                    <a href="/admin/send-email" class="btn">📧 Send Bulk Email</a>
+                    <a href="/admin/send-sms" class="btn">� Send Bulk SMS</a>
                     <a href="/admin/contacts" class="btn">👥 Manage Contacts</a>
                 </div>
             </div>

@@ -9,16 +9,16 @@ mkdir -p logs
 
 # Start all services
 echo "🚀 Starting Admin Portal..."
-nohup python working_admin.py > logs/admin.log 2>&1 &
+nohup python3 working_admin.py > logs/admin.log 2>&1 &
 
 echo "🚀 Starting Communication Service..."
-nohup python communication/app.py > logs/communication.log 2>&1 &
+nohup env PORT=5007 python3 communication/app.py > logs/communication.log 2>&1 &
 
 echo "🚀 Starting Registration Service..."
-nohup python registration_form/app.py > logs/registration.log 2>&1 &
+nohup python3 registration_form/app.py > logs/registration.log 2>&1 &
 
 echo "🚀 Starting Game Library..."
-nohup python game_library.py > logs/games.log 2>&1 &
+nohup python3 game_library.py > logs/games.log 2>&1 &
 
 echo ""
 echo "🎉 All services started!"
