@@ -224,7 +224,7 @@ def submit_registration():
         
         cursor.execute('''
             INSERT INTO registrations (
-                submission_id, parent_email, parent_phone, emergency_contact_name,
+                submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
                 child_age, child_grade, child_gender, is_returning_camper,
                 previous_year, previous_instructor, returning_camper_details,
@@ -233,9 +233,11 @@ def submit_registration():
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             submission_id,
+            'pending',  # status
+            'pending',  # payment_status
             form_data.get('parent_email'),
             form_data.get('parent_phone'),
             form_data.get('emergency_contact_name'),
