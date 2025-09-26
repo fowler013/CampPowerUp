@@ -898,6 +898,14 @@ if __name__ == '__main__':
     init_registration_db()
     print("🏕️ Camp Power-Up Registration Form")
     print("=" * 40)
-    print("📝 Registration form available at: http://127.0.0.1:5008")
-    print("🔧 Admin dashboard available at: http://127.0.0.1:5008/admin")
-    app.run(debug=True, port=5008)
+    
+    # Use PORT environment variable for Railway, fallback to 5008 for local development
+    port = int(os.environ.get('PORT', 5008))
+    host = '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1'
+    
+    print(f"📝 Registration form available at: http://{host}:{port}")
+    print(f"🔧 Admin dashboard available at: http://{host}:{port}/admin")
+    app.run(debug=False, host=host, port=port)
+else:
+    # When imported by gunicorn, just initialize the database
+    init_registration_db()
