@@ -12,6 +12,93 @@ app = Flask(__name__)
 # Configuration
 CSV_FILE_PATH = 'data/Camp_Power_Up_past_forms - Sheet1.csv'
 DB_FILE = 'camp_power_up.db'
+REGISTRATION_DB = 'registration_form/registration_submissions.db'
+
+def get_combined_camper_data():
+    """Get combined camper data from both historical CSV and new registrations."""
+    combined_data = []
+    
+    # 1. Load historical data from main database
+    if os.path.exists(DB_FILE):
+        conn = sqlite3.connect(DB_FILE)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='campers'")
+            if cursor.fetchone():
+                cursor.execute("""
+                    SELECT first_name, last_name, email, age, grade, is_returning, 
+                           has_allergies, allergy_description, has_sensory_issues, sensory_description,
+                           bringing_switch, favorite_games, game_behavior
+                    FROM campers
+                """)
+                historical_records = cursor.fetchall()
+                
+                for record in historical_records:
+                    combined_data.append({
+                        'first_name': record[0] or '',
+                        'last_name': record[1] or '',
+                        'email': record[2] or '',
+                        'age': record[3] or 0,
+                        'grade': record[4] or '',
+                        'is_returning': record[5] == 'Yes',
+                        'has_allergies': record[6] == 'Yes',
+                        'allergy_details': record[7] or '',
+                        'has_sensory_issues': record[8] == 'Yes', 
+                        'sensory_details': record[9] or '',
+                        'bringing_switch': record[10] == 'Yes',
+                        'favorite_games': record[11] or '',
+                        'game_behavior': record[12] or '',
+                        'source': 'historical',
+                        'submission_id': None,
+                        'timestamp': None,
+                        'status': 'historical'
+                    })
+        except Exception as e:
+            print(f"Warning: Could not load historical data: {e}")
+        finally:
+            conn.close()
+    
+    # 2. Load new registration data
+    if os.path.exists(REGISTRATION_DB):
+        conn = sqlite3.connect(REGISTRATION_DB)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT child_first_name, child_last_name, parent_email, child_age, child_grade,
+                       is_returning_camper, has_allergies, allergy_details, has_sensory_issues, 
+                       sensory_details, bringing_own_switch, favorite_games, gaming_behavior,
+                       submission_id, timestamp, status
+                FROM registrations
+                ORDER BY timestamp DESC
+            """)
+            new_records = cursor.fetchall()
+            
+            for record in new_records:
+                combined_data.append({
+                    'first_name': record[0] or '',
+                    'last_name': record[1] or '', 
+                    'email': record[2] or '',
+                    'age': record[3] or 0,
+                    'grade': record[4] or '',
+                    'is_returning': bool(record[5]),
+                    'has_allergies': bool(record[6]),
+                    'allergy_details': record[7] or '',
+                    'has_sensory_issues': bool(record[8]),
+                    'sensory_details': record[9] or '',
+                    'bringing_switch': bool(record[10]),
+                    'favorite_games': record[11] or '',
+                    'game_behavior': record[12] or '',
+                    'source': 'new_registration',
+                    'submission_id': record[13],
+                    'timestamp': record[14],
+                    'status': record[15] or 'pending'
+                })
+        except Exception as e:
+            print(f"Warning: Could not load new registration data: {e}")
+        finally:
+            conn.close()
+    
+    return combined_data
 
 def clean_and_combine_data():
     """Loads, cleans, and combines data from the CSV file."""
@@ -120,32 +207,39 @@ def index():
 
 @app.route('/api/stats')
 def get_stats():
-    """Get basic statistics about the campers."""
-    conn = sqlite3.connect(DB_FILE)
+    """Get basic statistics about the campers from combined data sources."""
+    combined_data = get_combined_camper_data()
     
-    total_query = "SELECT COUNT(*) FROM campers"
-    total_campers = conn.execute(total_query).fetchone()[0]
+    if not combined_data:
+        return jsonify({
+            'total_campers': 0,
+            'returning_campers': 0,
+            'with_allergies': 0,
+            'with_sensory_issues': 0,
+            'bringing_switch': 0,
+            'new_registrations': 0,
+            'historical_records': 0
+        })
     
-    returning_query = "SELECT COUNT(*) FROM campers WHERE is_returning = 'Yes'"
-    returning_campers = conn.execute(returning_query).fetchone()[0]
+    # Calculate statistics from combined data
+    total_campers = len(combined_data)
+    returning_campers = sum(1 for camper in combined_data if camper['is_returning'])
+    with_allergies = sum(1 for camper in combined_data if camper['has_allergies'])
+    with_sensory = sum(1 for camper in combined_data if camper['has_sensory_issues'])
+    bringing_switch = sum(1 for camper in combined_data if camper['bringing_switch'])
     
-    allergies_query = "SELECT COUNT(*) FROM campers WHERE has_allergies = 'Yes'"
-    with_allergies = conn.execute(allergies_query).fetchone()[0]
-    
-    sensory_query = "SELECT COUNT(*) FROM campers WHERE has_sensory_issues = 'Yes'"
-    with_sensory = conn.execute(sensory_query).fetchone()[0]
-    
-    switch_query = "SELECT COUNT(*) FROM campers WHERE bringing_switch = 'Yes'"
-    bringing_switch = conn.execute(switch_query).fetchone()[0]
-    
-    conn.close()
+    # Additional stats for data sources
+    new_registrations = sum(1 for camper in combined_data if camper['source'] == 'new_registration')
+    historical_records = sum(1 for camper in combined_data if camper['source'] == 'historical')
     
     return jsonify({
         'total_campers': total_campers,
         'returning_campers': returning_campers,
         'with_allergies': with_allergies,
         'with_sensory_issues': with_sensory,
-        'bringing_switch': bringing_switch
+        'bringing_switch': bringing_switch,
+        'new_registrations': new_registrations,
+        'historical_records': historical_records
     })
 
 @app.route('/api/data/<query>')
@@ -201,89 +295,77 @@ def get_data(query):
 
 @app.route('/api/campers')
 def get_campers():
-    """Get the full list of campers."""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
+    """Get the full list of campers from combined data sources."""
+    combined_data = get_combined_camper_data()
     
-    cursor = conn.execute("""
-        SELECT first_name, last_name, age, grade, is_returning, 
-               bringing_switch, has_allergies, has_sensory_issues
-        FROM campers 
-        ORDER BY first_name, last_name
-    """)
+    # Format data to match the original expected structure
+    formatted_campers = []
+    for camper in combined_data:
+        formatted_camper = {
+            'first_name': camper['first_name'],
+            'last_name': camper['last_name'],
+            'age': camper['age'],
+            'grade': camper.get('grade', ''),
+            'is_returning': 'Yes' if camper['is_returning'] else 'No',
+            'bringing_switch': 'Yes' if camper['bringing_switch'] else 'No',
+            'has_allergies': 'Yes' if camper['has_allergies'] else 'No',
+            'has_sensory_issues': 'Yes' if camper['has_sensory_issues'] else 'No'
+        }
+        formatted_campers.append(formatted_camper)
     
-    campers = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    return jsonify(campers)
+    return jsonify(formatted_campers)
 
 @app.route('/api/special_needs')
 def get_special_needs():
-    """Get campers with special needs (allergies or sensory issues)."""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    
+    """Get campers with special needs (allergies or sensory issues) from combined data."""
+    combined_data = get_combined_camper_data()
     special_needs = []
     
-    # Get campers with allergies
-    allergy_cursor = conn.execute("""
-        SELECT first_name, last_name, allergy_description 
-        FROM campers 
-        WHERE has_allergies = 'Yes' AND allergy_description != ''
-    """)
+    for camper in combined_data:
+        # Add allergy information
+        if camper['has_allergies'] and camper.get('allergy_details'):
+            special_needs.append({
+                'name': f"{camper['first_name']} {camper['last_name']}",
+                'type': 'Allergies',
+                'description': camper['allergy_details']
+            })
+        
+        # Add sensory information
+        if camper['has_sensory_issues'] and camper.get('sensory_details'):
+            special_needs.append({
+                'name': f"{camper['first_name']} {camper['last_name']}",
+                'type': 'Sensory Issues',
+                'description': camper['sensory_details']
+            })
     
-    for row in allergy_cursor:
-        special_needs.append({
-            'name': f"{row['first_name']} {row['last_name']}",
-            'type': 'Allergies',
-            'description': row['allergy_description']
-        })
-    
-    # Get campers with sensory issues
-    sensory_cursor = conn.execute("""
-        SELECT first_name, last_name, sensory_description 
-        FROM campers 
-        WHERE has_sensory_issues = 'Yes' AND sensory_description != ''
-    """)
-    
-    for row in sensory_cursor:
-        special_needs.append({
-            'name': f"{row['first_name']} {row['last_name']}",
-            'type': 'Sensory Issues',
-            'description': row['sensory_description']
-        })
-    
-    conn.close()
     return jsonify(special_needs)
 
 @app.route('/api/games')
 def get_games():
-    """Get detailed game preferences for campers."""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    
-    cursor = conn.execute("""
-        SELECT first_name, last_name, favorite_games, top_5_games, console_games, rating_restrictions, game_behavior
-        FROM campers 
-        WHERE favorite_games != '' OR top_5_games != '' OR console_games != '' OR game_behavior != 'Not specified'
-        ORDER BY first_name, last_name
-    """)
+    """Get detailed game preferences for campers from combined data."""
+    combined_data = get_combined_camper_data()
     
     games_data = []
-    for row in cursor.fetchall():
-        games_data.append({
-            'name': f"{row['first_name']} {row['last_name']}",
-            'favorite_games': row['favorite_games'],
-            'top_5_games': row['top_5_games'], 
-            'console_games': row['console_games'],
-            'rating_restrictions': row['rating_restrictions'],
-            'game_behavior': row['game_behavior']
-        })
+    for camper in combined_data:
+        # Only include campers with game preferences
+        has_preferences = any([
+            camper.get('favorite_games'),
+            camper.get('top_5_games'),  
+            camper.get('console_games'),
+            camper.get('game_behavior') and camper.get('game_behavior') != 'Not specified'
+        ])
+        
+        if has_preferences:
+            games_data.append({
+                'name': f"{camper['first_name']} {camper['last_name']}",
+                'favorite_games': camper.get('favorite_games', ''),
+                'top_5_games': camper.get('top_5_games', ''),
+                'console_games': camper.get('console_games', ''),
+                'rating_restrictions': camper.get('rating_restrictions', ''),
+                'game_behavior': camper.get('game_behavior', '')
+            })
     
-    conn.close()
-    return jsonify(games_data)
-
-@app.route('/api/medical_alerts')
+    return jsonify(games_data)@app.route('/api/medical_alerts')
 def medical_alerts():
     """Get campers with allergies/medical needs for easy reference."""
     conn = sqlite3.connect(DB_FILE)
