@@ -1149,7 +1149,7 @@ if __name__ == '__main__':
     create_default_templates()
     
     # Get port from environment or use default
-    port = int(os.getenv('PORT', 5004))
+    port = int(os.getenv('PORT', 5007))
     
     print("📧 Email templates loaded")
     print("📱 SMS system ready")

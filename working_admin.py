@@ -1651,7 +1651,7 @@ if __name__ == '__main__':
         print("❌ Database initialization failed")
         sys.exit(1)
     
-    print("🔗 Admin portal: http://127.0.0.1:5009/admin/login")
+    print("🔗 Admin portal: http://127.0.0.1:5006/admin/login")
     print("✅ Secure authentication system active")
     print("📊 Ready for camp management operations")
-    app.run(host='127.0.0.1', port=5009, debug=True)
+    app.run(host='127.0.0.1', port=5006, debug=True)

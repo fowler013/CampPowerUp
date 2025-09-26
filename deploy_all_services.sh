@@ -86,16 +86,16 @@ echo "🏃 Starting Local Services..."
 start_service "app.py" 5000 "Main Dashboard" ""
 start_service "working_admin.py" 5006 "Admin Portal" ""
 start_service "app.py" 5007 "Communication System" "communication"
-start_service "app.py" 5008 "Registration System" "registration_form" 
-start_service "game_library_service.py" 5001 "Game Library" ""
+start_service "app.py" 5008 "Registration System" "registration_form"
+
+# Note: Game Library is integrated with Main Dashboard on port 5000
 
 echo ""
 echo "📊 Service Status Summary:"
 echo "========================="
 
 services=(
-    "5000:Main Dashboard:http://127.0.0.1:5000"
-    "5001:Game Library:http://127.0.0.1:5001"
+    "5000:Main Dashboard (includes Game Library):http://127.0.0.1:5000"
     "5006:Admin Portal:http://127.0.0.1:5006/admin/login"
     "5007:Communication:http://127.0.0.1:5007"
     "5008:Registration:http://127.0.0.1:5008"
