@@ -1,0 +1,15 @@
+# Railway-specific requirements.txt (minimal for build success)
+Flask==2.3.3
+Werkzeug==2.3.7
+gunicorn==21.2.0
+
+# Database (PostgreSQL for production only)
+psycopg2-binary==2.9.9
+
+# Forms and security - minimal
+Flask-WTF==1.2.1
+bcrypt==4.1.2
+python-dotenv==1.0.0
+
+# Replace pandas with simpler CSV handling for Railway
+# (We'll modify the app to not use pandas for production)
