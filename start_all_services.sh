@@ -18,7 +18,7 @@ echo "🚀 Starting Registration Service..."
 nohup python3 registration_form/app.py > logs/registration.log 2>&1 &
 
 echo "🚀 Starting Game Library..."
-nohup python3 game_library.py > logs/games.log 2>&1 &
+nohup python3 game_library_service.py > logs/games.log 2>&1 &
 
 echo ""
 echo "🎉 All services started!"

@@ -10,6 +10,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, request, render_template_string, redirect, url_for, flash, session
+from email_service import email_service
 
 # Simple Flask app with session-based auth (no Flask-Login)
 app = Flask(__name__)
@@ -916,7 +917,7 @@ def system_settings():
             <div class="setting-group">
                 <div class="setting-title">📧 Email Configuration</div>
                 <div class="setting-desc">Configure SMTP settings and email templates</div>
-                <button class="btn-setting">Email Settings</button>
+                <a href="/admin/email-settings" class="btn-setting">Email Settings</a>
             </div>
             
             <div class="setting-group">
@@ -1056,15 +1057,32 @@ def send_bulk_email():
                 conn.close()
                 
                 if emails:
-                    # Log the email sending attempt
-                    log_security_event('BULK_EMAIL', session.get('admin_user', {}).get('username', 'unknown'), 
-                                     f'Sent to {len(emails)} recipients: {subject}')
+                    # Send actual emails using email service
+                    try:
+                        email_result = email_service.send_bulk_email(
+                            recipients=emails,
+                            subject=subject,
+                            message=message,
+                            sender_name="Camp Power-Up"
+                        )
+                        
+                        if email_result['success']:
+                            if email_result['sent'] > 0:
+                                flash(f'✅ Successfully sent "{subject}" to {email_result["sent"]} recipients!', 'success')
+                                log_security_event('BULK_EMAIL_SUCCESS', session.get('admin_user', {}).get('username', 'unknown'), 
+                                                 f'Sent to {email_result["sent"]} recipients: {subject}')
+                            
+                            if email_result['failed'] > 0:
+                                flash(f'⚠️ {email_result["failed"]} emails failed to send. Check email configuration.', 'warning')
+                        else:
+                            flash(f'❌ Email sending failed: {email_result.get("error", "Unknown error")}', 'error')
+                            log_security_event('BULK_EMAIL_FAILED', session.get('admin_user', {}).get('username', 'unknown'), 
+                                             f'Failed to send: {email_result.get("error", "Unknown error")}')
                     
-                    flash(f'Email "{subject}" queued for delivery to {len(emails)} recipients.', 'success')
-                    
-                    # In a real implementation, you would integrate with SMTP here
-                    # For now, we'll just log and confirm
-                    print(f"📧 Email queued: {subject} to {len(emails)} recipients")
+                    except Exception as e:
+                        flash(f'❌ Email service error: {str(e)}', 'error')
+                        log_security_event('BULK_EMAIL_ERROR', session.get('admin_user', {}).get('username', 'unknown'), 
+                                         f'Email service error: {str(e)}')
                 else:
                     flash('No parent emails found for the selected group.', 'warning')
                     
@@ -1496,6 +1514,127 @@ def admin_logout():
 def admin_redirect():
     """Redirect /admin to /admin/dashboard"""
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/email-settings', methods=['GET', 'POST'])
+@require_admin
+def email_settings():
+    """Email configuration settings"""
+    if request.method == 'POST':
+        # Test email connection with provided settings
+        test_result = email_service.test_connection()
+        
+        if test_result['success']:
+            flash('✅ Email connection test successful!', 'success')
+        else:
+            flash(f'❌ Email connection failed: {test_result["error"]}', 'error')
+    
+    # Get current email templates
+    templates = email_service.get_email_templates()
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>📧 Email Settings - Camp Power-Up</title>
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                margin: 0; padding: 20px; min-height: 100vh; color: white;
+            }
+            .container { 
+                max-width: 800px; margin: 0 auto; 
+                background: rgba(255,255,255,0.1); 
+                backdrop-filter: blur(10px);
+                border-radius: 20px; padding: 30px;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            }
+            .nav { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+            .nav a { 
+                color: white; text-decoration: none; padding: 10px 20px;
+                background: rgba(255,255,255,0.2); border-radius: 25px;
+                transition: all 0.3s ease;
+            }
+            .nav a:hover { background: rgba(255,255,255,0.3); }
+            .config-section { 
+                background: rgba(255,255,255,0.1); 
+                border-radius: 15px; padding: 20px; margin-bottom: 20px;
+            }
+            .btn { 
+                background: linear-gradient(45deg, #FFD700, #FFA500);
+                color: #333; border: none; padding: 12px 24px;
+                border-radius: 25px; cursor: pointer; font-weight: bold;
+                text-decoration: none; display: inline-block;
+                transition: all 0.3s ease;
+            }
+            .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+            .template-card { 
+                background: rgba(255,255,255,0.1); 
+                border-radius: 10px; padding: 15px; margin-bottom: 10px;
+            }
+            .status-indicator { 
+                display: inline-block; padding: 5px 15px; 
+                border-radius: 15px; font-size: 12px; font-weight: bold;
+                background: #28a745; color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📧 Email Configuration</h1>
+            
+            <div class="nav">
+                <a href="/admin/dashboard">🏠 Dashboard</a>
+                <a href="/admin/settings">⚙️ Settings</a>
+                <a href="/admin/send-email">📧 Send Email</a>
+                <a href="/admin/email-settings" style="color: #764ba2; font-weight: bold;">Email Config</a>
+            </div>
+            
+            <div class="config-section">
+                <h2>🔧 SMTP Configuration</h2>
+                <p>Configure your email server settings to enable email sending.</p>
+                
+                <form method="post">
+                    <div style="margin-top: 10px;">
+                        <p><strong>📧 Required Environment Variables:</strong></p>
+                        <code style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; display: block; font-family: monospace; white-space: pre;">export SMTP_SERVER="smtp.gmail.com"
+export SMTP_PORT="587"
+export SENDER_EMAIL="your-email@gmail.com"
+export SENDER_PASSWORD="your-app-password"
+export SENDER_NAME="Camp Power-Up"
+export USE_TLS="true"</code>
+                    </div>
+                    
+                    <button type="submit" class="btn" style="margin-top: 15px;">🧪 Test Email Connection</button>
+                </form>
+                
+                <div style="margin-top: 20px;">
+                    <h3>📋 Setup Instructions:</h3>
+                    <ol style="margin-left: 20px;">
+                        <li><strong>Gmail Setup:</strong> Enable 2-factor authentication and create an App Password</li>
+                        <li><strong>Environment:</strong> Set the environment variables above in your .env file</li>
+                        <li><strong>Test:</strong> Click "Test Email Connection" to verify setup</li>
+                        <li><strong>Send:</strong> Use the Send Email feature to send bulk emails</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="config-section">
+                <h2>📝 Email Templates</h2>
+                <p>Pre-built email templates for common camp communications.</p>
+                
+                {% for template_name, template_data in templates.items() %}
+                <div class="template-card">
+                    <h4>{{ template_name.replace('_', ' ').title() }}</h4>
+                    <p><strong>Subject:</strong> {{ template_data.subject }}</p>
+                    <span class="status-indicator">Ready</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </body>
+    </html>
+    ''', templates=templates)
 
 @app.route('/')
 def index():
