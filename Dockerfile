@@ -41,5 +41,5 @@ EXPOSE 8080
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:$PORT/ || exit 1
 
-# Command to run the application - use simple Python execution for health check
-CMD ["python", "health_check.py"]
+# Command to run the application - registration form
+CMD ["python", "registration_form/app.py"]
