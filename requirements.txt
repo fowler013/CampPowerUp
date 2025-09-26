@@ -1,7 +1,14 @@
-# Ultra-minimal requirements.txt for Railway deployment
+# Railway deployment requirements - with pandas compatibility fix
 Flask==2.3.3
 Werkzeug==2.3.7
 gunicorn==21.2.0
 
-# Only database packages will be installed on Railway automatically
-# psycopg2-binary will be provided by Railway's PostgreSQL buildpack
+# Database - PostgreSQL for Railway
+psycopg2-binary==2.9.9
+
+# Data processing - use older pandas version to avoid Python 3.13 issues
+pandas==1.5.3
+numpy==1.24.4
+
+# Environment and utilities
+python-dotenv==1.0.0
