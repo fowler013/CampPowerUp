@@ -908,4 +908,9 @@ if __name__ == '__main__':
     app.run(debug=False, host=host, port=port)
 else:
     # When imported by gunicorn, just initialize the database
-    init_registration_db()
+    try:
+        init_registration_db()
+        print("✅ Registration database initialized")
+    except Exception as e:
+        print(f"⚠️ Database initialization warning: {e}")
+        # Continue anyway - don't crash the app
