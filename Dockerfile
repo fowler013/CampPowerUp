@@ -41,5 +41,5 @@ EXPOSE 8080
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:$PORT/ || exit 1
 
-# Command to run the application - use registration form directly
-CMD ["sh", "-c", "cd registration_form && gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120 app:app"]
+# Command to run the application - use Railway WSGI entry point
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120 wsgi_railway:app"]
