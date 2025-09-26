@@ -34,12 +34,12 @@ RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
-EXPOSE 5002
+# Expose port (Railway will set the PORT environment variable)
+EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5002/ || exit 1
+# Health check - Railway will handle health checks
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:$PORT/ || exit 1
 
-# Command to run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5002", "--workers", "4", "--timeout", "120", "wsgi:app"]
+# Command to run the application - use registration form directly
+CMD ["sh", "-c", "cd registration_form && gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120 app:app"]
