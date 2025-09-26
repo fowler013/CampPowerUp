@@ -205,6 +205,11 @@ def index():
     """Serves the main dashboard page."""
     return render_template('index.html')
 
+@app.route('/campers')
+def campers_page():
+    """Serves the interactive campers list page."""
+    return render_template('campers.html')
+
 @app.route('/api/stats')
 def get_stats():
     """Get basic statistics about the campers from combined data sources."""
