@@ -42,4 +42,4 @@ EXPOSE 8080
 #     CMD curl -f http://localhost:$PORT/ || exit 1
 
 # Command to run the application - use simple Python execution for health check
-CMD ["sh", "-c", "echo 'Starting health check with PORT='$PORT && python health_check.py"]
+CMD ["python", "health_check.py"]
