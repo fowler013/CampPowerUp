@@ -106,12 +106,13 @@ def check_returning_camper_validity(child_first_name, child_last_name, parent_em
     cursor = conn.cursor()
     
     # Check for exact name and email match in current registrations
+    # Look for registrations from previous years/seasons (more than 30 days ago)
     cursor.execute('''
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
         AND LOWER(child_last_name) = LOWER(?) 
         AND LOWER(parent_email) = LOWER(?)
-        AND timestamp < datetime('now', '-1 day')  -- Must be from a previous session
+        AND timestamp < datetime('now', '-30 days')  -- Must be from a previous camp session
     ''', (child_first_name.strip(), child_last_name.strip(), parent_email.strip()))
     
     exact_matches_db = cursor.fetchone()[0]
@@ -121,7 +122,7 @@ def check_returning_camper_validity(child_first_name, child_last_name, parent_em
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
         AND LOWER(child_last_name) = LOWER(?)
-        AND timestamp < datetime('now', '-1 day')
+        AND timestamp < datetime('now', '-30 days')  -- Must be from a previous camp session
     ''', (child_first_name.strip(), child_last_name.strip()))
     
     name_matches_db = cursor.fetchone()[0]
