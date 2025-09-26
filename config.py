@@ -23,6 +23,8 @@ class Config:
     
     # Database Settings
     DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///camp_power_up.db')
+    REGISTRATION_DATABASE_URL = os.environ.get('REGISTRATION_DATABASE_URL', 
+                                               'sqlite:///registration_form/registration_submissions.db')
     SECURITY_DB_URL = os.environ.get('SECURITY_DB_URL', 'sqlite:///security.db')
     
     # Email Configuration

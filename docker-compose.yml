@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: camppowerup
+      POSTGRES_USER: campuser
+      POSTGRES_PASSWORD: camppass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campuser -d camppowerup"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Camp Power-Up Application
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://campuser:camppass123@db:5432/camppowerup
+      - REGISTRATION_DATABASE_URL=postgresql://campuser:camppass123@db:5432/camppowerup
+      - SECRET_KEY=your-production-secret-key-change-this
+      - DEBUG=False
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        python migrate_database.py &&
+        gunicorn --bind 0.0.0.0:5002 --workers 4 --timeout 120 wsgi:app
+      "
+
+  # Registration Service (separate container)
+  registration:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5008:5008"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://campuser:camppass123@db:5432/camppowerup
+      - REGISTRATION_DATABASE_URL=postgresql://campuser:camppass123@db:5432/camppowerup
+      - SECRET_KEY=your-production-secret-key-change-this
+      - DEBUG=False
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    working_dir: /app/registration_form
+    command: >
+      sh -c "
+        echo 'Starting registration service...' &&
+        python app.py
+      "
+
+volumes:
+  postgres_data:
