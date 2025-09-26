@@ -30,7 +30,7 @@ app.secret_key = 'camp_power_up_registration_2025'
 # Configuration
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'camp.db')
 DB_PATH = '../camp_power_up.db'  # Connect to main database
-REGISTRATION_DB = 'registration_submissions.db'
+REGISTRATION_DB = os.path.join(os.path.dirname(__file__), 'registration_submissions.db')
 
 def init_registration_db():
     """Initialize the registration-specific database."""
@@ -99,10 +99,13 @@ def init_registration_db():
 
 def check_returning_camper_validity(child_first_name, child_last_name, parent_email):
     """Check if a camper claiming to be returning actually has past registrations."""
-    conn = sqlite3.connect('registration_submissions.db')
+    import csv
+    
+    # First check current registration database
+    conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
     cursor = conn.cursor()
     
-    # Check for exact name and email match
+    # Check for exact name and email match in current registrations
     cursor.execute('''
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
@@ -111,9 +114,9 @@ def check_returning_camper_validity(child_first_name, child_last_name, parent_em
         AND timestamp < datetime('now', '-1 day')  -- Must be from a previous session
     ''', (child_first_name.strip(), child_last_name.strip(), parent_email.strip()))
     
-    exact_matches = cursor.fetchone()[0]
+    exact_matches_db = cursor.fetchone()[0]
     
-    # Also check for just name match (in case email changed)
+    # Also check for just name match in current registrations (in case email changed)
     cursor.execute('''
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
@@ -121,14 +124,63 @@ def check_returning_camper_validity(child_first_name, child_last_name, parent_em
         AND timestamp < datetime('now', '-1 day')
     ''', (child_first_name.strip(), child_last_name.strip()))
     
-    name_matches = cursor.fetchone()[0]
-    
+    name_matches_db = cursor.fetchone()[0]
     conn.close()
     
+    # Now check historical CSV data
+    historical_csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+    exact_matches_csv = 0
+    name_matches_csv = 0
+    
+    try:
+        with open(historical_csv_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                # Get the field names (handling possible variations)
+                first_name_field = None
+                last_name_field = None
+                email_field = None
+                
+                for field in row.keys():
+                    if 'first name' in field.lower() or 'childs first' in field.lower():
+                        first_name_field = field
+                    elif 'last name' in field.lower() or 'childs last' in field.lower():
+                        last_name_field = field
+                    elif 'email' in field.lower():
+                        email_field = field
+                
+                if first_name_field and last_name_field and email_field:
+                    csv_first = row.get(first_name_field, '').strip()
+                    csv_last = row.get(last_name_field, '').strip()
+                    csv_email = row.get(email_field, '').strip()
+                    
+                    # Check for exact match (name + email)
+                    if (csv_first.lower() == child_first_name.strip().lower() and 
+                        csv_last.lower() == child_last_name.strip().lower() and 
+                        csv_email.lower() == parent_email.strip().lower()):
+                        exact_matches_csv += 1
+                    
+                    # Check for name-only match
+                    elif (csv_first.lower() == child_first_name.strip().lower() and 
+                          csv_last.lower() == child_last_name.strip().lower()):
+                        name_matches_csv += 1
+                        
+    except (FileNotFoundError, Exception) as e:
+        # If we can't read the historical data, just log it but don't fail
+        print(f"Warning: Could not read historical camper data: {e}")
+    
+    # Combine results from both sources
+    total_exact_matches = exact_matches_db + exact_matches_csv
+    total_name_matches = name_matches_db + name_matches_csv
+    
     return {
-        'exact_matches': exact_matches,
-        'name_matches': name_matches,
-        'is_likely_returning': exact_matches > 0 or name_matches > 0
+        'exact_matches': total_exact_matches,
+        'name_matches': total_name_matches,
+        'exact_matches_current': exact_matches_db,
+        'name_matches_current': name_matches_db,
+        'exact_matches_historical': exact_matches_csv,
+        'name_matches_historical': name_matches_csv,
+        'is_likely_returning': total_exact_matches > 0 or total_name_matches > 0
     }
 
 def validate_form_data(data):
