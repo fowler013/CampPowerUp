@@ -34,8 +34,13 @@ start_service() {
     
     echo "🚀 Starting $name..."
     
+    # Determine correct log path
+    local log_path
     if [ -n "$dir" ]; then
+        log_path="../logs/${name// /_}.log"
         cd "$dir"
+    else
+        log_path="logs/${name// /_}.log"
     fi
     
     # Kill any existing process on the port
@@ -43,7 +48,7 @@ start_service() {
     sleep 2
     
     # Start the service in background
-    nohup /Users/tevinfowler/Documents/CampPowerUp/.venv/bin/python $script > "../logs/${name// /_}.log" 2>&1 &
+    nohup /Users/tevinfowler/Documents/CampPowerUp/.venv/bin/python $script > "$log_path" 2>&1 &
     
     # Wait a moment for startup
     sleep 3
