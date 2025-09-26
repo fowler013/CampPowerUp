@@ -1,13 +1,20 @@
-# 🏕️ Camp Power-Up Management System
+# 🏕️ Camp Power-Up Registration System
 
-A comprehensive camp management system for Camp Power-Up, featuring data analysis, registration processing, and fraud prevention capabilities.
+[![Deployment Status](https://img.shields.io/badge/status-live-brightgreen)](https://camppowerup-production.up.railway.app/)
+[![Railway Deploy](https://img.shields.io/badge/deploy-automatic-blue)](https://railway.app)
 
-## 🌟 System Components
+**🌐 Live Registration Form**: https://camppowerup-production.up.railway.app/  
+**👨‍💻 Admin Dashboard**: https://camppowerup-production.up.railway.app/admin
 
-### 📊 **Data Dashboard** (`/`)
-- **Clean Data Processing**: Automatically removes duplicates and standardizes messy CSV data
-- **Interactive Dashboard**: Beautiful web-based dashboard with charts and statistics
-- **Game Analytics**: Analyzes favorite games and gaming behavior
+A modern, production-ready camp registration system with automatic deployment and comprehensive management tools.
+
+## 🚀 **Live System Features**
+
+### � **Registration Form** 
+- **Mobile-Friendly Design**: Works perfectly on all devices
+- **Real-time Validation**: Instant feedback for form fields
+- **Automatic Data Storage**: Submissions saved to secure database
+- **Parent-Friendly Interface**: Simple, intuitive camp registration
 - **Special Needs Tracking**: Highlights campers with allergies and sensory issues
 - **Real-time Updates**: Live data processing and visualization
 
