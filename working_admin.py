@@ -54,9 +54,9 @@ def ensure_database():
         # Check if admin user exists
         cursor.execute('SELECT id FROM admin_users WHERE username = ?', ('admin',))
         if not cursor.fetchone():
-            # Create admin user
+            # Create admin user with password from environment variable
             salt = bcrypt.gensalt()
-            password = 'admin123'
+            password = os.environ.get('ADMIN_PASSWORD', 'admin123')  # Default for dev only
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
             
             cursor.execute('''
