@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Analytics - Camp Power-Up</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .nav-bar {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #f0f0ff;
+        }
+
+        .nav-links a.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            background: #dc3545;
+            color: white !important;
+        }
+
+        .logout-btn:hover {
+            background: #c82333 !important;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border-left: 5px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .age-chart {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .age-bar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .age-bar-fill {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .timeline-chart {
+            height: 300px;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .timeline-bars {
+            display: flex;
+            align-items: flex-end;
+            height: 200px;
+            gap: 5px;
+            min-width: 100%;
+        }
+
+        .timeline-bar {
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 3px 3px 0 0;
+            min-width: 30px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .timeline-date {
+            position: absolute;
+            bottom: -25px;
+            font-size: 10px;
+            color: #666;
+            transform: rotate(-45deg);
+            white-space: nowrap;
+        }
+
+        .recent-registrations {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        .registration-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .registration-item:last-child {
+            border-bottom: none;
+        }
+
+        .registration-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .registration-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-returning {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-new {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .export-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .age-chart {
+                grid-template-columns: 1fr;
+            }
+            
+            .registration-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Registration Analytics</h1>
+        <p>Camp Power-Up Data Insights & Trends</p>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="/admin">📊 Current Registrations</a>
+            <a href="/admin/analytics" class="active">📈 Analytics Dashboard</a>
+            <a href="/admin/historical">📚 Historical Data</a>
+            <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
+            <a href="/admin/config">⚙️ Configuration</a>
+            <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Key Metrics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_registrations }}</div>
+                <div class="stat-label">Total Registrations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ new_campers }}</div>
+                <div class="stat-label">New Campers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ returning_campers }}</div>
+                <div class="stat-label">Returning Campers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ bringing_switch }}</div>
+                <div class="stat-label">Bringing Switch</div>
+            </div>
+        </div>
+
+        <!-- Age Distribution Chart -->
+        <div class="chart-section">
+            <h2 class="chart-title">Age Distribution</h2>
+            <div class="age-chart">
+                {% for age_group, count in age_groups.items() %}
+                <div class="age-bar">
+                    <div class="age-bar-fill" style="width: {{ (count / total_registrations * 100) if total_registrations > 0 else 0 }}%">
+                        {{ count }}
+                    </div>
+                    <div>{{ age_group }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Registration Timeline -->
+        <div class="chart-section">
+            <h2 class="chart-title">Registration Timeline (Last 30 Days)</h2>
+            <div class="timeline-chart">
+                <div class="timeline-bars">
+                    {% for date, count in timeline.items() %}
+                    <div class="timeline-bar" style="height: {{ (count / (timeline.values()|max if timeline.values() else 1) * 150) + 20 }}px">
+                        {{ count }}
+                        <div class="timeline-date">{{ date }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Registrations -->
+        <div class="recent-registrations">
+            <h2 class="chart-title">Recent Registrations</h2>
+            <button class="export-btn" onclick="exportAnalytics()">📊 Export Analytics Report</button>
+            
+            {% for registration in registrations[:10] %}
+            <div class="registration-item">
+                <div class="registration-info">
+                    <div class="registration-avatar">
+                        {{ registration.child_first_name[0] }}{{ registration.child_last_name[0] }}
+                    </div>
+                    <div>
+                        <strong>{{ registration.child_first_name }} {{ registration.child_last_name }}</strong>
+                        <br>
+                        <small>{{ registration.parent_email }}</small>
+                    </div>
+                </div>
+                <div>
+                    {% if registration.is_returning_camper %}
+                        <span class="badge badge-returning">Returning</span>
+                    {% else %}
+                        <span class="badge badge-new">New</span>
+                    {% endif %}
+                    <br>
+                    <small>{{ registration.timestamp[:10] }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function exportAnalytics() {
+            // Create a simple CSV export
+            const data = [
+                ['Metric', 'Value'],
+                ['Total Registrations', {{ total_registrations }}],
+                ['New Campers', {{ new_campers }}],
+                ['Returning Campers', {{ returning_campers }}],
+                ['Bringing Switch', {{ bringing_switch }}]
+            ];
+
+            const csvContent = data.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'camp_analytics_' + new Date().toISOString().slice(0, 10) + '.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

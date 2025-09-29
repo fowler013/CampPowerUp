@@ -961,6 +961,67 @@ def verify_returning_campers():
     
     return html
 
+@app.route('/admin/analytics')
+@require_admin_auth
+def admin_analytics():
+    """Admin analytics dashboard showing registration statistics and trends."""
+    conn = sqlite3.connect(REGISTRATION_DB)
+    conn.row_factory = sqlite3.Row
+    
+    # Get current registrations
+    cursor = conn.execute('''
+        SELECT * FROM registrations 
+        ORDER BY timestamp DESC
+    ''')
+    registrations = [dict(row) for row in cursor.fetchall()]
+    
+    # Calculate analytics
+    total_registrations = len(registrations)
+    returning_campers = len([r for r in registrations if r['is_returning_camper']])
+    new_campers = total_registrations - returning_campers
+    bringing_switch = len([r for r in registrations if r.get('bringing_own_switch')])
+    
+    # Age distribution
+    age_groups = {}
+    for reg in registrations:
+        age = reg.get('child_age', 0)
+        if age:
+            if age < 6:
+                age_groups['5 and under'] = age_groups.get('5 and under', 0) + 1
+            elif age <= 8:
+                age_groups['6-8 years'] = age_groups.get('6-8 years', 0) + 1
+            elif age <= 10:
+                age_groups['9-10 years'] = age_groups.get('9-10 years', 0) + 1
+            elif age <= 12:
+                age_groups['11-12 years'] = age_groups.get('11-12 years', 0) + 1
+            else:
+                age_groups['13+ years'] = age_groups.get('13+ years', 0) + 1
+    
+    # Registration timeline (last 30 days)
+    from datetime import datetime, timedelta
+    timeline = {}
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    for reg in registrations:
+        reg_date = datetime.strptime(reg['timestamp'][:10], '%Y-%m-%d')
+        if reg_date >= thirty_days_ago:
+            date_str = reg_date.strftime('%Y-%m-%d')
+            timeline[date_str] = timeline.get(date_str, 0) + 1
+    
+    conn.close()
+    
+    analytics_data = {
+        'total_registrations': total_registrations,
+        'returning_campers': returning_campers,
+        'new_campers': new_campers,
+        'bringing_switch': bringing_switch,
+        'age_groups': age_groups,
+        'timeline': timeline,
+        'registrations': registrations
+    }
+    
+    return render_template('admin_analytics.html', **analytics_data)
+
 @app.route('/admin/registration-stats')
 @require_admin_auth
 def registration_stats():
