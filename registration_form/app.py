@@ -19,13 +19,32 @@ Features:
 import os
 import sqlite3
 import json
+import hashlib
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
 
 app = Flask(__name__, template_folder='./templates')
 app.secret_key = 'camp_power_up_registration_2025'
+
+# Admin credentials - in production, store these securely
+ADMIN_USERNAME = 'campadmin'
+ADMIN_PASSWORD = 'PowerUp2025!'  # Change this in production
+
+def check_admin_auth():
+    """Check if user is authenticated as admin."""
+    return session.get('admin_authenticated', False)
+
+def require_admin_auth(f):
+    """Decorator to require admin authentication."""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not check_admin_auth():
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Configuration
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'camp.db')
@@ -555,7 +574,32 @@ def extract_games_from_text(text, high_confidence=True):
     
     return list(set(games_found))  # Remove duplicates
 
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_authenticated'] = True
+            session.permanent = True
+            flash('Successfully logged in as admin', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid credentials', 'error')
+    
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout."""
+    session.pop('admin_authenticated', None)
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('admin_login'))
+
 @app.route('/admin')
+@require_admin_auth
 def admin_dashboard():
     """Admin dashboard for viewing registrations."""
     conn = sqlite3.connect(REGISTRATION_DB)
@@ -571,16 +615,75 @@ def admin_dashboard():
     
     return render_template('admin_dashboard.html', registrations=registrations)
 
+@app.route('/admin/historical')
+@require_admin_auth
+def admin_historical():
+    """Admin page for viewing historical registrations for verification."""
+    # Get historical data from main database
+    historical_data = []
+    main_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'camp_power_up.db')
+    
+    if os.path.exists(main_db_path):
+        conn = sqlite3.connect(main_db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute('''
+            SELECT first_name, last_name, email, age, grade, 
+                   is_returning, has_allergies, bringing_switch, favorite_games
+            FROM registrations 
+            ORDER BY first_name, last_name
+        ''')
+        historical_data = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+    
+    # Also get CSV data
+    csv_data = []
+    csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+    
+    if os.path.exists(csv_path):
+        import csv
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    # Extract relevant fields
+                    first_name = ''
+                    last_name = ''
+                    email = ''
+                    
+                    for field, value in row.items():
+                        if 'first name' in field.lower() or 'childs first' in field.lower():
+                            first_name = value.strip()
+                        elif 'last name' in field.lower() or 'childs last' in field.lower():
+                            last_name = value.strip()
+                        elif 'email' in field.lower():
+                            email = value.strip()
+                    
+                    if first_name and last_name:
+                        csv_data.append({
+                            'first_name': first_name,
+                            'last_name': last_name,
+                            'email': email,
+                            'source': 'CSV'
+                        })
+        except Exception as e:
+            print(f"Error reading CSV: {e}")
+    
+    return render_template('admin_historical.html', 
+                         historical_data=historical_data, 
+                         csv_data=csv_data)
+
 @app.route('/admin/config')
+@require_admin_auth
 def admin_config():
     """Admin interface for updating camp configuration."""
     try:
         validate_config()
         return render_template('admin_config.html', config=CAMP_CONFIG)
     except ValueError as e:
-        return f"Configuration Error: {e}", 500
+        return f"Configuration error: {e}", 500
 
 @app.route('/admin/update-config', methods=['POST'])
+@require_admin_auth
 def update_config():
     """Update the camp configuration."""
     try:
@@ -750,6 +853,7 @@ def confirmation(submission_id):
         return f"Error retrieving registration: {str(e)}", 500
 
 @app.route('/admin/verify-returning-campers')
+@require_admin_auth
 def verify_returning_campers():
     """Admin tool to review returning camper claims."""
     conn = sqlite3.connect(REGISTRATION_DB)
@@ -858,6 +962,7 @@ def verify_returning_campers():
     return html
 
 @app.route('/admin/registration-stats')
+@require_admin_auth
 def registration_stats():
     """Show registration statistics including pricing breakdown."""
     conn = sqlite3.connect(REGISTRATION_DB)

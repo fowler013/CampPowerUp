@@ -29,6 +29,42 @@
             margin-bottom: 10px;
         }
 
+        .nav-bar {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #f0f0ff;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            background: #dc3545;
+            color: white !important;
+        }
+
+        .logout-btn:hover {
+            background: #c82333 !important;
+        }
+
         .stats-bar {
             background: white;
             padding: 20px;
@@ -283,6 +319,16 @@
         <p>Manage and review camp registrations</p>
     </div>
 
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="/admin">📊 Current Registrations</a>
+            <a href="/admin/historical">📚 Historical Data</a>
+            <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
+            <a href="/admin/config">⚙️ Configuration</a>
+            <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+
     <div class="stats-bar">
         <div class="stat-card">
             <div class="stat-number" id="totalRegistrations">{{ registrations|length }}</div>
@@ -318,7 +364,9 @@
             <div>
                 <a href="/" class="btn btn-success">➕ New Registration</a>
                 <button class="btn btn-primary" onclick="exportData()">📊 Export Data</button>
-                <a href="../" class="btn btn-warning">📈 View Dashboard</a>
+                <a href="http://127.0.0.1:5000" target="_blank" class="btn btn-warning">📈 View Analytics Dashboard</a>
+                <a href="/admin/historical" class="btn btn-info">📚 Historical Data</a>
+                <a href="/admin/logout" class="btn btn-danger">🚪 Logout</a>
                 <a href="/admin/verify-returning-campers" class="btn" style="background: #dc3545; color: white;">🔍 Verify Returning Campers</a>
             </div>
         </div>
