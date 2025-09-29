@@ -3,10 +3,24 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python registration_form/app.py",
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 300 registration_form.app:app",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "FLASK_ENV": "production",
+        "DEBUG": "false"
+      }
+    },
+    "staging": {
+      "variables": {
+        "FLASK_ENV": "staging",
+        "DEBUG": "true"
+      }
+    }
   }
 }
