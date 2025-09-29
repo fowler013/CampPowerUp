@@ -20,10 +20,21 @@ import os
 import sqlite3
 import json
 import hashlib
+import smtplib
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
+
+# Import email modules after Flask to avoid conflicts
+try:
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    EMAIL_AVAILABLE = True
+    print("✅ Email functionality available")
+except ImportError:
+    EMAIL_AVAILABLE = False
+    print("⚠️ Email functionality not available - MIMEText/MIMEMultipart imports failed")
 
 app = Flask(__name__, template_folder='./templates')
 app.secret_key = 'camp_power_up_registration_2025'
@@ -31,6 +42,15 @@ app.secret_key = 'camp_power_up_registration_2025'
 # Admin credentials - in production, store these securely
 ADMIN_USERNAME = 'campadmin'
 ADMIN_PASSWORD = 'PowerUp2025!'  # Change this in production
+
+# Email configuration - configure these for your email provider
+EMAIL_CONFIG = {
+    'smtp_server': os.environ.get('SMTP_SERVER', 'smtp.gmail.com'),
+    'smtp_port': int(os.environ.get('SMTP_PORT', 587)),
+    'email_address': os.environ.get('CAMP_EMAIL', 'camppowerup2025@gmail.com'),
+    'email_password': os.environ.get('CAMP_EMAIL_PASSWORD', ''),
+    'from_name': 'Camp Power-Up Registration'
+}
 
 def check_admin_auth():
     """Check if user is authenticated as admin."""
@@ -115,6 +135,164 @@ def init_registration_db():
     
     conn.commit()
     conn.close()
+
+def send_confirmation_email(registration_data):
+    """Send confirmation email to parent after registration."""
+    if not EMAIL_AVAILABLE:
+        print(f"⚠️ Email not available - would send confirmation to {registration_data['parent_email']}")
+        return False
+    
+    try:
+        # Create email content
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Registration Confirmed - Camp Power-Up 2025 - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+        msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['email_address']}>"
+        msg['To'] = registration_data['parent_email']
+        
+        # Create HTML email content
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }}
+                .header {{ background: linear-gradient(45deg, #28a745, #20c997); color: white; padding: 30px; text-align: center; }}
+                .header h1 {{ margin: 0; font-size: 28px; }}
+                .content {{ padding: 30px; }}
+                .confirmation-id {{ background: #f8f9fa; border: 2px solid #28a745; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }}
+                .confirmation-id h2 {{ color: #28a745; margin: 0 0 10px 0; }}
+                .confirmation-id .id {{ font-size: 24px; font-weight: bold; color: #333; }}
+                .summary {{ background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0; }}
+                .summary-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }}
+                .summary-row:last-child {{ border-bottom: none; }}
+                .label {{ font-weight: bold; color: #333; }}
+                .value {{ color: #666; }}
+                .next-steps {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; }}
+                .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+                    <h1>Registration Confirmed!</h1>
+                    <p>Thank you for registering for Camp Power-Up 2025</p>
+                </div>
+                
+                <div class="content">
+                    <div class="confirmation-id">
+                        <h2>Confirmation ID</h2>
+                        <div class="id">{registration_data['submission_id']}</div>
+                        <p>Please save this ID for your records</p>
+                    </div>
+                    
+                    <div class="summary">
+                        <h3>📋 Registration Summary</h3>
+                        <div class="summary-row">
+                            <span class="label">Camper Name:</span>
+                            <span class="value">{registration_data['child_first_name']} {registration_data['child_last_name']}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Age:</span>
+                            <span class="value">{registration_data['child_age']} years old</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Grade:</span>
+                            <span class="value">{registration_data.get('child_grade', 'Not specified')}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Camper Type:</span>
+                            <span class="value">{'Returning Camper' if registration_data.get('is_returning_camper') else 'New Camper'} ($180 total)</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Contact Email:</span>
+                            <span class="value">{registration_data['parent_email']}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Bringing Switch:</span>
+                            <span class="value">{'Yes ✅' if registration_data.get('bringing_own_switch') else 'No'}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="label">Submission Date:</span>
+                            <span class="value">{registration_data.get('timestamp', 'N/A')}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="next-steps">
+                        <h3>📝 Next Steps</h3>
+                        <ol>
+                            <li><strong>Payment:</strong> Complete your registration by sending $180 via Zelle to <strong>fowler013@gmail.com</strong></li>
+                            <li><strong>Include your child's name</strong> in the payment memo: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</li>
+                            <li><strong>Confirmation:</strong> You'll receive payment confirmation within 24 hours</li>
+                            <li><strong>Camp Info:</strong> Detailed information will be sent 1 week before camp starts</li>
+                        </ol>
+                        <p><small><strong>Important:</strong> Include "{registration_data['child_first_name']} {registration_data['child_last_name']}" in the payment memo</small></p>
+                    </div>
+                    
+                    {'<div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0;"><strong>Special Needs Note:</strong> We noted that ' + registration_data['child_first_name'] + ' has special needs. Our staff will be in touch to discuss accommodations.</div>' if registration_data.get('has_allergies') or registration_data.get('has_sensory_issues') else ''}
+                </div>
+                
+                <div class="footer">
+                    <p>Camp Power-Up 2025 | Gaming & Technology Camp</p>
+                    <p>Questions? Reply to this email or contact us at <strong>fowler013@gmail.com</strong></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create text version for email clients that don't support HTML
+        text_content = f"""
+        Registration Confirmed - Camp Power-Up 2025
+        
+        Thank you for registering for Camp Power-Up 2025!
+        
+        Confirmation ID: {registration_data['submission_id']}
+        Please save this ID for your records.
+        
+        Registration Summary:
+        - Camper Name: {registration_data['child_first_name']} {registration_data['child_last_name']}
+        - Age: {registration_data['child_age']} years old
+        - Grade: {registration_data.get('child_grade', 'Not specified')}
+        - Camper Type: {'Returning Camper' if registration_data.get('is_returning_camper') else 'New Camper'} ($180 total)
+        - Contact Email: {registration_data['parent_email']}
+        - Bringing Switch: {'Yes' if registration_data.get('bringing_own_switch') else 'No'}
+        - Submission Date: {registration_data.get('timestamp', 'N/A')}
+        
+        Next Steps:
+        1. Payment: Complete your registration by sending $180 via Zelle to fowler013@gmail.com
+        2. Include your child's name in the payment memo: "{registration_data['child_first_name']} {registration_data['child_last_name']}"
+        3. Confirmation: You'll receive payment confirmation within 24 hours
+        4. Camp Info: Detailed information will be sent 1 week before camp starts
+        
+        Questions? Reply to this email or contact us at fowler013@gmail.com
+        
+        Camp Power-Up 2025 | Gaming & Technology Camp
+        """
+        
+        # Attach both HTML and text versions
+        msg.attach(MIMEText(text_content, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        # Send email only if email configuration is available
+        if EMAIL_CONFIG['email_password']:
+            server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+            server.starttls()
+            server.login(EMAIL_CONFIG['email_address'], EMAIL_CONFIG['email_password'])
+            server.send_message(msg)
+            server.quit()
+            print(f"✅ Confirmation email sent to {registration_data['parent_email']}")
+            return True
+        else:
+            print(f"⚠️ Email configuration not complete - would send email to {registration_data['parent_email']}")
+            print(f"Subject: {msg['Subject']}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Failed to send confirmation email: {str(e)}")
+        return False
 
 def check_returning_camper_validity(child_first_name, child_last_name, parent_email):
     """Check if a camper claiming to be returning actually has past registrations."""
@@ -348,6 +526,12 @@ def submit_registration():
         
         # Also sync to main database for dashboard integration
         sync_to_main_database(form_data, submission_id)
+        
+        # Send confirmation email
+        email_data = form_data.copy()
+        email_data['submission_id'] = submission_id
+        email_data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        send_confirmation_email(email_data)
         
         return jsonify({
             'success': True,
@@ -601,19 +785,81 @@ def admin_logout():
 @app.route('/admin')
 @require_admin_auth
 def admin_dashboard():
-    """Admin dashboard for viewing registrations."""
-    conn = sqlite3.connect(REGISTRATION_DB)
-    conn.row_factory = sqlite3.Row
-    
-    cursor = conn.execute('''
-        SELECT * FROM registrations 
-        ORDER BY timestamp DESC
-    ''')
-    
-    registrations = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    return render_template('admin_dashboard.html', registrations=registrations)
+    """Admin dashboard for viewing registrations with live session tracking."""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        conn.row_factory = sqlite3.Row
+        
+        cursor = conn.execute('''
+            SELECT * FROM registrations 
+            ORDER BY timestamp DESC
+        ''')
+        
+        registrations = [dict(row) for row in cursor.fetchall()]
+        
+        # Calculate live session statistics
+        total_registrations = len(registrations)
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # Today's registrations
+        todays_registrations = [r for r in registrations if r['timestamp'] and r['timestamp'].startswith(today)]
+        
+        # Week's registrations
+        from datetime import timedelta
+        week_start = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        weeks_registrations = [r for r in registrations if r['timestamp'] and r['timestamp'] >= week_start]
+        
+        # Payment status tracking
+        paid_count = len([r for r in registrations if r['payment_status'] == 'paid'])
+        pending_payment = len([r for r in registrations if r['payment_status'] == 'pending'])
+        
+        # Camper type breakdown
+        returning_campers = len([r for r in registrations if r['is_returning_camper']])
+        new_campers = total_registrations - returning_campers
+        
+        # Switch tracking
+        bringing_switch = len([r for r in registrations if r['bringing_own_switch']])
+        
+        # Special needs tracking
+        has_allergies = len([r for r in registrations if r['has_allergies']])
+        has_sensory_issues = len([r for r in registrations if r['has_sensory_issues']])
+        
+        # Age distribution
+        ages = [r['child_age'] for r in registrations if r['child_age']]
+        age_groups = {
+            '5-7': len([age for age in ages if 5 <= age <= 7]),
+            '8-10': len([age for age in ages if 8 <= age <= 10]),
+            '11-13': len([age for age in ages if 11 <= age <= 13]),
+            '14-16': len([age for age in ages if 14 <= age <= 16]),
+            '17-18': len([age for age in ages if 17 <= age <= 18])
+        }
+        
+        session_stats = {
+            'total_registrations': total_registrations,
+            'todays_count': len(todays_registrations),
+            'weeks_count': len(weeks_registrations),
+            'paid_count': paid_count,
+            'pending_payment': pending_payment,
+            'returning_campers': returning_campers,
+            'new_campers': new_campers,
+            'bringing_switch': bringing_switch,
+            'has_allergies': has_allergies,
+            'has_sensory_issues': has_sensory_issues,
+            'age_groups': age_groups,
+            'last_registration': registrations[0]['timestamp'] if registrations else 'None',
+            'registration_rate': f"{len(todays_registrations)}/day" if todays_registrations else "0/day"
+        }
+        
+        conn.close()
+        
+        return render_template('admin_dashboard.html', 
+                             registrations=registrations,
+                             session_stats=session_stats,
+                             camp_config=CAMP_CONFIG)
+                             
+    except Exception as e:
+        print(f"❌ Admin dashboard error: {str(e)}")
+        return f"Admin dashboard error: {str(e)}", 500
 
 @app.route('/admin/historical')
 @require_admin_auth
@@ -624,16 +870,28 @@ def admin_historical():
     main_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'camp_power_up.db')
     
     if os.path.exists(main_db_path):
-        conn = sqlite3.connect(main_db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.execute('''
-            SELECT first_name, last_name, email, age, grade, 
-                   is_returning, has_allergies, bringing_switch, favorite_games
-            FROM registrations 
-            ORDER BY first_name, last_name
-        ''')
-        historical_data = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        try:
+            conn = sqlite3.connect(main_db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('''
+                SELECT childs_first_name as first_name, 
+                       childs_last_name as last_name, 
+                       email_address as email, 
+                       age, 
+                       grade, 
+                       has_your_child_attended_camp_power_up_before as is_returning,
+                       allergies as has_allergies, 
+                       will_your_child_be_bringing_their_own_personal_switch as bringing_switch,
+                       what_games_do_they_enjoy_playing as favorite_games,
+                       timestamp
+                FROM registrations 
+                ORDER BY childs_first_name, childs_last_name
+            ''')
+            historical_data = [dict(row) for row in cursor.fetchall()]
+            conn.close()
+        except Exception as e:
+            print(f"Error accessing main database: {e}")
+            historical_data = []
     
     # Also get CSV data
     csv_data = []
@@ -802,6 +1060,122 @@ def validate_config():
     with open('camp_config.py', 'w') as f:
         f.write(config_content)
 
+# Edit and Delete Camper Routes
+@app.route('/admin/edit/<int:registration_id>')
+@require_admin_auth
+def edit_camper(registration_id):
+    """Show edit form for a camper registration."""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        conn.row_factory = sqlite3.Row
+        
+        cursor = conn.execute('''
+            SELECT * FROM registrations WHERE id = ?
+        ''', (registration_id,))
+        
+        registration = cursor.fetchone()
+        conn.close()
+        
+        if not registration:
+            flash('Registration not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        registration_dict = dict(registration)
+        
+        return render_template('admin_edit_camper.html', registration=registration_dict)
+        
+    except Exception as e:
+        flash(f'Error loading registration: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/update/<int:registration_id>', methods=['POST'])
+@require_admin_auth
+def update_camper(registration_id):
+    """Update a camper registration."""
+    try:
+        form_data = request.form.to_dict()
+        
+        conn = sqlite3.connect(REGISTRATION_DB)
+        cursor = conn.cursor()
+        
+        # Update registration with new data
+        cursor.execute('''
+            UPDATE registrations SET
+                parent_email = ?, parent_phone = ?, emergency_contact_name = ?, emergency_contact_phone = ?,
+                child_first_name = ?, child_last_name = ?, child_age = ?, child_grade = ?, child_gender = ?,
+                is_returning_camper = ?, gaming_behavior = ?, game_restrictions = ?, bringing_own_switch = ?,
+                favorite_games = ?, console_experience = ?, has_allergies = ?, allergy_details = ?,
+                has_sensory_issues = ?, sensory_details = ?, medical_conditions = ?, photo_permission = ?,
+                marketing_permission = ?, tshirt_size = ?, how_heard_about_camp = ?, additional_notes = ?,
+                payment_status = ?, status = ?
+            WHERE id = ?
+        ''', (
+            form_data.get('parent_email'),
+            form_data.get('parent_phone'),
+            form_data.get('emergency_contact_name'),
+            form_data.get('emergency_contact_phone'),
+            form_data.get('child_first_name'),
+            form_data.get('child_last_name'),
+            int(form_data.get('child_age', 0)),
+            form_data.get('child_grade'),
+            form_data.get('child_gender'),
+            form_data.get('is_returning_camper') == 'on',
+            form_data.get('gaming_behavior'),
+            form_data.get('game_restrictions'),
+            form_data.get('bringing_own_switch') == 'on',
+            form_data.get('favorite_games'),
+            form_data.get('console_experience'),
+            form_data.get('has_allergies') == 'on',
+            form_data.get('allergy_details'),
+            form_data.get('has_sensory_issues') == 'on',
+            form_data.get('sensory_details'),
+            form_data.get('medical_conditions'),
+            form_data.get('photo_permission') == 'on',
+            form_data.get('marketing_permission') == 'on',
+            form_data.get('tshirt_size'),
+            form_data.get('how_heard_about_camp'),
+            form_data.get('additional_notes'),
+            form_data.get('payment_status', 'pending'),
+            form_data.get('status', 'pending'),
+            registration_id
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Registration updated successfully!', 'success')
+        return redirect(url_for('admin_dashboard'))
+        
+    except Exception as e:
+        flash(f'Error updating registration: {str(e)}', 'error')
+        return redirect(url_for('edit_camper', registration_id=registration_id))
+
+@app.route('/admin/delete/<int:registration_id>', methods=['POST'])
+@require_admin_auth
+def delete_camper(registration_id):
+    """Delete a camper registration."""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        cursor = conn.cursor()
+        
+        # Get camper info for confirmation message
+        cursor.execute('SELECT child_first_name, child_last_name FROM registrations WHERE id = ?', (registration_id,))
+        camper = cursor.fetchone()
+        
+        if camper:
+            cursor.execute('DELETE FROM registrations WHERE id = ?', (registration_id,))
+            conn.commit()
+            flash(f'Registration for {camper[0]} {camper[1]} has been deleted.', 'success')
+        else:
+            flash('Registration not found.', 'error')
+        
+        conn.close()
+        return redirect(url_for('admin_dashboard'))
+        
+    except Exception as e:
+        flash(f'Error deleting registration: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/api/registrations')
 def api_registrations():
     """API endpoint for getting registration data."""
@@ -835,14 +1209,17 @@ def confirmation(submission_id):
         if not registration:
             return "Registration not found", 404
         
-        # Convert row to dictionary
+        # Convert row to dictionary - must match database schema order
         columns = [
-            'id', 'submission_id', 'timestamp', 'child_first_name', 'child_last_name',
-            'child_age', 'child_grade', 'parent_email', 'parent_phone',
-            'emergency_contact_name', 'emergency_contact_phone', 'is_returning_camper',
-            'bringing_own_switch', 'has_allergies', 'allergy_details',
-            'has_sensory_issues', 'sensory_details', 'favorite_games',
-            'gaming_behavior', 'game_restrictions', 'additional_notes', 'payment_status'
+            'id', 'submission_id', 'timestamp', 'status', 'payment_status',
+            'parent_email', 'parent_phone', 'emergency_contact_name', 'emergency_contact_phone',
+            'child_first_name', 'child_last_name', 'child_age', 'child_grade', 'child_gender',
+            'is_returning_camper', 'camp_weeks', 'gaming_behavior', 'game_restrictions',
+            'bringing_own_switch', 'favorite_games', 'console_experience', 'has_allergies',
+            'allergy_details', 'has_sensory_issues', 'sensory_details', 'medical_conditions',
+            'photo_permission', 'marketing_permission', 'tshirt_size', 'how_heard_about_camp',
+            'additional_notes', 'raw_form_data', 'games_owned', 'previous_year',
+            'previous_instructor', 'returning_camper_details'
         ]
         
         registration_dict = dict(zip(columns, registration))
@@ -1066,8 +1443,8 @@ if __name__ == '__main__':
     print("🏕️ Camp Power-Up Registration Form")
     print("=" * 40)
     
-    # Use PORT environment variable for Railway, fallback to 5008 for local development
-    port = int(os.environ.get('PORT', 5008))
+    # Use PORT environment variable for Railway, fallback to 5001 for local development
+    port = int(os.environ.get('PORT', 5001))
     host = '0.0.0.0' if os.environ.get('PORT') else '127.0.0.1'
     
     print(f"📝 Registration form available at: http://{host}:{port}")

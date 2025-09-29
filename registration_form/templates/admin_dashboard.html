@@ -329,28 +329,84 @@
         </div>
     </div>
 
+    <!-- Live Session Tracking Dashboard -->
     <div class="stats-bar">
         <div class="stat-card">
-            <div class="stat-number" id="totalRegistrations">{{ registrations|length }}</div>
+            <div class="stat-number" id="totalRegistrations">{{ session_stats.total_registrations }}</div>
             <div class="stat-label">Total Registrations</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="returningCampers">
-                {{ registrations|selectattr('is_returning_camper')|list|length }}
-            </div>
-            <div class="stat-label">Returning Campers</div>
+            <div class="stat-number" id="todaysRegistrations">{{ session_stats.todays_count }}</div>
+            <div class="stat-label">Today's Registrations</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="specialNeeds">
-                {{ registrations|selectattr('has_allergies')|list|length + registrations|selectattr('has_sensory_issues')|list|length }}
-            </div>
-            <div class="stat-label">Special Needs</div>
+            <div class="stat-number" id="weeksRegistrations">{{ session_stats.weeks_count }}</div>
+            <div class="stat-label">This Week</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="switchOwners">
-                {{ registrations|selectattr('bringing_own_switch')|list|length }}
+            <div class="stat-number" id="registrationRate">{{ session_stats.registration_rate }}</div>
+            <div class="stat-label">Registration Rate</div>
+        </div>
+    </div>
+
+    <!-- Payment & Camper Status Tracking -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" style="color: #28a745;">{{ session_stats.paid_count }}</div>
+            <div class="stat-label">Paid ✅</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #ffc107;">{{ session_stats.pending_payment }}</div>
+            <div class="stat-label">Payment Pending ⏳</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #17a2b8;">{{ session_stats.returning_campers }}</div>
+            <div class="stat-label">Returning Campers 🔄</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #6c757d;">{{ session_stats.new_campers }}</div>
+            <div class="stat-label">New Campers ✨</div>
+        </div>
+    </div>
+
+    <!-- Equipment & Special Needs Tracking -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" style="color: #e83e8c;">{{ session_stats.bringing_switch }}</div>
+            <div class="stat-label">Bringing Switch 🎮</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #fd7e14;">{{ session_stats.has_allergies }}</div>
+            <div class="stat-label">Has Allergies ⚠️</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #20c997;">{{ session_stats.has_sensory_issues }}</div>
+            <div class="stat-label">Sensory Needs 👂</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #6f42c1;">
+                {% if session_stats.last_registration != 'None' %}
+                    {{ session_stats.last_registration[:10] }}
+                {% else %}
+                    None
+                {% endif %}
             </div>
-            <div class="stat-label">Bringing Switch</div>
+            <div class="stat-label">Last Registration 📅</div>
+        </div>
+    </div>
+
+    <!-- Age Distribution Chart -->
+    <div style="background: white; margin: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 15px; color: #333;">📊 Age Distribution</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px;">
+            {% for age_range, count in session_stats.age_groups.items() %}
+            <div style="text-align: center;">
+                <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 10px; border-radius: 5px; margin-bottom: 5px;">
+                    <strong>{{ count }}</strong>
+                </div>
+                <small>Ages {{ age_range }}</small>
+            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -490,8 +546,10 @@
 
                     <div class="card-actions">
                         <a href="/confirmation/{{ registration.submission_id }}" class="btn btn-primary">👁️ View Full Details</a>
+                        <a href="/admin/edit/{{ registration.id }}" class="btn btn-info">✏️ Edit</a>
                         <button class="btn btn-success" onclick="markPaid('{{ registration.submission_id }}')">💰 Mark Paid</button>
                         <button class="btn btn-warning" onclick="sendReminder('{{ registration.submission_id }}')">📧 Send Reminder</button>
+                        <button class="btn btn-danger" onclick="deleteCamper({{ registration.id }}, '{{ registration.child_first_name|e }} {{ registration.child_last_name|e }}')">🗑️ Delete</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -533,6 +591,29 @@
             if (confirm('Send payment reminder email?')) {
                 // In a real implementation, this would send an email
                 alert('Feature coming soon! For now, contact families manually.');
+            }
+        }
+
+        function deleteCamper(camperId, camperName) {
+            if (confirm(`Are you sure you want to delete the registration for ${camperName}? This action cannot be undone.`)) {
+                fetch(`/admin/delete/${camperId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Registration deleted successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error deleting registration: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error deleting registration: ' + error.message);
+                });
             }
         }
 
