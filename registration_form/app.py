@@ -1438,6 +1438,157 @@ def registration_stats():
         }
     })
 
+@app.route('/admin/send-reminder/<submission_id>', methods=['POST'])
+@require_admin_auth
+def send_reminder(submission_id):
+    """Send payment reminder email."""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT child_first_name, child_last_name, parent_email, payment_status 
+            FROM registrations WHERE submission_id = ?
+        ''', (submission_id,))
+        
+        registration = cursor.fetchone()
+        if not registration:
+            return jsonify({'status': 'error', 'message': 'Registration not found'}), 404
+            
+        child_name = f"{registration[0]} {registration[1]}"
+        parent_email = registration[2]
+        payment_status = registration[3]
+        
+        if payment_status == 'paid':
+            return jsonify({'status': 'error', 'message': 'Registration is already marked as paid'})
+        
+        # Send email if email is configured
+        if EMAIL_AVAILABLE and EMAIL_CONFIG['email_password']:
+            subject = "Camp Power-Up Payment Reminder"
+            body = f"""
+Dear Parent/Guardian,
+
+This is a friendly reminder that payment is due for {child_name}'s registration at Camp Power-Up.
+
+Please submit your $50 deposit at your earliest convenience to secure your spot.
+
+Payment methods:
+- Venmo: @YourVenmoHandle
+- Cash: Bring to camp or mail to address
+- Check: Make payable to "Camp Power-Up"
+
+Please include "{child_name}" in your payment memo.
+
+If you have already paid, please disregard this message.
+
+Thank you!
+Camp Power-Up Team
+
+Submission ID: {submission_id}
+"""
+            
+            if send_confirmation_email(parent_email, subject, body):
+                conn.close()
+                return jsonify({'status': 'success', 'message': 'Reminder email sent successfully'})
+            else:
+                conn.close()
+                return jsonify({'status': 'error', 'message': 'Failed to send email'})
+        else:
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Email not configured'})
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/admin/mark-paid/<submission_id>', methods=['POST'])
+@require_admin_auth
+def mark_paid(submission_id):
+    """Mark a registration as paid."""
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        cursor = conn.cursor()
+        
+        cursor.execute('UPDATE registrations SET payment_status = ? WHERE submission_id = ?', 
+                      ('paid', submission_id))
+        
+        if cursor.rowcount == 0:
+            return jsonify({'status': 'error', 'message': 'Registration not found'}), 404
+            
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'status': 'success', 'message': 'Registration marked as paid'})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/admin/export', methods=['GET'])
+@require_admin_auth
+def export_registrations():
+    """Export registration data as CSV."""
+    import csv
+    from flask import Response
+    import io
+    
+    try:
+        conn = sqlite3.connect(REGISTRATION_DB)
+        conn.row_factory = sqlite3.Row  # This enables column access by name
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT submission_id, timestamp, child_first_name, child_last_name, 
+                   child_age, parent_first_name, parent_last_name, parent_email,
+                   parent_phone, emergency_contact_name, emergency_contact_phone,
+                   has_allergies, allergies_description, has_medical_conditions,
+                   medical_conditions_description, is_returning_camper,
+                   returning_years, how_heard_about_camp, additional_comments
+            FROM registrations 
+            ORDER BY timestamp DESC
+        ''')
+        
+        registrations = cursor.fetchall()
+        conn.close()
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'Submission ID', 'Registration Date', 'Child First Name', 'Child Last Name',
+            'Age', 'Parent First Name', 'Parent Last Name', 'Parent Email',
+            'Parent Phone', 'Emergency Contact', 'Emergency Phone',
+            'Has Allergies', 'Allergies', 'Has Medical Conditions', 'Medical Conditions',
+            'Returning Camper', 'Previous Years', 'How Heard About Camp', 'Comments'
+        ])
+        
+        # Write data rows
+        for reg in registrations:
+            writer.writerow([
+                reg['submission_id'], reg['timestamp'], reg['child_first_name'], reg['child_last_name'],
+                reg['child_age'], reg['parent_first_name'], reg['parent_last_name'], reg['parent_email'],
+                reg['parent_phone'], reg['emergency_contact_name'], reg['emergency_contact_phone'],
+                'Yes' if reg['has_allergies'] else 'No', reg['allergies_description'] or '',
+                'Yes' if reg['has_medical_conditions'] else 'No', reg['medical_conditions_description'] or '',
+                'Yes' if reg['is_returning_camper'] else 'No', reg['returning_years'] or '',
+                reg['how_heard_about_camp'] or '', reg['additional_comments'] or ''
+            ])
+        
+        output.seek(0)
+        
+        # Create response
+        response = Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=camp_registrations_{datetime.now().strftime("%Y%m%d")}.csv'}
+        )
+        
+        return response
+        
+    except Exception as e:
+        flash(f'Export failed: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 if __name__ == '__main__':
     init_registration_db()
     print("🏕️ Camp Power-Up Registration Form")
