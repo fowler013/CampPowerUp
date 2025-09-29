@@ -725,13 +725,20 @@
             });
 
             try {
+                // Add timeout to prevent freezing
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
                 const response = await fetch('/submit', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
 
                 const result = await response.json();
 
@@ -746,7 +753,11 @@
                     alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
                 }
             } catch (error) {
-                alert('Error submitting form: ' + error.message);
+                if (error.name === 'AbortError') {
+                    alert('Form submission timed out. Please try again. If the problem persists, your registration may have been saved - check your email for confirmation.');
+                } else {
+                    alert('Error submitting form: ' + error.message);
+                }
             } finally {
                 loading.style.display = 'none';
                 submitBtn.disabled = false;
