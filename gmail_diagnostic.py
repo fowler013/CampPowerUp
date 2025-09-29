@@ -6,13 +6,19 @@ Helps troubleshoot Gmail authentication issues
 
 import smtplib
 import socket
+import os
 from email.mime.text import MIMEText
 
 def test_connection_detailed():
     """Detailed SMTP connection test with more error information"""
     
     email = 'camppowerup2025@gmail.com'
-    password = 'pxevfyjhsntsnwtp'
+    password = os.environ.get('CAMP_EMAIL_PASSWORD', '')
+    
+    if not password:
+        print("❌ CAMP_EMAIL_PASSWORD environment variable not set")
+        print("   Set it with: export CAMP_EMAIL_PASSWORD='your-app-password'")
+        return
     
     print(f"📧 Testing Gmail SMTP for: {email}")
     print(f"🔑 App password: {password[:4]}{'*' * (len(password) - 4)}")

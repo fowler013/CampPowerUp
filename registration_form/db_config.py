@@ -46,11 +46,13 @@ def get_db_connection():
     
     if config['type'] == 'postgresql':
         try:
-            import psycopg2
+            # psycopg2 is only needed for PostgreSQL connections (Railway production)
+            import psycopg2  # type: ignore[import-untyped]
             return psycopg2.connect(config['url'])
-        except ImportError:
+        except ImportError as e:
             print("❌ psycopg2 not installed. Install with: pip install psycopg2-binary")
-            raise
+            print("   This is only needed for PostgreSQL connections (Railway production)")
+            raise e
     else:
         return sqlite3.connect(config['file'])
 

@@ -273,6 +273,45 @@
                 gap: 10px;
             }
         }
+
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateX(400px);
+            transition: transform 0.3s ease-in-out;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #28a745;
+        }
+        
+        .toast.error {
+            background: #dc3545;
+        }
+        
+        .toast .close-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            float: right;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
     </style>
 </head>
 <body>
@@ -375,8 +414,34 @@
     </div>
 
     <script>
+        // Toast notification system
+        function showToast(message, type = 'success', duration = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                ${message}
+                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+            
+            return toast;
+        }
+
         function exportAnalytics() {
-            // Create a simple CSV export
+            try {
+                showToast('Preparing analytics export...', 'success', 2000);
             const data = [
                 ['Metric', 'Value'],
                 ['Total Registrations', {{ total_registrations }}],
@@ -385,17 +450,23 @@
                 ['Bringing Switch', {{ bringing_switch }}]
             ];
 
-            const csvContent = data.map(row => row.join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', 'camp_analytics_' + new Date().toISOString().slice(0, 10) + '.csv');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+                const csvContent = data.map(row => row.join(',')).join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.setAttribute('hidden', '');
+                a.setAttribute('href', url);
+                a.setAttribute('download', 'camp_analytics_' + new Date().toISOString().slice(0, 10) + '.csv');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Analytics exported successfully!', 'success');
+            } catch (error) {
+                console.error('Export error:', error);
+                showToast('Error exporting analytics. Please try again.', 'error');
+            }
         }
     </script>
 </body>

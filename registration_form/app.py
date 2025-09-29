@@ -37,11 +37,11 @@ except ImportError:
     print("⚠️ Email functionality not available - MIMEText/MIMEMultipart imports failed")
 
 app = Flask(__name__, template_folder='./templates')
-app.secret_key = 'camp_power_up_registration_2025'
+app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_dev_only')
 
-# Admin credentials - in production, store these securely
-ADMIN_USERNAME = 'campadmin'
-ADMIN_PASSWORD = 'PowerUp2025!'  # Change this in production
+# Admin credentials - loaded from environment variables for security
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')  # Default for dev only
 
 # Email configuration - configure these for your email provider
 EMAIL_CONFIG = {

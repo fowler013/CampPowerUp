@@ -311,6 +311,150 @@
                 gap: 10px;
             }
         }
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateX(400px);
+            transition: transform 0.3s ease-in-out;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #28a745;
+        }
+        
+        .toast.error {
+            background: #dc3545;
+        }
+        
+        .toast.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .toast .close-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            float: right;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* Loading spinner styles */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive Design Improvements */
+        @media (max-width: 768px) {
+            .nav-links {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .nav-links a {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .stat-card {
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .search-box {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .card-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .card-actions .btn {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .registration-card {
+                margin-bottom: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .stat-number {
+                font-size: 28px;
+            }
+            
+            .registration-card {
+                padding: 15px;
+            }
+        }
+        
+        .btn.loading {
+            position: relative;
+            pointer-events: none;
+        }
+        
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            margin: auto;
+            border: 2px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+        }
     </style>
 </head>
 <body>
@@ -413,9 +557,12 @@
     <div class="container">
         <div class="controls">
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search by name, email, or submission ID...">
-                <button class="btn btn-primary" onclick="searchRegistrations()">🔍 Search</button>
-                <button class="btn btn-primary" onclick="clearSearch()">Clear</button>
+                <input type="text" id="searchInput" placeholder="Search by name, email, or submission ID..." 
+                       aria-label="Search registrations by name, email, or submission ID">
+                <button class="btn btn-primary" onclick="searchRegistrations()" 
+                        aria-label="Search registrations">🔍 Search</button>
+                <button class="btn btn-primary" onclick="clearSearch()" 
+                        aria-label="Clear search results">Clear</button>
             </div>
             <div>
                 <a href="/" class="btn btn-success">➕ New Registration</a>
@@ -544,12 +691,19 @@
                     </div>
                     {% endif %}
 
-                    <div class="card-actions">
-                        <a href="/confirmation/{{ registration.submission_id }}" class="btn btn-primary">👁️ View Full Details</a>
-                        <a href="/admin/edit/{{ registration.id }}" class="btn btn-info">✏️ Edit</a>
-                        <button class="btn btn-success" onclick="markPaid('{{ registration.submission_id }}')">💰 Mark Paid</button>
-                        <button class="btn btn-warning" onclick="sendReminder('{{ registration.submission_id }}')">📧 Send Reminder</button>
-                        <button class="btn btn-danger" onclick="deleteCamper({{ registration.id }}, '{{ registration.child_first_name|e }} {{ registration.child_last_name|e }}')">🗑️ Delete</button>
+                    <div class="card-actions" role="group" aria-label="Registration actions">
+                        <a href="/confirmation/{{ registration.submission_id }}" class="btn btn-primary" 
+                           aria-label="View full details for {{ registration.child_first_name }} {{ registration.child_last_name }}">👁️ View Full Details</a>
+                        <a href="/admin/edit/{{ registration.id }}" class="btn btn-info" 
+                           aria-label="Edit registration for {{ registration.child_first_name }} {{ registration.child_last_name }}">✏️ Edit</a>
+                        <button class="btn btn-success" onclick="markPaid('{{ registration.submission_id }}')" 
+                                aria-label="Mark registration as paid for {{ registration.child_first_name }} {{ registration.child_last_name }}">💰 Mark Paid</button>
+                        <button class="btn btn-warning" onclick="sendReminder('{{ registration.submission_id }}')" 
+                                aria-label="Send payment reminder to {{ registration.parent_email }}">📧 Send Reminder</button>
+                        <button class="btn btn-danger delete-btn" 
+                                data-camper-id="{{ registration.id }}" 
+                                data-camper-name="{{ registration.child_first_name|e }} {{ registration.child_last_name|e }}"
+                                aria-label="Delete registration for {{ registration.child_first_name }} {{ registration.child_last_name }}">🗑️ Delete</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -558,6 +712,47 @@
     </div>
 
     <script>
+        // Toast notification system
+        function showToast(message, type = 'success', duration = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                ${message}
+                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+            
+            return toast;
+        }
+        
+        // Loading state management
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.classList.add('loading');
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.textContent = 'Loading...';
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+                if (button.dataset.originalText) {
+                    button.textContent = button.dataset.originalText;
+                }
+            }
+        }
+
         function searchRegistrations() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const cards = document.querySelectorAll('.registration-card');
@@ -582,6 +777,9 @@
 
         function markPaid(submissionId) {
             if (confirm('Mark this registration as paid?')) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
                 fetch(`/admin/mark-paid/${submissionId}`, {
                     method: 'POST',
                     headers: {
@@ -590,22 +788,27 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    setButtonLoading(button, false);
                     if (data.status === 'success') {
-                        alert('Registration marked as paid successfully!');
-                        location.reload();
+                        showToast('Registration marked as paid successfully!', 'success');
+                        setTimeout(() => location.reload(), 1500);
                     } else {
-                        alert('Error: ' + data.message);
+                        showToast('Error: ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
+                    setButtonLoading(button, false);
                     console.error('Error marking as paid:', error);
-                    alert('Error marking as paid. Please try again.');
+                    showToast('Error marking as paid. Please try again.', 'error');
                 });
             }
         }
 
         function sendReminder(submissionId) {
             if (confirm('Send payment reminder email?')) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
                 fetch(`/admin/send-reminder/${submissionId}`, {
                     method: 'POST',
                     headers: {
@@ -614,21 +817,26 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    setButtonLoading(button, false);
                     if (data.status === 'success') {
-                        alert('Payment reminder sent successfully!');
+                        showToast('Payment reminder sent successfully!', 'success');
                     } else {
-                        alert('Error: ' + data.message);
+                        showToast('Error: ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
+                    setButtonLoading(button, false);
                     console.error('Error sending reminder:', error);
-                    alert('Error sending reminder. Please try again.');
+                    showToast('Error sending reminder. Please try again.', 'error');
                 });
             }
         }
 
         function deleteCamper(camperId, camperName) {
             if (confirm(`Are you sure you want to delete the registration for ${camperName}? This action cannot be undone.`)) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
                 fetch(`/admin/delete/${camperId}`, {
                     method: 'POST',
                     headers: {
@@ -636,9 +844,10 @@
                     }
                 })
                 .then(response => {
+                    setButtonLoading(button, false);
                     if (response.ok) {
-                        alert('Registration deleted successfully!');
-                        location.reload();
+                        showToast('Registration deleted successfully!', 'success');
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         return response.text().then(text => {
                             throw new Error(text || 'Unknown error');
@@ -646,15 +855,43 @@
                     }
                 })
                 .catch(error => {
+                    setButtonLoading(button, false);
                     console.error('Delete error:', error);
-                    alert('Error deleting registration. Please try again.');
+                    showToast('Error deleting registration. Please try again.', 'error');
                 });
             }
         }
 
         function exportData() {
-            // Download CSV export
-            window.location.href = '/admin/export';
+            try {
+                // Show loading toast
+                showToast('Preparing export...', 'success', 2000);
+                
+                // Add small delay to show user feedback
+                setTimeout(() => {
+                    window.location.href = '/admin/export';
+                }, 500);
+            } catch (error) {
+                console.error('Export error:', error);
+                showToast('Error preparing export. Please try again.', 'error');
+            }
+        }
+        
+        // Enhanced error handling for API calls
+        function handleApiError(error, operation = 'operation') {
+            console.error(`Error during ${operation}:`, error);
+            
+            if (error.message) {
+                showToast(`Error: ${error.message}`, 'error');
+            } else if (error.status === 403) {
+                showToast('Access denied. Please check your permissions.', 'error');
+            } else if (error.status === 404) {
+                showToast('Resource not found. Please refresh the page.', 'error');
+            } else if (error.status >= 500) {
+                showToast('Server error. Please try again later.', 'error');
+            } else {
+                showToast(`Error during ${operation}. Please try again.`, 'error');
+            }
         }
 
         // Real-time search
@@ -664,6 +901,15 @@
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 searchRegistrations();
+            }
+        });
+        
+        // Event delegation for delete buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                const camperId = e.target.getAttribute('data-camper-id');
+                const camperName = e.target.getAttribute('data-camper-name');
+                deleteCamper(camperId, camperName);
             }
         });
     </script>
