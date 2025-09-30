@@ -1681,6 +1681,23 @@ def database_info():
         'note': 'Data persists across deployments' if DB_CONFIG['is_production'] else 'Data is lost on deployment'
     })
 
+@app.route('/debug/email-config')
+def email_config_public_debug():
+    """Public debug endpoint for email configuration (temporary for troubleshooting)."""
+    camp_email = os.environ.get('CAMP_EMAIL', 'NOT SET')
+    camp_password = os.environ.get('CAMP_EMAIL_PASSWORD', 'NOT SET')
+    smtp_server = os.environ.get('SMTP_SERVER', 'NOT SET')
+    
+    return jsonify({
+        'camp_email': camp_email,
+        'has_password': 'YES' if camp_password and camp_password != 'NOT SET' else 'NO',
+        'password_length': len(camp_password) if camp_password and camp_password != 'NOT SET' else 0,
+        'smtp_server': smtp_server,
+        'email_available': EMAIL_AVAILABLE,
+        'email_vars_found': len([k for k in os.environ.keys() if 'CAMP' in k or 'SMTP' in k]),
+        'environment': 'production' if DB_CONFIG['is_production'] else 'development'
+    })
+
 @app.route('/admin/email-debug')
 @require_admin_auth
 def email_debug():
