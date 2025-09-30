@@ -1190,7 +1190,7 @@ def send_bulk_email():
                 const templates = {
                     'welcome': {
                         subject: 'Welcome to Camp Power-Up!',
-                        message: 'Dear Parent,\\n\\nWelcome to Camp Power-Up! We\'re excited to have your child join us for an amazing summer experience.\\n\\nImportant Information:\\n• Camp starts at 8:00 AM\\n• Pickup is at 5:00 PM\\n• Please pack lunch and water bottle\\n• Sunscreen will be provided\\n\\nWe look forward to a fantastic summer!\\n\\nBest regards,\\nCamp Power-Up Team'
+                        message: 'Dear Parent,\\n\\nWelcome to Camp Power-Up! We\'re excited to have your child join us for an amazing summer experience.\\n\\nImportant Information:\\n• Camp starts at 10:00 AM\\n• Pickup is at 3:00 PM\\n• Please pack lunch and water bottle\\n• Sunscreen will be provided\\n\\nWe look forward to a fantastic summer!\\n\\nBest regards,\\nCamp Power-Up Team'
                     },
                     'daily': {
                         subject: 'Daily Camp Update - [Date]',

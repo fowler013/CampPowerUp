@@ -12,9 +12,19 @@ from contextlib import contextmanager
 DATABASE_URL = os.environ.get('DATABASE_URL')  # Railway provides this automatically
 IS_PRODUCTION = bool(DATABASE_URL)
 
+# Railway environment detection
+RAILWAY_ENVIRONMENT = os.environ.get('RAILWAY_ENVIRONMENT')
+IS_RAILWAY = bool(RAILWAY_ENVIRONMENT)
+
 # Database paths for local development
 LOCAL_REGISTRATION_DB = os.path.join(os.path.dirname(__file__), 'registration_submissions.db')
 LOCAL_MAIN_DB = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'camp_power_up.db')
+
+# Debug logging
+if IS_PRODUCTION:
+    print(f"🚂 Railway PostgreSQL Mode - DATABASE_URL: {'Set' if DATABASE_URL else 'NOT SET'}")
+else:
+    print(f"💻 Local SQLite Mode - Registration DB: {LOCAL_REGISTRATION_DB}")
 
 def get_database_type():
     """Returns 'PostgreSQL' for production, 'SQLite' for local development."""
@@ -25,17 +35,27 @@ def get_db_connection(db_type='registration'):
     """Context manager for database connections."""
     if IS_PRODUCTION and DATABASE_URL:
         # Use PostgreSQL on Railway
-        import psycopg2
-        from urllib.parse import urlparse
-        
-        result = urlparse(DATABASE_URL)
-        conn = psycopg2.connect(
-            database=result.path[1:],
-            user=result.username,
-            password=result.password,
-            host=result.hostname,
-            port=result.port
-        )
+        try:
+            import psycopg2
+            from urllib.parse import urlparse
+        except ImportError:
+            print("❌ psycopg2 not installed - falling back to SQLite")
+            conn = sqlite3.connect(LOCAL_REGISTRATION_DB)
+        else:
+            try:
+                result = urlparse(DATABASE_URL)
+                conn = psycopg2.connect(
+                    database=result.path[1:],
+                    user=result.username,
+                    password=result.password,
+                    host=result.hostname,
+                    port=result.port
+                )
+                print("✅ PostgreSQL connection established")
+            except Exception as e:
+                print(f"❌ PostgreSQL connection failed: {e}")
+                print("🔄 Falling back to SQLite")
+                conn = sqlite3.connect(LOCAL_REGISTRATION_DB)
     else:
         # Use SQLite locally
         if db_type == 'registration':
