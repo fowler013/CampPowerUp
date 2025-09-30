@@ -1681,6 +1681,53 @@ def database_info():
         'note': 'Data persists across deployments' if DB_CONFIG['is_production'] else 'Data is lost on deployment'
     })
 
+@app.route('/admin/email-debug')
+@require_admin_auth
+def email_debug():
+    """Debug email configuration without exposing sensitive data."""
+    camp_email = os.environ.get('CAMP_EMAIL', 'NOT SET')
+    camp_password = os.environ.get('CAMP_EMAIL_PASSWORD', 'NOT SET')
+    smtp_server = os.environ.get('SMTP_SERVER', 'NOT SET')
+    
+    return jsonify({
+        'camp_email': camp_email,
+        'has_password': 'YES' if camp_password and camp_password != 'NOT SET' else 'NO',
+        'password_length': len(camp_password) if camp_password and camp_password != 'NOT SET' else 0,
+        'smtp_server': smtp_server,
+        'email_vars_found': len([k for k in os.environ.keys() if 'CAMP' in k or 'SMTP' in k]),
+        'all_env_vars_count': len(os.environ)
+    })
+
+@app.route('/admin/test-email-send/<test_email>')
+@require_admin_auth
+def test_email_send(test_email):
+    """Test email sending functionality."""
+    try:
+        # Create test registration data
+        test_registration = {
+            'child_first_name': 'Test',
+            'child_last_name': 'Child',
+            'parent_email': test_email,
+            'submission_id': 'TEST_12345',
+            'child_age': '8',
+            'parent_name': 'Test Parent',
+            'is_returning_camper': 0
+        }
+        
+        # Use the same email sending logic as registration confirmations
+        result = send_confirmation_email(test_registration)
+        return jsonify({
+            'success': True,
+            'message': f'Test email sent to {test_email}',
+            'email_result': str(result)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
+
 if __name__ == '__main__':
     # Initialize database (PostgreSQL on Railway, SQLite locally)
     if DB_CONFIG['is_production']:
