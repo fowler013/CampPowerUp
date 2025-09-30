@@ -592,10 +592,14 @@ def submit_registration():
         submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{form_data['child_last_name'][:3].upper()}"
         
         # Save to database
-        conn = sqlite3.connect(REGISTRATION_DB)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
+        with get_db_connection('registration') as conn:
+            cursor = conn.cursor()
+            
+            # Use appropriate placeholder syntax for database type
+            placeholder = '%s' if DB_CONFIG['is_production'] else '?'
+            placeholders = ', '.join([placeholder] * 34)
+            
+            cursor.execute(f'''
             INSERT INTO registrations (
                 submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
@@ -606,7 +610,7 @@ def submit_registration():
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ({placeholders})
         ''', (
             submission_id,
             'pending',  # status
@@ -644,8 +648,7 @@ def submit_registration():
             json.dumps(form_data)
         ))
         
-        conn.commit()
-        conn.close()
+        # Connection automatically commits and closes with context manager
         
         # Also sync to main database for dashboard integration
         sync_to_main_database(form_data, submission_id)
@@ -990,15 +993,25 @@ def admin_logout():
 def admin_dashboard():
     """Admin dashboard for viewing registrations with live session tracking."""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
-        conn.row_factory = sqlite3.Row
-        
-        cursor = conn.execute('''
-            SELECT * FROM registrations 
-            ORDER BY timestamp DESC
-        ''')
-        
-        registrations = [dict(row) for row in cursor.fetchall()]
+        with get_db_connection('registration') as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT * FROM registrations 
+                ORDER BY timestamp DESC
+            ''')
+            
+            # Handle different database types
+            if DB_CONFIG['is_production']:  # PostgreSQL
+                columns = [desc[0] for desc in cursor.description]
+                registrations = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            else:  # SQLite
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute('''
+                    SELECT * FROM registrations 
+                    ORDER BY timestamp DESC
+                ''')
+                registrations = [dict(row) for row in cursor.fetchall()]
         
         # Calculate live session statistics
         total_registrations = len(registrations)
