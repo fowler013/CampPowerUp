@@ -210,7 +210,7 @@ def send_confirmation_email(registration_data):
 
 def send_admin_notification(registration_data):
     """Send notification to camp admin about new registration."""
-    admin_email = "camppowerup2025@gmail.com"
+    admin_email = "fowler0613@gmail.com"  # Send to your primary email to avoid self-send issues
     subject = f"🏕️ NEW REGISTRATION - {registration_data['child_first_name']} {registration_data['child_last_name']}"
     
     html_content = f"""
