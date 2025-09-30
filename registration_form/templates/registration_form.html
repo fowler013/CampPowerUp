@@ -754,7 +754,26 @@
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    alert('Form submission timed out. Please try again. If the problem persists, your registration may have been saved - check your email for confirmation.');
+                    // Timeout occurred - try the fast backup endpoint
+                    try {
+                        const backupResponse = await fetch('/submit_fast', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data)
+                        });
+                        
+                        const backupResult = await backupResponse.json();
+                        if (backupResult.success) {
+                            localStorage.removeItem('campPowerUpDraft');
+                            window.location.href = `/confirmation/${backupResult.submission_id}`;
+                        } else {
+                            alert('Backup submission failed. Please contact fowler013@gmail.com with your information.');
+                        }
+                    } catch (backupError) {
+                        alert('Form submission timed out. Please contact fowler013@gmail.com directly to complete your registration.');
+                    }
                 } else {
                     alert('Error submitting form: ' + error.message);
                 }

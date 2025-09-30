@@ -548,6 +548,74 @@ def submit_registration():
     except Exception as e:
         return jsonify({'success': False, 'errors': [str(e)]}), 500
 
+@app.route('/submit_fast', methods=['POST'])
+def submit_registration_fast():
+    """Fast submission without email - backup endpoint."""
+    try:
+        # Get form data
+        form_data = request.get_json() if request.is_json else request.form.to_dict()
+        
+        # Validate data
+        errors, warnings = validate_form_data(form_data)
+        if errors:
+            return jsonify({'success': False, 'errors': errors}), 400
+        
+        # Generate submission ID
+        submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{form_data['child_last_name'][:3].upper()}"
+        
+        # Save to database (same as main route but no email)
+        conn = sqlite3.connect(REGISTRATION_DB)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO registrations (
+                submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
+                emergency_contact_phone, child_first_name, child_last_name,
+                child_age, child_grade, child_gender, is_returning_camper,
+                previous_year, previous_instructor, returning_camper_details,
+                camp_weeks, gaming_behavior, game_restrictions, bringing_own_switch,
+                favorite_games, games_owned, console_experience, has_allergies, allergy_details,
+                has_sensory_issues, sensory_details, medical_conditions,
+                photo_permission, marketing_permission, tshirt_size,
+                how_heard_about_camp, additional_notes, raw_form_data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            submission_id, 'pending', 'pending',
+            form_data.get('parent_email'), form_data.get('parent_phone'),
+            form_data.get('emergency_contact_name'), form_data.get('emergency_contact_phone'),
+            form_data.get('child_first_name'), form_data.get('child_last_name'),
+            int(form_data.get('child_age', 0)), form_data.get('child_grade'), form_data.get('child_gender'),
+            form_data.get('is_returning_camper') == 'true',
+            form_data.get('previous_year') if form_data.get('is_returning_camper') == 'true' else None,
+            form_data.get('previous_instructor') if form_data.get('is_returning_camper') == 'true' else None,
+            form_data.get('returning_camper_details') if form_data.get('is_returning_camper') == 'true' else None,
+            json.dumps(form_data.get('camp_weeks', [])), form_data.get('gaming_behavior'),
+            form_data.get('game_restrictions'), form_data.get('bringing_own_switch') == 'true',
+            form_data.get('favorite_games'), form_data.get('games_owned'), form_data.get('console_experience'),
+            form_data.get('has_allergies') == 'true', form_data.get('allergy_details'),
+            form_data.get('has_sensory_issues') == 'true', form_data.get('sensory_details'),
+            form_data.get('medical_conditions'), form_data.get('photo_permission') == 'true',
+            form_data.get('marketing_permission') == 'true', form_data.get('tshirt_size'),
+            form_data.get('how_heard_about_camp'), form_data.get('additional_notes'),
+            json.dumps(form_data)
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Sync to main database
+        sync_to_main_database(form_data, submission_id)
+        
+        # Return success immediately - no email attempt
+        return jsonify({
+            'success': True,
+            'submission_id': submission_id,
+            'message': 'Registration submitted successfully! Email confirmation will be sent manually within 24 hours.'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [str(e)]}), 500
+
 def sync_to_main_database(form_data, submission_id):
     """Sync registration data to main dashboard database."""
     try:
