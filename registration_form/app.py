@@ -179,8 +179,15 @@ def send_email_via_sendgrid(to_email, subject, html_content):
         }]
     }
     
-    response = requests.post(url, headers=headers, json=data)
-    return response.status_code == 202
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        print(f"SendGrid response status: {response.status_code}")
+        if response.status_code != 202:
+            print(f"SendGrid error response: {response.text}")
+        return response.status_code == 202
+    except Exception as e:
+        print(f"SendGrid request failed: {e}")
+        return False
 
 def send_confirmation_email(registration_data):
     """Send confirmation email to parent after registration."""
@@ -203,6 +210,9 @@ def send_confirmation_email(registration_data):
 
 def send_via_sendgrid(registration_data, subject):
     """Send email using SendGrid API (Railway-compatible)."""
+    print(f"🔄 Attempting SendGrid email to {registration_data['parent_email']}")
+    print(f"📧 SendGrid config: API key length={len(EMAIL_CONFIG['sendgrid_api_key'])}, from={EMAIL_CONFIG['sendgrid_from_email']}")
+    
     # Create email content
     html_content = create_email_html_content(registration_data)
     
@@ -216,8 +226,14 @@ def send_via_sendgrid(registration_data, subject):
             print(f"✅ SendGrid email sent successfully to {registration_data['parent_email']}")
             return True
         else:
-            print(f"❌ SendGrid email failed to {registration_data['parent_email']}")
-            return False
+            print(f"❌ SendGrid email failed to {registration_data['parent_email']} - falling back to SMTP")
+            # Fall back to SMTP if SendGrid fails
+            if EMAIL_CONFIG['email_password']:
+                print(f"🔄 Falling back to SMTP for {registration_data['parent_email']}")
+                return send_via_smtp(registration_data, subject)
+            else:
+                print(f"❌ No SMTP password available for fallback")
+                return False
     except Exception as e:
         print(f"❌ SendGrid error: {e}")
         return False
