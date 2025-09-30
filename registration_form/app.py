@@ -26,6 +26,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from database_config import get_db_connection, init_postgresql_tables, DB_CONFIG
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
+import requests  # For SendGrid HTTP API
 
 # Import email modules after Flask to avoid conflicts
 try:
@@ -44,13 +45,18 @@ app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_d
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')  # Default for dev only
 
-# Email configuration - configure these for your email provider
+# Email configuration - supports both SMTP and SendGrid
 EMAIL_CONFIG = {
     'smtp_server': os.environ.get('SMTP_SERVER', 'smtp.gmail.com'),
     'smtp_port': int(os.environ.get('SMTP_PORT', 587)),
     'email_address': os.environ.get('CAMP_EMAIL', 'camppowerup2025@gmail.com'),
     'email_password': os.environ.get('CAMP_EMAIL_PASSWORD', ''),
-    'from_name': 'Camp Power-Up Registration'
+    'from_name': 'Camp Power-Up Registration',
+    'sendgrid_api_key': os.environ.get('SENDGRID_API_KEY', ''),
+    'sendgrid_from_email': os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@sendgrid.net'),
+    'sendgrid_from_name': os.environ.get('SENDGRID_FROM_NAME', 'Camp Power-Up Registration'),
+    'sendgrid_reply_to': os.environ.get('SENDGRID_REPLY_TO', 'fowler0613@gmail.com'),
+    'use_sendgrid': bool(os.environ.get('SENDGRID_API_KEY', ''))
 }
 
 def check_admin_auth():
@@ -137,6 +143,35 @@ def init_registration_db():
     conn.commit()
     conn.close()
 
+def send_email_via_sendgrid(to_email, subject, html_content):
+    """Send email using SendGrid API."""
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {EMAIL_CONFIG['sendgrid_api_key']}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "personalizations": [{
+            "to": [{"email": to_email}],
+            "subject": subject
+        }],
+        "from": {
+            "email": EMAIL_CONFIG['sendgrid_from_email'],
+            "name": EMAIL_CONFIG['sendgrid_from_name']
+        },
+        "reply_to": {
+            "email": EMAIL_CONFIG['sendgrid_reply_to']
+        },
+        "content": [{
+            "type": "text/html",
+            "value": html_content
+        }]
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    return response.status_code == 202
+
 def send_confirmation_email(registration_data):
     """Send confirmation email to parent after registration."""
     if not EMAIL_AVAILABLE:
@@ -144,27 +179,158 @@ def send_confirmation_email(registration_data):
         return False
     
     try:
+        subject = f"Registration Confirmed - Camp Power-Up 2025 - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+        
+        # Use SendGrid if available (better for Railway), fallback to SMTP
+        if EMAIL_CONFIG['use_sendgrid']:
+            return send_via_sendgrid(registration_data, subject)
+        else:
+            return send_via_smtp(registration_data, subject)
+            
+    except Exception as e:
+        print(f"❌ Failed to send confirmation email: {e}")
+        return False
+
+def send_via_sendgrid(registration_data, subject):
+    """Send email using SendGrid API (Railway-compatible)."""
+    # Create email content
+    html_content = create_email_html_content(registration_data)
+    
+    try:
+        result = send_email_via_sendgrid(
+            registration_data['parent_email'],
+            subject,
+            html_content
+        )
+        if result:
+            print(f"✅ SendGrid email sent successfully to {registration_data['parent_email']}")
+            return True
+        else:
+            print(f"❌ SendGrid email failed to {registration_data['parent_email']}")
+            return False
+    except Exception as e:
+        print(f"❌ SendGrid error: {e}")
+        return False
+
+def create_email_html_content(registration_data):
+    """Create HTML email content."""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
+            .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(45deg, #28a745, #20c997); color: white; padding: 30px; text-align: center; }}
+            .header h1 {{ margin: 0; font-size: 28px; }}
+            .content {{ padding: 30px; }}
+            .confirmation-id {{ background: #f8f9fa; border: 2px solid #28a745; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }}
+            .confirmation-id h2 {{ color: #28a745; margin: 0 0 10px 0; }}
+            .confirmation-id .id {{ font-size: 24px; font-weight: bold; color: #333; }}
+            .summary {{ background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0; }}
+            .summary-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }}
+            .summary-row:last-child {{ border-bottom: none; }}
+            .label {{ font-weight: bold; color: #333; }}
+            .value {{ color: #666; }}
+            .next-steps {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; }}
+            .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #666; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+                <h1>Registration Confirmed!</h1>
+                <p>Thank you for registering for Camp Power-Up 2025</p>
+            </div>
+            
+            <div class="content">
+                <div class="confirmation-id">
+                    <h2>Confirmation ID</h2>
+                    <div class="id">{registration_data['submission_id']}</div>
+                    <p>Please save this ID for your records</p>
+                </div>
+                
+                <div class="summary">
+                    <h3>📋 Registration Summary</h3>
+                    <div class="summary-row">
+                        <span class="label">Camper Name:</span>
+                        <span class="value">{registration_data['child_first_name']} {registration_data['child_last_name']}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Age:</span>
+                        <span class="value">{registration_data['child_age']} years old</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Contact Email:</span>
+                        <span class="value">{registration_data['parent_email']}</span>
+                    </div>
+                </div>
+                
+                <div class="next-steps">
+                    <h3>📝 Next Steps</h3>
+                    <ol>
+                        <li><strong>Payment:</strong> Complete registration by sending $180 via Zelle to <strong>fowler0613@gmail.com</strong></li>
+                        <li><strong>Include your child's name</strong> in payment memo: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</li>
+                        <li><strong>Confirmation:</strong> Payment confirmation within 24 hours</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Camp Power-Up 2025 | Gaming & Technology Camp</p>
+                <p>Questions? Contact us at <strong>fowler0613@gmail.com</strong></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+def send_via_smtp(registration_data, subject):
+    """Send email using SMTP (local development)."""
+    try:
         # Create email content
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"Registration Confirmed - Camp Power-Up 2025 - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+        msg['Subject'] = subject
         msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['email_address']}>"
         msg['To'] = registration_data['parent_email']
         
-        # Create HTML email content
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
-                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }}
-                .header {{ background: linear-gradient(45deg, #28a745, #20c997); color: white; padding: 30px; text-align: center; }}
-                .header h1 {{ margin: 0; font-size: 28px; }}
-                .content {{ padding: 30px; }}
-                .confirmation-id {{ background: #f8f9fa; border: 2px solid #28a745; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }}
-                .confirmation-id h2 {{ color: #28a745; margin: 0 0 10px 0; }}
-                .confirmation-id .id {{ font-size: 24px; font-weight: bold; color: #333; }}
+        # Create email content
+        html_content = create_email_html_content(registration_data)
+        text_content = f"""
+        Registration Confirmed - Camp Power-Up 2025
+        
+        Confirmation ID: {registration_data['submission_id']}
+        Camper: {registration_data['child_first_name']} {registration_data['child_last_name']}
+        
+        Next Steps:
+        1. Send $180 via Zelle to fowler0613@gmail.com
+        2. Include "{registration_data['child_first_name']} {registration_data['child_last_name']}" in memo
+        
+        Questions? Contact fowler0613@gmail.com
+        """
+        
+        # Attach both versions
+        msg.attach(MIMEText(text_content, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        # Send via SMTP
+        if EMAIL_CONFIG['email_password']:
+            server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+            server.starttls()
+            server.login(EMAIL_CONFIG['email_address'], EMAIL_CONFIG['email_password'])
+            server.send_message(msg)
+            server.quit()
+            print(f"✅ SMTP email sent to {registration_data['parent_email']}")
+            return True
+        else:
+            print(f"⚠️ No SMTP password configured")
+            return False
+            
+    except Exception as e:
+        print(f"❌ SMTP email failed: {e}")
+        return False
                 .summary {{ background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0; }}
                 .summary-row {{ display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }}
                 .summary-row:last-child {{ border-bottom: none; }}
@@ -1688,15 +1854,37 @@ def email_config_public_debug():
     camp_password = os.environ.get('CAMP_EMAIL_PASSWORD', 'NOT SET')
     smtp_server = os.environ.get('SMTP_SERVER', 'NOT SET')
     
-    return jsonify({
+    # Check SendGrid configuration
+    sendgrid_api_key = os.environ.get('SENDGRID_API_KEY', '')
+    sendgrid_from_email = os.environ.get('SENDGRID_FROM_EMAIL', '')
+    sendgrid_from_name = os.environ.get('SENDGRID_FROM_NAME', '')
+    has_sendgrid = bool(sendgrid_api_key)
+    
+    response = {
         'camp_email': camp_email,
-        'has_password': 'YES' if camp_password and camp_password != 'NOT SET' else 'NO',
-        'password_length': len(camp_password) if camp_password and camp_password != 'NOT SET' else 0,
-        'smtp_server': smtp_server,
         'email_available': EMAIL_AVAILABLE,
-        'email_vars_found': len([k for k in os.environ.keys() if 'CAMP' in k or 'SMTP' in k]),
-        'environment': 'production' if DB_CONFIG['is_production'] else 'development'
-    })
+        'environment': 'production' if DB_CONFIG['is_production'] else 'development',
+        'email_method': 'sendgrid' if has_sendgrid else 'smtp'
+    }
+    
+    if has_sendgrid:
+        response.update({
+            'sendgrid_configured': True,
+            'sendgrid_from_email': sendgrid_from_email,
+            'sendgrid_from_name': sendgrid_from_name,
+            'sendgrid_api_key_length': len(sendgrid_api_key),
+            'email_vars_found': len([k for k in os.environ.keys() if 'SENDGRID' in k])
+        })
+    else:
+        response.update({
+            'sendgrid_configured': False,
+            'has_password': 'YES' if camp_password and camp_password != 'NOT SET' else 'NO',
+            'password_length': len(camp_password) if camp_password and camp_password != 'NOT SET' else 0,
+            'smtp_server': smtp_server,
+            'email_vars_found': len([k for k in os.environ.keys() if 'CAMP' in k or 'SMTP' in k])
+        })
+    
+    return jsonify(response)
 
 @app.route('/admin/email-debug')
 @require_admin_auth
