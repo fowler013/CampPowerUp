@@ -20,15 +20,45 @@ def get_database_type():
     """Returns 'PostgreSQL' for production, 'SQLite' for local development."""
     return 'PostgreSQL' if IS_PRODUCTION else 'SQLite'
 
+@contextmanager  
+def get_db_connection(db_type='registration'):
+    """Context manager for database connections."""
+    if IS_PRODUCTION and DATABASE_URL:
+        # Use PostgreSQL on Railway
+        import psycopg2
+        from urllib.parse import urlparse
+        
+        result = urlparse(DATABASE_URL)
+        conn = psycopg2.connect(
+            database=result.path[1:],
+            user=result.username,
+            password=result.password,
+            host=result.hostname,
+            port=result.port
+        )
+    else:
+        # Use SQLite locally
+        if db_type == 'registration':
+            conn = sqlite3.connect(LOCAL_REGISTRATION_DB)
+        elif db_type == 'historical':
+            conn = sqlite3.connect(LOCAL_MAIN_DB)
+        else:
+            raise ValueError(f"Unknown db_type: {db_type}")
+    
+    try:
+        yield conn
+        if hasattr(conn, 'commit'):
+            conn.commit()
+    except Exception as e:
+        if hasattr(conn, 'rollback'):
+            conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
 def get_database_connection(db_type='registration'):
     """
-    Get database connection for either registration or historical data.
-    
-    Args:
-        db_type: 'registration' for new registrations, 'historical' for past data
-    
-    Returns:
-        Database connection object
+    Get direct database connection (not context manager) for cases where manual control is needed.
     """
     if IS_PRODUCTION and DATABASE_URL:
         # Use PostgreSQL on Railway
@@ -52,21 +82,6 @@ def get_database_connection(db_type='registration'):
             return sqlite3.connect(LOCAL_MAIN_DB)
         else:
             raise ValueError(f"Unknown db_type: {db_type}")
-
-@contextmanager
-def get_db_connection(db_type='registration'):
-    """Context manager for database connections."""
-    conn = get_database_connection(db_type)
-    try:
-        yield conn
-        if hasattr(conn, 'commit'):
-            conn.commit()
-    except Exception as e:
-        if hasattr(conn, 'rollback'):
-            conn.rollback()
-        raise e
-    finally:
-        conn.close()
 
 def init_postgresql_tables():
     """Initialize PostgreSQL tables on Railway."""

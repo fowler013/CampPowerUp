@@ -993,21 +993,21 @@ def admin_logout():
 def admin_dashboard():
     """Admin dashboard for viewing registrations with live session tracking."""
     try:
+        registrations = []
+        
         with get_db_connection('registration') as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT * FROM registrations 
-                ORDER BY timestamp DESC
-            ''')
-            
-            # Handle different database types
             if DB_CONFIG['is_production']:  # PostgreSQL
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM registrations 
+                    ORDER BY timestamp DESC
+                ''')
                 columns = [desc[0] for desc in cursor.description]
                 registrations = [dict(zip(columns, row)) for row in cursor.fetchall()]
             else:  # SQLite
                 conn.row_factory = sqlite3.Row
-                cursor = conn.execute('''
+                cursor = conn.cursor()
+                cursor.execute('''
                     SELECT * FROM registrations 
                     ORDER BY timestamp DESC
                 ''')
@@ -1065,8 +1065,6 @@ def admin_dashboard():
             'last_registration': registrations[0]['timestamp'] if registrations else 'None',
             'registration_rate': f"{len(todays_registrations)}/day" if todays_registrations else "0/day"
         }
-        
-        conn.close()
         
         return render_template('admin_dashboard.html', 
                              registrations=registrations,
