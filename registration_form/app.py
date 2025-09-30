@@ -1000,9 +1000,14 @@ def admin_historical():
         except Exception as e:
             print(f"Error reading CSV: {e}")
     
+    # Check if we have any historical data
+    total_historical = len(historical_data) + len(csv_data)
+    
     return render_template('admin_historical.html', 
                          historical_data=historical_data, 
-                         csv_data=csv_data)
+                         csv_data=csv_data,
+                         has_historical_data=total_historical > 0,
+                         total_historical_count=total_historical)
 
 @app.route('/admin/config')
 @require_admin_auth

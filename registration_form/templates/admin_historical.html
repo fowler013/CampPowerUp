@@ -289,7 +289,18 @@
                     </tbody>
                 </table>
             {% else %}
-                <div class="no-data">No database records found</div>
+                <div class="no-data">
+                    <h3>📋 No Historical Data Available</h3>
+                    <p>Historical registration data is not available on this deployment.</p>
+                    <p><strong>This is normal for Railway deployments.</strong></p>
+                    <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <p><strong>To add historical data:</strong></p>
+                        <ul style="margin: 10px 0 0 20px;">
+                            <li>Upload your historical database files</li>
+                            <li>Or use the current registration system to build new historical data</li>
+                        </ul>
+                    </div>
+                </div>
             {% endif %}
         </div>
 
@@ -319,7 +330,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <div class="no-data">No CSV records found</div>
+                <div class="no-data">No CSV data files found on this deployment</div>
             {% endif %}
         </div>
     </div>
