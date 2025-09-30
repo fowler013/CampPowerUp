@@ -215,7 +215,7 @@ def send_confirmation_email(registration_data):
 
 def send_admin_notification(registration_data):
     """Send notification to camp admin about new registration."""
-    admin_email = "fowler0613@gmail.com"  # Send to your primary email to avoid self-send issues
+    admin_email = "camppowerup2025@gmail.com"  # Send admin notifications to camp email
     subject = f"Camp Power-Up Registration: {registration_data['child_first_name']} {registration_data['child_last_name']}"
     
     html_content = f"""
@@ -1920,8 +1920,8 @@ def test_admin_notification_endpoint():
             'success': True,
             'admin_notification_sent': result,
             'test_data': test_data,
-            'admin_email': 'fowler0613@gmail.com',
-            'message': 'Check fowler0613@gmail.com for admin notification'
+            'admin_email': 'camppowerup2025@gmail.com',
+            'message': 'Check camppowerup2025@gmail.com for admin notification'
         })
         
     except Exception as e:
