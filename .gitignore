@@ -18,6 +18,9 @@ security_key.key
 *.sqlite
 *.sqlite3
 
+# Exception: Allow historical data for deployment
+!camp_power_up.db
+
 # Python
 __pycache__/
 *.py[cod]
@@ -58,6 +61,9 @@ data/*.xlsx
 data/*.xls
 *.csv
 camp_power_up.db
+
+# Exception: Allow specific historical CSV for deployment
+!data/Camp_Power_Up_past_forms\ -\ Sheet1.csv
 camper_data.db
 
 # IDE
