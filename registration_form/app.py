@@ -176,7 +176,12 @@ def send_email_via_sendgrid(to_email, subject, html_content):
         "content": [{
             "type": "text/html",
             "value": html_content
-        }]
+        }],
+        "categories": ["camp-registration"],
+        "custom_args": {
+            "source": "camp-powerup",
+            "type": "notification"
+        }
     }
     
     try:
@@ -211,22 +216,39 @@ def send_confirmation_email(registration_data):
 def send_admin_notification(registration_data):
     """Send notification to camp admin about new registration."""
     admin_email = "fowler0613@gmail.com"  # Send to your primary email to avoid self-send issues
-    subject = f"🏕️ NEW REGISTRATION - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+    subject = f"Camp Power-Up Registration: {registration_data['child_first_name']} {registration_data['child_last_name']}"
     
     html_content = f"""
-    <h2>🏕️ New Camp Power-Up Registration</h2>
-    <p><strong>Child:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']} (Age: {registration_data['child_age']})</p>
-    <p><strong>Parent:</strong> {registration_data['parent_first_name']} {registration_data['parent_last_name']}</p>
-    <p><strong>Email:</strong> {registration_data['parent_email']}</p>
-    <p><strong>Phone:</strong> {registration_data.get('parent_phone', 'Not provided')}</p>
-    <p><strong>Switch:</strong> {'Bringing own' if registration_data.get('bringing_own_switch') else 'Needs camp switch'}</p>
-    <p><strong>Type:</strong> {'Returning camper' if registration_data.get('is_returning_camper') else 'New camper'}</p>
-    <p><strong>Submission ID:</strong> {registration_data['submission_id']}</p>
-    
-    <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
-        <h3>💰 Payment Expected: $180</h3>
-        <p>Watch for Zelle payment from {registration_data['parent_email']}</p>
-        <p>Payment memo should include: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+            New Camp Power-Up Registration Received
+        </h2>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #495057;">Registration Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 5px 0; font-weight: bold;">Child Name:</td><td style="padding: 5px 0;">{registration_data['child_first_name']} {registration_data['child_last_name']}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Age:</td><td style="padding: 5px 0;">{registration_data['child_age']} years old</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Parent:</td><td style="padding: 5px 0;">{registration_data['parent_first_name']} {registration_data['parent_last_name']}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Email:</td><td style="padding: 5px 0;">{registration_data['parent_email']}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Phone:</td><td style="padding: 5px 0;">{registration_data.get('parent_phone', 'Not provided')}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Nintendo Switch:</td><td style="padding: 5px 0;">{'Bringing own Switch' if registration_data.get('bringing_own_switch') else 'Needs camp Switch'}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Camper Type:</td><td style="padding: 5px 0;">{'Returning camper' if registration_data.get('is_returning_camper') else 'New camper'}</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold;">Submission ID:</td><td style="padding: 5px 0;">{registration_data['submission_id']}</td></tr>
+            </table>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107;">
+            <h3 style="margin-top: 0; color: #856404;">Payment Information</h3>
+            <p style="margin: 10px 0;"><strong>Amount Due:</strong> $180.00</p>
+            <p style="margin: 10px 0;"><strong>Payment Method:</strong> Zelle to camppowerup2025@gmail.com</p>
+            <p style="margin: 10px 0;"><strong>Expected from:</strong> {registration_data['parent_email']}</p>
+            <p style="margin: 10px 0;"><strong>Memo should include:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']}</p>
+        </div>
+        
+        <p style="margin-top: 20px; color: #6c757d; font-size: 14px;">
+            This is an automated notification from your Camp Power-Up registration system.
+        </p>
     </div>
     """
     
