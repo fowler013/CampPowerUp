@@ -1898,8 +1898,8 @@ def test_admin_notification_endpoint():
             'success': True,
             'admin_notification_sent': result,
             'test_data': test_data,
-            'admin_email': 'camppowerup2025@gmail.com',
-            'message': 'Check camppowerup2025@gmail.com for admin notification'
+            'admin_email': 'fowler0613@gmail.com',
+            'message': 'Check fowler0613@gmail.com for admin notification'
         })
         
     except Exception as e:
