@@ -26,7 +26,13 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from database_config import get_db_connection, init_postgresql_tables, DB_CONFIG
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
-import requests  # For SendGrid HTTP API
+
+# Import requests for SendGrid only if needed
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 # Import email modules after Flask to avoid conflicts
 try:
@@ -145,6 +151,10 @@ def init_registration_db():
 
 def send_email_via_sendgrid(to_email, subject, html_content):
     """Send email using SendGrid API."""
+    if not REQUESTS_AVAILABLE:
+        print("❌ Requests library not available for SendGrid")
+        return False
+        
     url = "https://api.sendgrid.com/v3/mail/send"
     headers = {
         "Authorization": f"Bearer {EMAIL_CONFIG['sendgrid_api_key']}",

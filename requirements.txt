@@ -11,6 +11,7 @@ pandas==1.5.3
 
 # Email service for Railway (SMTP alternative)
 sendgrid==6.10.0
+requests==2.31.0
 numpy==1.24.4
 
 # Environment and utilities
