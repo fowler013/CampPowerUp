@@ -527,16 +527,22 @@ def submit_registration():
         # Also sync to main database for dashboard integration
         sync_to_main_database(form_data, submission_id)
         
-        # Send confirmation email
+        # Send confirmation email asynchronously to avoid timeout
         email_data = form_data.copy()
         email_data['submission_id'] = submission_id
         email_data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        send_confirmation_email(email_data)
         
+        # Start email sending in background thread
+        import threading
+        email_thread = threading.Thread(target=send_confirmation_email, args=(email_data,))
+        email_thread.daemon = True
+        email_thread.start()
+        
+        # Return success immediately - don't wait for email
         return jsonify({
             'success': True,
             'submission_id': submission_id,
-            'message': 'Registration submitted successfully!'
+            'message': 'Registration submitted successfully! A confirmation email will be sent shortly.'
         })
         
     except Exception as e:
