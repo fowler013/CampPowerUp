@@ -2,6 +2,9 @@
   "build": {
     "builder": "NIXPACKS"
   },
+  "deploy": {
+    "startCommand": "python registration_form/app.py"
+  },
   "environments": {
     "production": {
       "variables": {

@@ -23,6 +23,7 @@ import hashlib
 import smtplib
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
+from database_config import get_db_connection, init_postgresql_tables, DB_CONFIG
 import re
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text, validate_config
 
@@ -1668,10 +1669,30 @@ def export_registrations():
         flash(f'Export failed: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/database-info')
+@require_admin_auth
+def database_info():
+    """Show database configuration and migration options."""
+    return jsonify({
+        'database_type': 'PostgreSQL' if DB_CONFIG['is_production'] else 'SQLite',
+        'is_production': DB_CONFIG['is_production'],
+        'database_url_set': bool(DB_CONFIG.get('database_url')),
+        'persistence': 'Persistent (PostgreSQL)' if DB_CONFIG['is_production'] else 'Ephemeral (SQLite)',
+        'note': 'Data persists across deployments' if DB_CONFIG['is_production'] else 'Data is lost on deployment'
+    })
+
 if __name__ == '__main__':
-    init_registration_db()
+    # Initialize database (PostgreSQL on Railway, SQLite locally)
+    if DB_CONFIG['is_production']:
+        print("🚀 Initializing PostgreSQL database...")
+        init_postgresql_tables()
+    else:
+        print("🔧 Initializing SQLite database...")
+        init_registration_db()
+        
     print("🏕️ Camp Power-Up Registration Form")
     print("=" * 40)
+    print(f"📊 Database: {'PostgreSQL (Production)' if DB_CONFIG['is_production'] else 'SQLite (Local)'}")
     
     # Use PORT environment variable for Railway, fallback to 5001 for local development
     port = int(os.environ.get('PORT', 5001))
@@ -1681,10 +1702,15 @@ if __name__ == '__main__':
     print(f"🔧 Admin dashboard available at: http://{host}:{port}/admin")
     app.run(debug=False, host=host, port=port)
 else:
-    # When imported by gunicorn, just initialize the database
+    # When imported by gunicorn, initialize the appropriate database
     try:
-        init_registration_db()
-        print("✅ Registration database initialized")
+        if DB_CONFIG['is_production']:
+            print("🚀 Initializing PostgreSQL for production...")
+            init_postgresql_tables()
+            print("✅ PostgreSQL database initialized")
+        else:
+            init_registration_db()
+            print("✅ SQLite database initialized")
     except Exception as e:
         print(f"⚠️ Database initialization warning: {e}")
         # Continue anyway - don't crash the app
