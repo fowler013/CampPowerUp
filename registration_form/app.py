@@ -241,7 +241,7 @@ def send_admin_notification(registration_data):
         <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107;">
             <h3 style="margin-top: 0; color: #856404;">Payment Information</h3>
             <p style="margin: 10px 0;"><strong>Amount Due:</strong> $180.00</p>
-            <p style="margin: 10px 0;"><strong>Payment Method:</strong> Zelle to camppowerup2025@gmail.com</p>
+            <p style="margin: 10px 0;"><strong>Payment Methods:</strong> CashApp or Venmo to camppowerup2025@gmail.com</p>
             <p style="margin: 10px 0;"><strong>Expected from:</strong> {registration_data['parent_email']}</p>
             <p style="margin: 10px 0;"><strong>Memo should include:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']}</p>
         </div>
@@ -356,7 +356,7 @@ def create_email_html_content(registration_data):
                 <div class="next-steps">
                     <h3>📝 Next Steps</h3>
                     <ol>
-                        <li><strong>Payment:</strong> Complete registration by sending $180 via Zelle to <strong>camppowerup2025@gmail.com</strong></li>
+                        <li><strong>Payment:</strong> Complete registration by sending $180 via <strong>CashApp or Venmo</strong> to <strong>camppowerup2025@gmail.com</strong></li>
                         <li><strong>Include your child's name</strong> in payment memo: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</li>
                         <li><strong>Confirmation:</strong> Payment confirmation within 24 hours</li>
                     </ol>
@@ -365,7 +365,7 @@ def create_email_html_content(registration_data):
             
             <div class="footer">
                 <p>Camp Power-Up 2025 | Gaming & Technology Camp</p>
-                <p>Questions? Contact us at <strong>fowler0613@gmail.com</strong></p>
+                <p>Questions? Contact us at <strong>camppowerup2025@gmail.comm</strong></p>
             </div>
         </div>
     </body>
@@ -390,10 +390,10 @@ def send_via_smtp(registration_data, subject):
         Camper: {registration_data['child_first_name']} {registration_data['child_last_name']}
         
         Next Steps:
-        1. Send $180 via Zelle to camppowerup2025@gmail.com
+        1. Send $180 via CashApp or Venmo to camppowerup2025@gmail.com
         2. Include "{registration_data['child_first_name']} {registration_data['child_last_name']}" in memo
         
-        Questions? Contact fowler0613@gmail.com
+        Questions? Contact camppowerup2025@gmail.com
         """
         
         # Attach both versions
