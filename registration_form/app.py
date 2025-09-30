@@ -1873,6 +1873,42 @@ def test_email_send(test_email):
             'error_type': type(e).__name__
         }), 500
 
+@app.route('/test/admin-notification')
+def test_admin_notification_endpoint():
+    """Test admin notification email sending."""
+    try:
+        # Create test registration data
+        test_data = {
+            'child_first_name': 'TestAdmin',
+            'child_last_name': 'Notification',
+            'child_age': 10,
+            'parent_first_name': 'Test',
+            'parent_last_name': 'Parent',
+            'parent_email': 'fowler0613@gmail.com',
+            'parent_phone': '555-123-4567',
+            'bringing_own_switch': True,
+            'is_returning_camper': False,
+            'submission_id': 'TEST_ADMIN_001'
+        }
+        
+        print("🧪 Testing admin notification...")
+        result = send_admin_notification(test_data)
+        
+        return jsonify({
+            'success': True,
+            'admin_notification_sent': result,
+            'test_data': test_data,
+            'admin_email': 'camppowerup2025@gmail.com',
+            'message': 'Check camppowerup2025@gmail.com for admin notification'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
+
 if __name__ == '__main__':
     # Initialize database (PostgreSQL on Railway, SQLite locally)
     if DB_CONFIG['is_production']:
