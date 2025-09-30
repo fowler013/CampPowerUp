@@ -583,21 +583,28 @@ def submit_registration():
         # Get form data
         form_data = request.get_json() if request.is_json else request.form.to_dict()
         
+        # Debug logging for Railway
+        print(f"📋 Form submission received: {len(form_data)} fields")
+        print(f"🔧 Database mode: {'PostgreSQL' if DB_CONFIG['is_production'] else 'SQLite'}")
+        
         # Validate data
         errors, warnings = validate_form_data(form_data)
         if errors:
+            print(f"❌ Validation errors: {errors}")
             return jsonify({'success': False, 'errors': errors}), 400
         
         # Generate submission ID
         submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{form_data['child_last_name'][:3].upper()}"
         
         # Save to database
+        print(f"💾 Attempting database save for: {submission_id}")
         with get_db_connection('registration') as conn:
             cursor = conn.cursor()
             
             # Use appropriate placeholder syntax for database type
             placeholder = '%s' if DB_CONFIG['is_production'] else '?'
             placeholders = ', '.join([placeholder] * 34)
+            print(f"🔧 Using placeholder: {placeholder}")
             
             cursor.execute(f'''
             INSERT INTO registrations (
@@ -678,7 +685,11 @@ def submit_registration():
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'errors': [str(e)]}), 500
+        print(f"❌ Registration submission error: {str(e)}")
+        print(f"🔍 Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'errors': [f"Registration failed: {str(e)}"]}), 500
 
 @app.route('/submit_fast', methods=['POST'])
 def submit_registration_fast():
