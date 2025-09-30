@@ -1953,6 +1953,27 @@ def test_admin_notification_endpoint():
             'error_type': type(e).__name__
         }), 500
 
+@app.route('/test-db')
+def test_database():
+    """Test database connection endpoint."""
+    try:
+        with get_db_connection('registration') as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM registrations')
+            count = cursor.fetchone()[0]
+            return jsonify({
+                'success': True,
+                'database_type': 'PostgreSQL' if DB_CONFIG['is_production'] else 'SQLite',
+                'registrations_count': count,
+                'environment': 'production' if DB_CONFIG['is_production'] else 'development'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'database_type': 'PostgreSQL' if DB_CONFIG['is_production'] else 'SQLite'
+        }), 500
+
 if __name__ == '__main__':
     # Initialize database (PostgreSQL on Railway, SQLite locally)
     if DB_CONFIG['is_production']:
