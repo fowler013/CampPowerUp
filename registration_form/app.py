@@ -208,6 +208,43 @@ def send_confirmation_email(registration_data):
         print(f"❌ Failed to send confirmation email: {e}")
         return False
 
+def send_admin_notification(registration_data):
+    """Send notification to camp admin about new registration."""
+    admin_email = "camppowerup2025@gmail.com"
+    subject = f"🏕️ NEW REGISTRATION - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+    
+    html_content = f"""
+    <h2>🏕️ New Camp Power-Up Registration</h2>
+    <p><strong>Child:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']} (Age: {registration_data['child_age']})</p>
+    <p><strong>Parent:</strong> {registration_data['parent_first_name']} {registration_data['parent_last_name']}</p>
+    <p><strong>Email:</strong> {registration_data['parent_email']}</p>
+    <p><strong>Phone:</strong> {registration_data.get('parent_phone', 'Not provided')}</p>
+    <p><strong>Switch:</strong> {'Bringing own' if registration_data.get('bringing_own_switch') else 'Needs camp switch'}</p>
+    <p><strong>Type:</strong> {'Returning camper' if registration_data.get('is_returning_camper') else 'New camper'}</p>
+    <p><strong>Submission ID:</strong> {registration_data['submission_id']}</p>
+    
+    <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
+        <h3>💰 Payment Expected: $180</h3>
+        <p>Watch for Zelle payment from {registration_data['parent_email']}</p>
+        <p>Payment memo should include: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</p>
+    </div>
+    """
+    
+    try:
+        if EMAIL_CONFIG['use_sendgrid']:
+            result = send_email_via_sendgrid(admin_email, subject, html_content)
+            if result:
+                print(f"✅ Admin notification sent to {admin_email}")
+            else:
+                print(f"❌ Admin notification failed to {admin_email}")
+            return result
+        else:
+            print(f"⚠️ SMTP mode - admin notification not implemented yet")
+            return False
+    except Exception as e:
+        print(f"❌ Failed to send admin notification: {e}")
+        return False
+
 def send_via_sendgrid(registration_data, subject):
     """Send email using SendGrid API (Railway-compatible)."""
     print(f"🔄 Attempting SendGrid email to {registration_data['parent_email']}")
@@ -598,7 +635,13 @@ def submit_registration():
         
         # Start email sending in background thread
         import threading
-        email_thread = threading.Thread(target=send_confirmation_email, args=(email_data,))
+        
+        def send_all_emails(registration_data):
+            """Send both confirmation and admin notification emails."""
+            send_confirmation_email(registration_data)  # To parent
+            send_admin_notification(registration_data)  # To admin
+        
+        email_thread = threading.Thread(target=send_all_emails, args=(email_data,))
         email_thread.daemon = True
         email_thread.start()
         
