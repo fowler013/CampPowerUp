@@ -356,7 +356,7 @@ def create_email_html_content(registration_data):
                 <div class="next-steps">
                     <h3>📝 Next Steps</h3>
                     <ol>
-                        <li><strong>Payment:</strong> Complete registration by sending $180 via Zelle to <strong>fowler0613@gmail.com</strong></li>
+                        <li><strong>Payment:</strong> Complete registration by sending $180 via Zelle to <strong>camppowerup2025@gmail.com</strong></li>
                         <li><strong>Include your child's name</strong> in payment memo: "{registration_data['child_first_name']} {registration_data['child_last_name']}"</li>
                         <li><strong>Confirmation:</strong> Payment confirmation within 24 hours</li>
                     </ol>
@@ -390,7 +390,7 @@ def send_via_smtp(registration_data, subject):
         Camper: {registration_data['child_first_name']} {registration_data['child_last_name']}
         
         Next Steps:
-        1. Send $180 via Zelle to fowler0613@gmail.com
+        1. Send $180 via Zelle to camppowerup2025@gmail.com
         2. Include "{registration_data['child_first_name']} {registration_data['child_last_name']}" in memo
         
         Questions? Contact fowler0613@gmail.com
