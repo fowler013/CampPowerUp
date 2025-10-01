@@ -1506,8 +1506,7 @@ def verify_returning_campers():
     conn.close()
     
     # Create simple HTML response
-    html = '''
-    <!DOCTYPE html>
+    html = '''<!DOCTYPE html>
     <html>
     <head>
         <title>Returning Camper Verification</title>
