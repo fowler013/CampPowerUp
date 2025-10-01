@@ -183,6 +183,15 @@ def submit_registration():
         print(f"❌ Registration error: {e}")
         return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
 
+@app.route('/deployment-info')
+def deployment_info():
+    """Show deployment timestamp."""
+    return jsonify({
+        "deployment_time": "2025-10-01 18:25:00 UTC",
+        "version": "minimal-v2-with-template-fix",
+        "status": "registration_form_restored"
+    })
+
 if __name__ == '__main__':
     init_database()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
