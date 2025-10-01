@@ -70,6 +70,12 @@ def init_registration_db():
 @app.route('/')
 def index():
     """Main registration form."""
+    # Debug: Check if templates directory exists
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), 'templates', 'registration_form.html')
+    if not os.path.exists(template_path):
+        return f"Template not found at: {template_path}. Current directory: {os.getcwd()}. Files: {os.listdir(os.path.dirname(__file__))}"
+    
     return render_template('registration_form.html', 
                          camp_config=CAMP_CONFIG,
                          camp_title=get_camp_title(),
