@@ -60,7 +60,14 @@ def init_database():
 @app.route('/')
 def registration_form():
     """Display the registration form."""
-    return render_template('registration_form.html')
+    return """
+    <html><head><title>Camp Power-Up Registration</title></head>
+    <body><h1>🏕️ Camp Power-Up Registration - WORKING!</h1>
+    <p>✅ App is running successfully!</p>
+    <p>🔗 <a href="/test-db">Test Database Connection</a></p>
+    <p>📝 Registration form coming back online...</p>
+    </body></html>
+    """
 
 @app.route('/test-db')
 def test_db():
