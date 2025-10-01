@@ -21,14 +21,14 @@ app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_d
 # Configure pricing in Flask config for templates
 app.config['pricing'] = {
     'returning_camper': {
-        'total': 200,
+        'total': 80,
         'deposit': 50,
-        'final_payment': 150
+        'final_payment': 30
     },
     'new_camper': {
-        'total': 250,
-        'deposit': 75,
-        'final_payment': 175
+        'total': 100,
+        'deposit': 50,
+        'final_payment': 50
     }
 }
 
@@ -91,9 +91,9 @@ def index():
     """Main registration form."""
     # Create pricing object that template expects
     pricing = {
-        'returning_text': 'Returning Campers: $200',
-        'new_text': 'New Campers: $250', 
-        'payment_deadline': 'Payment due within 7 days of registration'
+        'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
+        'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
+        'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-26th, 10am-3pm daily.'
     }
     
     return render_template('registration_form.html', 
