@@ -9,7 +9,8 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, make_response
+from functools import wraps
 
 # Import our PostgreSQL database config
 try:
@@ -22,6 +23,19 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+# Admin configuration
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'camp2025!')
+
+def require_admin_auth(f):
+    """Decorator to require admin authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def init_database():
     """Initialize the registration database."""
@@ -191,6 +205,152 @@ def deployment_info():
         "version": "minimal-v2-with-template-fix",
         "status": "registration_form_restored"
     })
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid credentials', 'error')
+    
+    return '''
+    <html><head><title>Camp Power-Up Admin Login</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; background: #f5f5f5;">
+        <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h2>🏕️ Camp Power-Up Admin</h2>
+            <form method="post">
+                <div style="margin-bottom: 15px;">
+                    <label>Username:</label><br>
+                    <input type="text" name="username" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label>Password:</label><br>
+                    <input type="password" name="password" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Login</button>
+            </form>
+        </div>
+    </body></html>
+    '''
+
+@app.route('/admin')
+@require_admin_auth
+def admin_dashboard():
+    """Admin dashboard."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get registration count and recent registrations
+        cursor.execute("SELECT COUNT(*) FROM registrations")
+        total_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT submission_id, child_first_name, child_last_name, parent_email, timestamp FROM registrations ORDER BY timestamp DESC LIMIT 10")
+        recent_registrations = cursor.fetchall()
+        
+        conn.close()
+        
+        # Build HTML response
+        registrations_html = ""
+        for reg in recent_registrations:
+            registrations_html += f'''
+            <tr>
+                <td>{reg[0]}</td>
+                <td>{reg[1]} {reg[2]}</td>
+                <td>{reg[3]}</td>
+                <td>{reg[4]}</td>
+            </tr>
+            '''
+        
+        return f'''
+        <html><head><title>Camp Power-Up Admin Dashboard</title></head>
+        <body style="font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5;">
+            <div style="background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px;">
+                <h1>🏕️ Camp Power-Up Admin Dashboard</h1>
+                <p><strong>Total Registrations:</strong> {total_count}</p>
+                <p><a href="/admin/export" style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;">📊 Export CSV</a></p>
+                <p><a href="/admin/logout" style="background: #dc3545; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;">🚪 Logout</a></p>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 10px;">
+                <h2>Recent Registrations</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 10px; border: 1px solid #ddd;">Submission ID</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Child Name</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Parent Email</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {registrations_html}
+                    </tbody>
+                </table>
+            </div>
+        </body></html>
+        '''
+        
+    except Exception as e:
+        return f"Admin Error: {str(e)}", 500
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout."""
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin/export')
+@require_admin_auth
+def export_registrations():
+    """Export registrations as CSV."""
+    import csv
+    import io
+    from datetime import datetime
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        query = "SELECT * FROM registrations ORDER BY timestamp DESC"
+        cursor.execute(query)
+        registrations = cursor.fetchall()
+        conn.close()
+        
+        # Create CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'ID', 'Submission ID', 'Timestamp', 'Child First Name', 'Child Last Name', 'Child Age',
+            'Parent First Name', 'Parent Last Name', 'Parent Email', 'Parent Phone',
+            'Emergency Contact Name', 'Emergency Contact Phone', 'Has Allergies', 'Allergies Description',
+            'Has Medical Conditions', 'Medical Conditions Description', 'Is Returning Camper',
+            'Returning Years', 'How Heard About Camp', 'Additional Comments'
+        ])
+        
+        # Write data
+        for reg in registrations:
+            writer.writerow(reg)
+        
+        output.seek(0)
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=camp_registrations_{datetime.now().strftime("%Y%m%d")}.csv'
+        
+        return response
+        
+    except Exception as e:
+        return f"Export Error: {str(e)}", 500
 
 if __name__ == '__main__':
     init_database()
