@@ -711,7 +711,7 @@ def submit_registration_fast():
         submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{form_data['child_last_name'][:3].upper()}"
         
         # Save to database (same as main route but no email)
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -1300,7 +1300,7 @@ def validate_config():
 def edit_camper(registration_id):
     """Show edit form for a camper registration."""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         conn.row_factory = sqlite3.Row
         
         cursor = conn.execute('''
@@ -1329,7 +1329,7 @@ def update_camper(registration_id):
     try:
         form_data = request.form.to_dict()
         
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Update registration with new data
@@ -1389,7 +1389,7 @@ def update_camper(registration_id):
 def delete_camper(registration_id):
     """Delete a camper registration."""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get camper info for confirmation message
@@ -1413,7 +1413,7 @@ def delete_camper(registration_id):
 @app.route('/api/registrations')
 def api_registrations():
     """API endpoint for getting registration data."""
-    conn = sqlite3.connect(REGISTRATION_DB)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     
     cursor = conn.execute('''
@@ -1430,7 +1430,7 @@ def api_registrations():
 def confirmation(submission_id):
     """Show confirmation page with registration details"""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -1467,7 +1467,7 @@ def confirmation(submission_id):
 @require_admin_auth
 def verify_returning_campers():
     """Admin tool to review returning camper claims."""
-    conn = sqlite3.connect(REGISTRATION_DB)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Get all registrations claiming to be returning campers
@@ -1516,7 +1516,7 @@ def verify_returning_campers():
 @require_admin_auth
 def admin_analytics():
     """Admin analytics dashboard showing registration statistics and trends."""
-    conn = sqlite3.connect(REGISTRATION_DB)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     
     # Get current registrations
@@ -1577,7 +1577,7 @@ def admin_analytics():
 @require_admin_auth
 def registration_stats():
     """Show registration statistics including pricing breakdown."""
-    conn = sqlite3.connect(REGISTRATION_DB)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Get counts
@@ -1617,7 +1617,7 @@ def registration_stats():
 def send_reminder(submission_id):
     """Send payment reminder email."""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -1679,7 +1679,7 @@ Submission ID: {submission_id}
 def mark_paid(submission_id):
     """Mark a registration as paid."""
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('UPDATE registrations SET payment_status = ? WHERE submission_id = ?', 
@@ -1705,7 +1705,7 @@ def export_registrations():
     import io
     
     try:
-        conn = sqlite3.connect(REGISTRATION_DB)
+        conn = get_db_connection()
         conn.row_factory = sqlite3.Row  # This enables column access by name
         cursor = conn.cursor()
         
