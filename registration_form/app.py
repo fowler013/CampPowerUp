@@ -65,7 +65,54 @@ def home():
             <li>✅ Database: WORKING</li>
             <li>🔧 Admin dashboard: Being restored</li>
         </ul>
+        <p><a href="/register">📝 Registration Form</a></p>
         <p><a href="/test-db">Test Database Connection</a></p>
+    </body>
+    </html>
+    '''
+
+@app.route('/register')
+def register():
+    """Registration form."""
+    return '''
+    <html>
+    <head><title>Camp Power-Up Registration Form</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1>🏕️ Camp Power-Up 2025 Registration</h1>
+        <form method="POST" action="/submit">
+            <h3>Child Information</h3>
+            <p><label>First Name: <input type="text" name="child_first_name" required style="width: 200px;"></label></p>
+            <p><label>Last Name: <input type="text" name="child_last_name" required style="width: 200px;"></label></p>
+            <p><label>Age: <input type="number" name="child_age" min="5" max="18" required style="width: 100px;"></label></p>
+            
+            <h3>Parent Information</h3>
+            <p><label>Parent First Name: <input type="text" name="parent_first_name" required style="width: 200px;"></label></p>
+            <p><label>Parent Last Name: <input type="text" name="parent_last_name" required style="width: 200px;"></label></p>
+            <p><label>Email: <input type="email" name="parent_email" required style="width: 300px;"></label></p>
+            <p><label>Phone: <input type="tel" name="parent_phone" required style="width: 200px;"></label></p>
+            
+            <h3>Emergency Contact</h3>
+            <p><label>Emergency Contact Name: <input type="text" name="emergency_contact_name" required style="width: 200px;"></label></p>
+            <p><label>Emergency Contact Phone: <input type="tel" name="emergency_contact_phone" required style="width: 200px;"></label></p>
+            
+            <h3>Medical Information</h3>
+            <p><label><input type="checkbox" name="has_allergies"> Child has allergies</label></p>
+            <p><label>If yes, please describe: <br><textarea name="allergies_description" rows="3" cols="50"></textarea></label></p>
+            
+            <p><label><input type="checkbox" name="has_medical_conditions"> Child has medical conditions</label></p>
+            <p><label>If yes, please describe: <br><textarea name="medical_conditions_description" rows="3" cols="50"></textarea></label></p>
+            
+            <h3>Previous Experience</h3>
+            <p><label><input type="checkbox" name="is_returning_camper"> Returning camper</label></p>
+            <p><label>If returning, how many years: <input type="number" name="returning_years" min="1" max="10" style="width: 100px;"></label></p>
+            
+            <h3>Additional Information</h3>
+            <p><label>How did you hear about camp: <br><textarea name="how_heard_about_camp" rows="2" cols="50"></textarea></label></p>
+            <p><label>Additional comments: <br><textarea name="additional_comments" rows="3" cols="50"></textarea></label></p>
+            
+            <p><input type="submit" value="Register for Camp" style="background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;"></p>
+        </form>
+        <p><a href="/">← Back to Home</a></p>
     </body>
     </html>
     '''
