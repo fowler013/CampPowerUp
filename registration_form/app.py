@@ -60,14 +60,19 @@ def init_database():
 @app.route('/')
 def registration_form():
     """Display the registration form."""
-    return """
-    <html><head><title>Camp Power-Up Registration</title></head>
-    <body><h1>🏕️ Camp Power-Up Registration - WORKING!</h1>
-    <p>✅ App is running successfully!</p>
-    <p>🔗 <a href="/test-db">Test Database Connection</a></p>
-    <p>📝 Registration form coming back online...</p>
-    </body></html>
-    """
+    try:
+        return render_template('registration_form.html')
+    except Exception as e:
+        print(f"Template error: {e}")
+        return f"""
+        <html><head><title>Camp Power-Up Registration</title></head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+        <h1>🏕️ Camp Power-Up Registration</h1>
+        <p><strong>⚠️ Template loading issue. Please contact support.</strong></p>
+        <p>Error: {str(e)}</p>
+        <p><a href="/test-db">Test Database Connection</a></p>
+        </body></html>
+        """
 
 @app.route('/test-db')
 def test_db():
@@ -148,7 +153,17 @@ def submit_registration():
         conn.commit()
         conn.close()
         
-        return render_template('confirmation.html', submission_id=submission_id)
+        try:
+            return render_template('confirmation.html', submission_id=submission_id)
+        except:
+            return f"""
+            <html><head><title>Registration Successful</title></head>
+            <body><h1>✅ Registration Successful!</h1>
+            <p><strong>Submission ID:</strong> {submission_id}</p>
+            <p>Thank you for registering for Camp Power-Up!</p>
+            <p><a href="/">Register Another Camper</a></p>
+            </body></html>
+            """
         
     except Exception as e:
         print(f"❌ Registration error: {e}")
