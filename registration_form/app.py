@@ -1520,10 +1520,7 @@ def admin_analytics():
     conn.row_factory = sqlite3.Row
     
     # Get current registrations
-    cursor = conn.execute('''
-        SELECT * FROM registrations 
-        ORDER BY timestamp DESC
-    ''')
+    cursor = conn.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
     registrations = [dict(row) for row in cursor.fetchall()]
     
     # Calculate analytics
@@ -1620,10 +1617,7 @@ def send_reminder(submission_id):
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
-        cursor.execute('''
-            SELECT child_first_name, child_last_name, parent_email, payment_status 
-            FROM registrations WHERE submission_id = ?
-        ''', (submission_id,))
+        cursor.execute("SELECT child_first_name, child_last_name, parent_email, payment_status FROM registrations WHERE submission_id = ?", (submission_id,))
         
         registration = cursor.fetchone()
         if not registration:
