@@ -15,7 +15,7 @@ from database_config import get_db_connection, init_postgresql_tables, DB_CONFIG
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text
 from functools import wraps
 
-app = Flask(__name__, template_folder='./templates')
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_dev_only')
 
 # Admin credentials
@@ -70,12 +70,6 @@ def init_registration_db():
 @app.route('/')
 def index():
     """Main registration form."""
-    # Debug: Check if templates directory exists
-    import os
-    template_path = os.path.join(os.path.dirname(__file__), 'templates', 'registration_form.html')
-    if not os.path.exists(template_path):
-        return f"Template not found at: {template_path}. Current directory: {os.getcwd()}. Files: {os.listdir(os.path.dirname(__file__))}"
-    
     return render_template('registration_form.html', 
                          camp_config=CAMP_CONFIG,
                          camp_title=get_camp_title(),
