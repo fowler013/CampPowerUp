@@ -61,7 +61,21 @@ def init_database():
 def registration_form():
     """Display the registration form."""
     try:
-        return render_template('registration_form.html')
+        # Provide template variables
+        pricing = {
+            'returning_text': 'Returning Campers: $100 deposit + $200 final payment = $300 total',
+            'new_text': 'New Campers: $125 deposit + $225 final payment = $350 total', 
+            'payment_deadline': 'Final payment due before camp start. Camp runs July 15-19, 2025, 9:00 AM - 4:00 PM daily.'
+        }
+        
+        config = {
+            'pricing': {
+                'returning_camper': {'total': 300},
+                'new_camper': {'total': 350}
+            }
+        }
+        
+        return render_template('registration_form.html', pricing=pricing, config=config)
     except Exception as e:
         print(f"Template error: {e}")
         return f"""
