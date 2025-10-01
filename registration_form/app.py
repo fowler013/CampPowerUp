@@ -399,18 +399,95 @@ def admin_dashboard():
 def test_db():
     """Test database connection."""
     try:
-        conn = get_db_connection()
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM registrations")
         count = cursor.fetchone()[0]
         conn.close()
         return jsonify({
-            "database_type": "PostgreSQL",
+            "database_type": "SQLite",
             "environment": "production",
             "registrations_count": count,
             "success": True,
             "message": "Database working - your registration data is safe!"
         })
+    except Exception as e:
+        return jsonify({"error": str(e), "success": False}), 500
+
+@app.route('/test-registration')
+def test_registration():
+    """Create a test registration to verify database functionality."""
+    try:
+        # Generate test submission ID
+        submission_id = f"TEST_{datetime.now().strftime('%Y%m%d_%H%M%S')}_DEMO"
+        
+        # Test data
+        test_data = {
+            'child_first_name': 'Test',
+            'child_last_name': 'Camper',
+            'child_age': 12,
+            'parent_first_name': 'Test',
+            'parent_last_name': 'Parent',
+            'parent_email': 'test@example.com',
+            'parent_phone': '555-123-4567',
+            'emergency_contact_name': 'Emergency Contact',
+            'emergency_contact_phone': '555-987-6543',
+            'has_allergies': False,
+            'allergies_description': '',
+            'has_medical_conditions': False,
+            'medical_conditions_description': '',
+            'is_returning_camper': False,
+            'returning_years': '',
+            'how_heard_about_camp': 'Test submission',
+            'additional_comments': 'This is a test registration',
+            'bringing_own_switch': True,
+            'has_sensory_issues': False
+        }
+        
+        # Save to database
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO registrations (
+                submission_id, child_first_name, child_last_name, child_age,
+                parent_first_name, parent_last_name, parent_email, parent_phone,
+                emergency_contact_name, emergency_contact_phone,
+                has_allergies, allergies_description, has_medical_conditions, 
+                medical_conditions_description, is_returning_camper, returning_years,
+                how_heard_about_camp, additional_comments, bringing_own_switch, has_sensory_issues
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            submission_id, test_data['child_first_name'], test_data['child_last_name'], 
+            test_data['child_age'], test_data['parent_first_name'], test_data['parent_last_name'],
+            test_data['parent_email'], test_data['parent_phone'], 
+            test_data['emergency_contact_name'], test_data['emergency_contact_phone'],
+            test_data['has_allergies'], test_data['allergies_description'],
+            test_data['has_medical_conditions'], test_data['medical_conditions_description'],
+            test_data['is_returning_camper'], test_data['returning_years'],
+            test_data['how_heard_about_camp'], test_data['additional_comments'],
+            test_data['bringing_own_switch'], test_data['has_sensory_issues']
+        ))
+        conn.commit()
+        conn.close()
+        
+        # Test email functionality
+        test_data['submission_id'] = submission_id
+        email_sent = False
+        try:
+            email_sent = send_confirmation_email(test_data)
+        except Exception as e:
+            print(f"Email test failed: {e}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Test registration created successfully!",
+            "submission_id": submission_id,
+            "email_sent": email_sent,
+            "child_name": f"{test_data['child_first_name']} {test_data['child_last_name']}",
+            "admin_url": "/admin"
+        })
+        
     except Exception as e:
         return jsonify({"error": str(e), "success": False}), 500
 
