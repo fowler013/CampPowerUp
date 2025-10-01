@@ -33,39 +33,44 @@ def require_admin_auth(f):
 
 def init_registration_db():
     """Initialize the registration database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS registrations (
-            id SERIAL PRIMARY KEY,
-            submission_id TEXT UNIQUE,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending',
-            payment_status TEXT DEFAULT 'pending',
-            child_first_name TEXT,
-            child_last_name TEXT,
-            child_age INTEGER,
-            parent_first_name TEXT,
-            parent_last_name TEXT,
-            parent_email TEXT,
-            parent_phone TEXT,
-            emergency_contact_name TEXT,
-            emergency_contact_phone TEXT,
-            has_allergies BOOLEAN DEFAULT FALSE,
-            allergies_description TEXT,
-            has_medical_conditions BOOLEAN DEFAULT FALSE,
-            medical_conditions_description TEXT,
-            is_returning_camper BOOLEAN DEFAULT FALSE,
-            returning_years TEXT,
-            how_heard_about_camp TEXT,
-            additional_comments TEXT,
-            bringing_own_switch BOOLEAN DEFAULT FALSE,
-            has_sensory_issues BOOLEAN DEFAULT FALSE
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        # Use SQLite for Railway deployment - simpler and more reliable
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS registrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                submission_id TEXT UNIQUE,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'pending',
+                payment_status TEXT DEFAULT 'pending',
+                child_first_name TEXT,
+                child_last_name TEXT,
+                child_age INTEGER,
+                parent_first_name TEXT,
+                parent_last_name TEXT,
+                parent_email TEXT,
+                parent_phone TEXT,
+                emergency_contact_name TEXT,
+                emergency_contact_phone TEXT,
+                has_allergies BOOLEAN DEFAULT 0,
+                allergies_description TEXT,
+                has_medical_conditions BOOLEAN DEFAULT 0,
+                medical_conditions_description TEXT,
+                is_returning_camper BOOLEAN DEFAULT 0,
+                returning_years TEXT,
+                how_heard_about_camp TEXT,
+                additional_comments TEXT,
+                bringing_own_switch BOOLEAN DEFAULT 0,
+                has_sensory_issues BOOLEAN DEFAULT 0
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database init error: {e}")
+        # Don't crash the app if DB init fails
 
 @app.route('/')
 def index():
@@ -112,7 +117,7 @@ def submit():
         }
         
         # Save to database
-        conn = get_db_connection()
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -123,7 +128,7 @@ def submit():
                 has_allergies, allergies_description, has_medical_conditions, 
                 medical_conditions_description, is_returning_camper, returning_years,
                 how_heard_about_camp, additional_comments, bringing_own_switch, has_sensory_issues
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             submission_id, data['child_first_name'], data['child_last_name'], 
             data['child_age'], data['parent_first_name'], data['parent_last_name'],
@@ -176,17 +181,14 @@ def admin_logout():
 def admin_dashboard():
     """Admin dashboard with all registrations."""
     try:
-        conn = get_db_connection()
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT * FROM registrations 
-            ORDER BY timestamp DESC
-        """)
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
         
-        # Get column names
-        columns = [desc[0] for desc in cursor.description]
-        registrations = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        # Get registrations as dictionaries
+        registrations = [dict(row) for row in cursor.fetchall()]
         
         # Calculate statistics
         total_registrations = len(registrations)
