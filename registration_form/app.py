@@ -75,11 +75,19 @@ def init_registration_db():
 @app.route('/')
 def index():
     """Main registration form."""
+    # Create pricing object that template expects
+    pricing = {
+        'returning_text': 'Returning Campers: $200',
+        'new_text': 'New Campers: $250', 
+        'payment_deadline': 'Payment due within 7 days of registration'
+    }
+    
     return render_template('registration_form.html', 
                          camp_config=CAMP_CONFIG,
                          camp_title=get_camp_title(),
                          camp_subtitle=get_camp_subtitle(),
-                         pricing_text=get_pricing_text())
+                         pricing_text=get_pricing_text(),
+                         pricing=pricing)
 
 @app.route('/register')
 def register():
