@@ -11,14 +11,18 @@ import uuid
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 
-# Import our PostgreSQL database config
-try:
-    from database_config import get_db_connection, DB_CONFIG, REGISTRATION_DB
-except ImportError:
-    print("⚠️ Could not import database_config, using SQLite fallback")
-    REGISTRATION_DB = 'registration_submissions.db'
-    def get_db_connection():
-        return sqlite3.connect(REGISTRATION_DB)
+# Database configuration - use simple SQLite for reliability
+REGISTRATION_DB = os.path.join(os.path.dirname(__file__), 'registration_submissions.db')
+
+def get_db_connection():
+    """Get database connection with SQLite fallback for stability."""
+    return sqlite3.connect(REGISTRATION_DB)
+
+# Mock DB_CONFIG for compatibility
+DB_CONFIG = {
+    'is_production': bool(os.environ.get('DATABASE_URL')),
+    'database_url': os.environ.get('DATABASE_URL', '')
+}
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
