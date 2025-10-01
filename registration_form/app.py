@@ -491,6 +491,17 @@ def test_registration():
     except Exception as e:
         return jsonify({"error": str(e), "success": False}), 500
 
+@app.route('/admin/debug-login')
+def debug_login():
+    """Debug admin login credentials."""
+    return jsonify({
+        "admin_username": ADMIN_USERNAME,
+        "admin_password_set": "Yes" if ADMIN_PASSWORD else "No",
+        "admin_password_length": len(ADMIN_PASSWORD),
+        "session_logged_in": session.get('admin_logged_in', False),
+        "message": "Use username: campadmin, password: PowerUp2025!"
+    })
+
 @app.route('/admin/export')
 @require_admin_auth
 def admin_export():
