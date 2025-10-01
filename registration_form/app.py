@@ -33,39 +33,43 @@ def require_admin_auth(f):
 
 def init_registration_db():
     """Initialize the registration database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS registrations (
-            id SERIAL PRIMARY KEY,
-            submission_id TEXT UNIQUE,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending',
-            payment_status TEXT DEFAULT 'pending',
-            child_first_name TEXT,
-            child_last_name TEXT,
-            child_age INTEGER,
-            parent_first_name TEXT,
-            parent_last_name TEXT,
-            parent_email TEXT,
-            parent_phone TEXT,
-            emergency_contact_name TEXT,
-            emergency_contact_phone TEXT,
-            has_allergies BOOLEAN DEFAULT FALSE,
-            allergies_description TEXT,
-            has_medical_conditions BOOLEAN DEFAULT FALSE,
-            medical_conditions_description TEXT,
-            is_returning_camper BOOLEAN DEFAULT FALSE,
-            returning_years TEXT,
-            how_heard_about_camp TEXT,
-            additional_comments TEXT,
-            bringing_own_switch BOOLEAN DEFAULT FALSE,
-            has_sensory_issues BOOLEAN DEFAULT FALSE
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS registrations (
+                id SERIAL PRIMARY KEY,
+                submission_id TEXT UNIQUE,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'pending',
+                payment_status TEXT DEFAULT 'pending',
+                child_first_name TEXT,
+                child_last_name TEXT,
+                child_age INTEGER,
+                parent_first_name TEXT,
+                parent_last_name TEXT,
+                parent_email TEXT,
+                parent_phone TEXT,
+                emergency_contact_name TEXT,
+                emergency_contact_phone TEXT,
+                has_allergies BOOLEAN DEFAULT FALSE,
+                allergies_description TEXT,
+                has_medical_conditions BOOLEAN DEFAULT FALSE,
+                medical_conditions_description TEXT,
+                is_returning_camper BOOLEAN DEFAULT FALSE,
+                returning_years TEXT,
+                how_heard_about_camp TEXT,
+                additional_comments TEXT,
+                bringing_own_switch BOOLEAN DEFAULT FALSE,
+                has_sensory_issues BOOLEAN DEFAULT FALSE
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # Fallback - don't crash the app if DB init fails
 
 @app.route('/')
 def index():
