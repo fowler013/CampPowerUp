@@ -28,15 +28,11 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')  # Original working username
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')  # Original working password
 
-def check_admin_auth():
-    """Check if user is authenticated as admin."""
-    return session.get('admin_authenticated', False)
-
 def require_admin_auth(f):
     """Decorator to require admin authentication."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not check_admin_auth():
+        if not session.get('admin_logged_in'):
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -218,104 +214,96 @@ def admin_login():
         password = request.form.get('password')
         
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin_authenticated'] = True
-            session.permanent = True
-            flash('Successfully logged in as admin', 'success')
+            session['admin_logged_in'] = True
             return redirect(url_for('admin_dashboard'))
         else:
             flash('Invalid credentials', 'error')
     
-    try:
-        return render_template('admin_login.html')
-    except:
-        # Fallback if template missing
-        return '''
-        <html><head><title>Camp Power-Up Admin Login</title></head>
-        <body style="font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; background: #f5f5f5;">
-            <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <h2>🏕️ Camp Power-Up Admin</h2>
-                <form method="post">
-                    <div style="margin-bottom: 15px;">
-                        <label>Username:</label><br>
-                        <input type="text" name="username" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        <label>Password:</label><br>
-                        <input type="password" name="password" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-                    <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Login</button>
-                </form>
-            </div>
-        </body></html>
-        '''
+    return '''
+    <html><head><title>Camp Power-Up Admin Login</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; background: #f5f5f5;">
+        <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h2>🏕️ Camp Power-Up Admin</h2>
+            <form method="post">
+                <div style="margin-bottom: 15px;">
+                    <label>Username:</label><br>
+                    <input type="text" name="username" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label>Password:</label><br>
+                    <input type="password" name="password" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Login</button>
+            </form>
+        </div>
+    </body></html>
+    '''
 
 @app.route('/admin')
 @require_admin_auth
 def admin_dashboard():
-    """Admin dashboard for viewing registrations with live session tracking."""
+    """Admin dashboard."""
     try:
-        registrations = []
-        
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
-        registrations = [dict(row) for row in cursor.fetchall()]
+        
+        # Get registration count and recent registrations
+        cursor.execute("SELECT COUNT(*) FROM registrations")
+        total_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT submission_id, child_first_name, child_last_name, parent_email, timestamp FROM registrations ORDER BY timestamp DESC LIMIT 10")
+        recent_registrations = cursor.fetchall()
+        
         conn.close()
         
-        # Calculate live session statistics
-        total_registrations = len(registrations)
-        today = datetime.now().strftime('%Y-%m-%d')
+        # Build HTML response
+        registrations_html = ""
+        for reg in recent_registrations:
+            registrations_html += f'''
+            <tr>
+                <td>{reg[0]}</td>
+                <td>{reg[1]} {reg[2]}</td>
+                <td>{reg[3]}</td>
+                <td>{reg[4]}</td>
+            </tr>
+            '''
         
-        # Today's registrations
-        todays_registrations = [r for r in registrations if r['timestamp'] and str(r['timestamp']).startswith(today)]
-        
-        # Week's registrations  
-        from datetime import timedelta
-        week_start = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        weeks_registrations = [r for r in registrations if r['timestamp'] and str(r['timestamp']) >= week_start]
-        
-        # Payment status tracking
-        paid_count = len([r for r in registrations if r.get('payment_status') == 'paid'])
-        pending_payment = len([r for r in registrations if r.get('payment_status') == 'pending'])
-        
-        # Camper type breakdown
-        returning_campers = len([r for r in registrations if r.get('is_returning_camper')])
-        new_campers = total_registrations - returning_campers
-        
-        try:
-            return render_template('admin_dashboard.html', 
-                                 registrations=registrations,
-                                 total_registrations=total_registrations,
-                                 todays_registrations=len(todays_registrations),
-                                 weeks_registrations=len(weeks_registrations),
-                                 paid_count=paid_count,
-                                 pending_payment=pending_payment,
-                                 returning_campers=returning_campers,
-                                 new_campers=new_campers)
-        except:
-            # Fallback if template missing - use simplified version
-            return f"""
-            <html><head><title>Camp Power-Up Admin Dashboard</title></head>
-            <body style="font-family: Arial, sans-serif; margin: 20px;">
+        return f'''
+        <html><head><title>Camp Power-Up Admin Dashboard</title></head>
+        <body style="font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5;">
+            <div style="background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px;">
                 <h1>🏕️ Camp Power-Up Admin Dashboard</h1>
-                <p>Total Registrations: {total_registrations}</p>
-                <p>Today: {len(todays_registrations)} | This Week: {len(weeks_registrations)}</p>
-                <p><a href="/admin/export">Export CSV</a> | <a href="/admin/logout">Logout</a></p>
-                <h3>Recent Registrations:</h3>
-                <ul>
-                {chr(10).join([f'<li>{r["child_first_name"]} {r["child_last_name"]} - {r["parent_email"]}</li>' for r in registrations[:10]])}
-                </ul>
-            </body></html>
-            """
+                <p><strong>Total Registrations:</strong> {total_count}</p>
+                <p><a href="/admin/export" style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;">📊 Export CSV</a></p>
+                <p><a href="/admin/logout" style="background: #dc3545; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px;">🚪 Logout</a></p>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 10px;">
+                <h2>Recent Registrations</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 10px; border: 1px solid #ddd;">Submission ID</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Child Name</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Parent Email</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {registrations_html}
+                    </tbody>
+                </table>
+            </div>
+        </body></html>
+        '''
+        
     except Exception as e:
-        return f"Admin Dashboard Error: {str(e)}", 500
+        return f"Admin Error: {str(e)}", 500
 
 @app.route('/admin/logout')
 def admin_logout():
     """Admin logout."""
-    session.pop('admin_authenticated', None)
-    flash('Logged out successfully', 'success')
+    session.pop('admin_logged_in', None)
     return redirect(url_for('admin_login'))
 
 @app.route('/admin/export')
