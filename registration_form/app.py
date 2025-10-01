@@ -89,7 +89,7 @@ def init_registration_db():
     conn = sqlite3.connect(REGISTRATION_DB)
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             submission_id TEXT UNIQUE,
@@ -144,7 +144,7 @@ def init_registration_db():
             -- Form Data (raw JSON backup)
             raw_form_data TEXT
         )
-    ''')
+    """)
     
     conn.commit()
     conn.close()
@@ -427,23 +427,23 @@ def check_returning_camper_validity(child_first_name, child_last_name, parent_em
     
     # Check for exact name and email match in current registrations
     # Look for registrations from previous years/seasons (more than 30 days ago)
-    cursor.execute('''
+    cursor.execute("""
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
         AND LOWER(child_last_name) = LOWER(?) 
         AND LOWER(parent_email) = LOWER(?)
         AND timestamp < datetime('now', '-30 days')  -- Must be from a previous camp session
-    ''', (child_first_name.strip(), child_last_name.strip(), parent_email.strip()))
+    """, (child_first_name.strip(), child_last_name.strip(), parent_email.strip()))
     
     exact_matches_db = cursor.fetchone()[0]
     
     # Also check for just name match in current registrations (in case email changed)
-    cursor.execute('''
+    cursor.execute("""
         SELECT COUNT(*) FROM registrations 
         WHERE LOWER(child_first_name) = LOWER(?) 
         AND LOWER(child_last_name) = LOWER(?)
         AND timestamp < datetime('now', '-30 days')  -- Must be from a previous camp session
-    ''', (child_first_name.strip(), child_last_name.strip()))
+    """, (child_first_name.strip(), child_last_name.strip()))
     
     name_matches_db = cursor.fetchone()[0]
     conn.close()
@@ -607,7 +607,7 @@ def submit_registration():
             print(f"🔧 Using placeholder: {placeholder}")
             
             # Build SQL query without f-string to avoid % character conflicts
-            sql_query = '''
+            sql_query = """
             INSERT INTO registrations (
                 submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
@@ -619,10 +619,10 @@ def submit_registration():
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
             ) VALUES ({})
-            '''.format(placeholders)
+            """.format(placeholders)
             
             cursor.execute(sql_query,
-        ''', (
+        """, (
             submission_id,
             'pending',  # status
             'pending',  # payment_status
@@ -714,7 +714,7 @@ def submit_registration_fast():
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
-        cursor.execute('''
+        cursor.execute("""
             INSERT INTO registrations (
                 submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
@@ -726,7 +726,7 @@ def submit_registration_fast():
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
+        """, (
             submission_id, 'pending', 'pending',
             form_data.get('parent_email'), form_data.get('parent_phone'),
             form_data.get('emergency_contact_name'), form_data.get('emergency_contact_phone'),
@@ -771,7 +771,7 @@ def sync_to_main_database(form_data, submission_id):
             
             # Check if campers table exists, if not, create it
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS campers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     submission_id TEXT,
@@ -791,17 +791,17 @@ def sync_to_main_database(form_data, submission_id):
                     rating_restrictions TEXT,
                     social_media_consent TEXT
                 )
-            ''')
+            """)
             
             # Insert camper data
-            cursor.execute('''
+            cursor.execute("""
                 INSERT INTO campers (
                     submission_id, first_name, last_name, age, grade, is_returning,
                     email, has_allergies, allergy_description, has_sensory_issues,
                     sensory_description, favorite_games, bringing_switch,
                     game_behavior, rating_restrictions, social_media_consent
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            """, (
                 submission_id,
                 form_data.get('child_first_name'),
                 form_data.get('child_last_name'),
@@ -835,7 +835,7 @@ def process_camper_games_for_library(cursor, camper_id, form_data, submission_id
     """Process and add camper's games to the game library system."""
     try:
         # Ensure game library tables exist
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
@@ -846,9 +846,9 @@ def process_camper_games_for_library(cursor, camper_id, form_data, submission_id
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
+        """)
         
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS camper_games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 camper_id INTEGER,
@@ -860,7 +860,7 @@ def process_camper_games_for_library(cursor, camper_id, form_data, submission_id
                 FOREIGN KEY (game_id) REFERENCES games (id),
                 UNIQUE(camper_id, game_id)
             )
-        ''')
+        """)
         
         # Extract games from both games_owned and favorite_games fields
         games_owned = form_data.get('games_owned', '')
@@ -889,20 +889,20 @@ def process_camper_games_for_library(cursor, camper_id, form_data, submission_id
             
             for game_name in games:
                 # Insert or update game in games table
-                cursor.execute('''
+                cursor.execute("""
                     INSERT OR IGNORE INTO games (name, total_owned, available) 
                     VALUES (?, 1, 1)
-                ''', (game_name,))
+                """, (game_name,))
                 
                 # Update count if game already exists
-                cursor.execute('''
+                cursor.execute("""
                     UPDATE games 
                     SET total_owned = total_owned + 1, available = available + 1,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE name = ? AND id NOT IN (
                         SELECT game_id FROM camper_games WHERE camper_id = ?
                     )
-                ''', (game_name, camper_id))
+                """, (game_name, camper_id))
                 
                 # Get game_id
                 cursor.execute('SELECT id FROM games WHERE name = ?', (game_name,))
@@ -911,11 +911,11 @@ def process_camper_games_for_library(cursor, camper_id, form_data, submission_id
                     game_id = game_result[0]
                     
                     # Link camper to game
-                    cursor.execute('''
+                    cursor.execute("""
                         INSERT OR IGNORE INTO camper_games 
                         (camper_id, game_id, submission_id, source) 
                         VALUES (?, ?, ?, 'registration')
-                    ''', (camper_id, game_id, submission_id))
+                    """, (camper_id, game_id, submission_id))
                     
         print(f"✅ Processed games for camper {camper_id}: {len(games) if 'games' in locals() else 0} games found")
         
@@ -1013,19 +1013,19 @@ def admin_dashboard():
         with get_db_connection('registration') as conn:
             if DB_CONFIG['is_production']:  # PostgreSQL
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute("""
                     SELECT * FROM registrations 
                     ORDER BY timestamp DESC
-                ''')
+                """)
                 columns = [desc[0] for desc in cursor.description]
                 registrations = [dict(zip(columns, row)) for row in cursor.fetchall()]
             else:  # SQLite
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute("""
                     SELECT * FROM registrations 
                     ORDER BY timestamp DESC
-                ''')
+                """)
                 registrations = [dict(row) for row in cursor.fetchall()]
         
         # Calculate live session statistics
@@ -1102,7 +1102,7 @@ def admin_historical():
         try:
             conn = sqlite3.connect(main_db_path)
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute('''
+            cursor = conn.execute("""
                 SELECT childs_first_name as first_name, 
                        childs_last_name as last_name, 
                        email_address as email, 
@@ -1115,7 +1115,7 @@ def admin_historical():
                        timestamp
                 FROM registrations 
                 ORDER BY childs_first_name, childs_last_name
-            ''')
+            """)
             historical_data = [dict(row) for row in cursor.fetchall()]
             conn.close()
         except Exception as e:
@@ -1218,7 +1218,8 @@ def update_config_file():
     """Write the current CAMP_CONFIG back to the camp_config.py file."""
     import json
     
-    config_content = f'''#!/usr/bin/env python3
+    # Temporarily disabled to fix syntax issues
+    # config_content = f'''#!/usr/bin/env python3
 """
 Camp Power-Up Session Configuration
 ==================================
@@ -1289,8 +1290,9 @@ def validate_config():
             raise ValueError(f"Pricing calculation error for {{camper_type}}: {{total}} != {{pricing['total']}}")
     
     return True
-'''
+# '''
     
+    config_content = "# Config generation temporarily disabled"
     with open('camp_config.py', 'w') as f:
         f.write(config_content)
 
@@ -1303,9 +1305,9 @@ def edit_camper(registration_id):
         conn = sqlite3.connect(REGISTRATION_DB)
         conn.row_factory = sqlite3.Row
         
-        cursor = conn.execute('''
+        cursor = conn.execute("""
             SELECT * FROM registrations WHERE id = ?
-        ''', (registration_id,))
+        """, (registration_id,))
         
         registration = cursor.fetchone()
         conn.close()
@@ -1333,7 +1335,7 @@ def update_camper(registration_id):
         cursor = conn.cursor()
         
         # Update registration with new data
-        cursor.execute('''
+        cursor.execute("""
             UPDATE registrations SET
                 parent_email = ?, parent_phone = ?, emergency_contact_name = ?, emergency_contact_phone = ?,
                 child_first_name = ?, child_last_name = ?, child_age = ?, child_grade = ?, child_gender = ?,
@@ -1343,7 +1345,7 @@ def update_camper(registration_id):
                 marketing_permission = ?, tshirt_size = ?, how_heard_about_camp = ?, additional_notes = ?,
                 payment_status = ?, status = ?
             WHERE id = ?
-        ''', (
+        """, (
             form_data.get('parent_email'),
             form_data.get('parent_phone'),
             form_data.get('emergency_contact_name'),
@@ -1416,10 +1418,10 @@ def api_registrations():
     conn = sqlite3.connect(REGISTRATION_DB)
     conn.row_factory = sqlite3.Row
     
-    cursor = conn.execute('''
+    cursor = conn.execute("""
         SELECT * FROM registrations 
         ORDER BY timestamp DESC
-    ''')
+    """)
     
     registrations = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -1433,9 +1435,9 @@ def confirmation(submission_id):
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
-        cursor.execute('''
+        cursor.execute("""
             SELECT * FROM registrations WHERE submission_id = ?
-        ''', (submission_id,))
+        """, (submission_id,))
         
         registration = cursor.fetchone()
         conn.close()
@@ -1471,7 +1473,7 @@ def verify_returning_campers():
     cursor = conn.cursor()
     
     # Get all registrations claiming to be returning campers
-    cursor.execute('''
+    cursor.execute("""
         SELECT 
             id, submission_id, child_first_name, child_last_name, parent_email,
             previous_year, previous_instructor, returning_camper_details,
@@ -1479,7 +1481,7 @@ def verify_returning_campers():
         FROM registrations 
         WHERE is_returning_camper = 1
         ORDER BY timestamp DESC
-    ''')
+    """)
     
     returning_campers = cursor.fetchall()
     verified_campers = []
@@ -1520,10 +1522,10 @@ def admin_analytics():
     conn.row_factory = sqlite3.Row
     
     # Get current registrations
-    cursor = conn.execute('''
+    cursor = conn.execute("""
         SELECT * FROM registrations 
         ORDER BY timestamp DESC
-    ''')
+    """)
     registrations = [dict(row) for row in cursor.fetchall()]
     
     # Calculate analytics
@@ -1620,10 +1622,10 @@ def send_reminder(submission_id):
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
-        cursor.execute('''
+        cursor.execute("""
             SELECT child_first_name, child_last_name, parent_email, payment_status 
             FROM registrations WHERE submission_id = ?
-        ''', (submission_id,))
+        """, (submission_id,))
         
         registration = cursor.fetchone()
         if not registration:
@@ -1709,7 +1711,7 @@ def export_registrations():
         conn.row_factory = sqlite3.Row  # This enables column access by name
         cursor = conn.cursor()
         
-        cursor.execute('''
+        cursor.execute("""
             SELECT submission_id, timestamp, child_first_name, child_last_name, 
                    child_age, parent_first_name, parent_last_name, parent_email,
                    parent_phone, emergency_contact_name, emergency_contact_phone,
@@ -1718,7 +1720,7 @@ def export_registrations():
                    returning_years, how_heard_about_camp, additional_comments
             FROM registrations 
             ORDER BY timestamp DESC
-        ''')
+        """)
         
         registrations = cursor.fetchall()
         conn.close()
