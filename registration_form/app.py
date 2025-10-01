@@ -2,6 +2,7 @@
 import os
 from flask import Flask, jsonify
 
+# Create Flask app - this is what Railway/gunicorn looks for
 app = Flask(__name__)
 
 @app.route('/')
@@ -20,6 +21,9 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({"status": "ok", "message": "Camp Power-Up is online!"})
+
+# Make sure the app is accessible for gunicorn
+application = app
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
