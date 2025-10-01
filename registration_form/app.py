@@ -15,6 +15,31 @@ from database_config import get_db_connection, init_postgresql_tables, DB_CONFIG
 from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text
 from functools import wraps
 
+# Import email modules
+try:
+    import smtplib
+    import requests
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    EMAIL_AVAILABLE = True
+    print("✅ Email functionality available")
+except ImportError:
+    EMAIL_AVAILABLE = False
+    print("⚠️ Email functionality not available")
+
+# Email configuration
+EMAIL_CONFIG = {
+    'use_sendgrid': True,
+    'sendgrid_api_key': os.environ.get('SENDGRID_API_KEY', ''),
+    'sendgrid_from_email': os.environ.get('SENDGRID_FROM_EMAIL', 'camppowerup2025@gmail.com'),
+    'sendgrid_from_name': 'Camp Power-Up 2025',
+    'sendgrid_reply_to': 'camppowerup2025@gmail.com',
+    'smtp_server': os.environ.get('SMTP_SERVER', 'smtp.gmail.com'),
+    'smtp_port': int(os.environ.get('SMTP_PORT', 587)),
+    'email_address': os.environ.get('CAMP_EMAIL', 'camppowerup2025@gmail.com'),
+    'email_password': os.environ.get('CAMP_EMAIL_PASSWORD', '')
+}
+
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_dev_only')
 
@@ -44,6 +69,99 @@ def require_admin_auth(f):
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+def send_email_via_sendgrid(to_email, subject, html_content):
+    """Send email using SendGrid API."""
+    if not EMAIL_CONFIG['sendgrid_api_key']:
+        print("❌ SendGrid API key not configured")
+        return False
+        
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {EMAIL_CONFIG['sendgrid_api_key']}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "personalizations": [{
+            "to": [{"email": to_email}],
+            "subject": subject
+        }],
+        "from": {
+            "email": EMAIL_CONFIG['sendgrid_from_email'],
+            "name": EMAIL_CONFIG['sendgrid_from_name']
+        },
+        "reply_to": {
+            "email": EMAIL_CONFIG['sendgrid_reply_to']
+        },
+        "content": [{
+            "type": "text/html",
+            "value": html_content
+        }]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        return response.status_code == 202
+    except Exception as e:
+        print(f"SendGrid error: {e}")
+        return False
+
+def send_confirmation_email(registration_data):
+    """Send confirmation email to parent."""
+    if not EMAIL_AVAILABLE:
+        print(f"⚠️ Email not available - would send confirmation to {registration_data['parent_email']}")
+        return False
+    
+    subject = f"Registration Confirmed - Camp Power-Up 2025 - {registration_data['child_first_name']} {registration_data['child_last_name']}"
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2c3e50;">Welcome to Camp Power-Up 2025!</h2>
+        
+        <p>Dear {registration_data['parent_first_name']},</p>
+        
+        <p>Thank you for registering <strong>{registration_data['child_first_name']} {registration_data['child_last_name']}</strong> for Camp Power-Up 2025!</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3>Registration Details:</h3>
+            <p><strong>Child:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']} (Age {registration_data['child_age']})</p>
+            <p><strong>Submission ID:</strong> {registration_data['submission_id']}</p>
+            <p><strong>Registration Type:</strong> {'Returning Camper' if registration_data.get('is_returning_camper') else 'New Camper'}</p>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107;">
+            <h3>Payment Information:</h3>
+            <p><strong>Total Cost:</strong> {'$80' if registration_data.get('is_returning_camper') else '$100'}</p>
+            <p><strong>Deposit:</strong> $50 (due now)</p>
+            <p><strong>Final Payment:</strong> {'$30' if registration_data.get('is_returning_camper') else '$50'} (due before November 24th)</p>
+            <p><strong>Payment:</strong> CashApp or Venmo to camppowerup2025@gmail.com</p>
+            <p><strong>Include in memo:</strong> {registration_data['child_first_name']} {registration_data['child_last_name']}</p>
+        </div>
+        
+        <div style="background: #d1ecf1; padding: 20px; border-radius: 5px; border-left: 4px solid #17a2b8;">
+            <h3>Camp Details:</h3>
+            <p><strong>Dates:</strong> November 24th-26th, 2025</p>
+            <p><strong>Time:</strong> 10am-3pm daily</p>
+            <p><strong>Location:</strong> Details will be sent closer to camp date</p>
+        </div>
+        
+        <p>We're excited to have {registration_data['child_first_name']} join us for an amazing gaming experience!</p>
+        
+        <p>Best regards,<br>Camp Power-Up Team</p>
+    </div>
+    """
+    
+    try:
+        result = send_email_via_sendgrid(registration_data['parent_email'], subject, html_content)
+        if result:
+            print(f"✅ Confirmation email sent to {registration_data['parent_email']}")
+        else:
+            print(f"❌ Failed to send confirmation email to {registration_data['parent_email']}")
+        return result
+    except Exception as e:
+        print(f"❌ Email error: {e}")
+        return False
 
 def init_registration_db():
     """Initialize the registration database."""
@@ -164,6 +282,15 @@ def submit():
         ))
         conn.commit()
         conn.close()
+        
+        # Add submission_id to data for email
+        data['submission_id'] = submission_id
+        
+        # Send confirmation email
+        try:
+            send_confirmation_email(data)
+        except Exception as e:
+            print(f"Email sending failed: {e}")
         
         return render_template('confirmation.html', 
                              submission_id=submission_id,
