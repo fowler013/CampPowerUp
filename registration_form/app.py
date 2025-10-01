@@ -228,32 +228,37 @@ def register():
 
 @app.route('/submit', methods=['POST'])
 def submit():
-    """Handle registration submission."""
+    """Handle registration submission - expects JSON data, returns JSON response."""
     try:
-        # Generate submission ID
-        submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{request.form.get('child_last_name', 'REG')[:3].upper()}"
+        # Get JSON data from request
+        json_data = request.get_json()
+        if not json_data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
         
-        # Get form data
+        # Generate submission ID
+        submission_id = f"CP_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{json_data.get('childLastName', 'REG')[:3].upper()}"
+        
+        # Extract and convert data from JSON
         data = {
-            'child_first_name': request.form.get('child_first_name', ''),
-            'child_last_name': request.form.get('child_last_name', ''),
-            'child_age': int(request.form.get('child_age', 0)) if request.form.get('child_age') else 0,
-            'parent_first_name': request.form.get('parent_first_name', ''),
-            'parent_last_name': request.form.get('parent_last_name', ''),
-            'parent_email': request.form.get('parent_email', ''),
-            'parent_phone': request.form.get('parent_phone', ''),
-            'emergency_contact_name': request.form.get('emergency_contact_name', ''),
-            'emergency_contact_phone': request.form.get('emergency_contact_phone', ''),
-            'has_allergies': bool(request.form.get('has_allergies')),
-            'allergies_description': request.form.get('allergies_description', ''),
-            'has_medical_conditions': bool(request.form.get('has_medical_conditions')),
-            'medical_conditions_description': request.form.get('medical_conditions_description', ''),
-            'is_returning_camper': bool(request.form.get('is_returning_camper')),
-            'returning_years': request.form.get('returning_years', ''),
-            'how_heard_about_camp': request.form.get('how_heard_about_camp', ''),
-            'additional_comments': request.form.get('additional_comments', ''),
-            'bringing_own_switch': bool(request.form.get('bringing_own_switch')),
-            'has_sensory_issues': bool(request.form.get('has_sensory_issues'))
+            'child_first_name': json_data.get('childFirstName', ''),
+            'child_last_name': json_data.get('childLastName', ''),
+            'child_age': int(json_data.get('childAge', 0)) if json_data.get('childAge') else 0,
+            'parent_first_name': json_data.get('parentFirstName', ''),
+            'parent_last_name': json_data.get('parentLastName', ''),
+            'parent_email': json_data.get('parentEmail', ''),
+            'parent_phone': json_data.get('parentPhone', ''),
+            'emergency_contact_name': json_data.get('emergencyContactName', ''),
+            'emergency_contact_phone': json_data.get('emergencyContactPhone', ''),
+            'has_allergies': json_data.get('hasAllergies', False),
+            'allergies_description': json_data.get('allergiesDescription', ''),
+            'has_medical_conditions': json_data.get('hasMedicalConditions', False),
+            'medical_conditions_description': json_data.get('medicalConditionsDescription', ''),
+            'is_returning_camper': json_data.get('isReturningCamper', False),
+            'returning_years': json_data.get('returningYears', ''),
+            'how_heard_about_camp': json_data.get('howHeardAboutCamp', ''),
+            'additional_comments': json_data.get('additionalComments', ''),
+            'bringing_own_switch': json_data.get('bringingOwnSwitch', False),
+            'has_sensory_issues': json_data.get('hasSensoryIssues', False)
         }
         
         # Save to database
@@ -287,19 +292,53 @@ def submit():
         data['submission_id'] = submission_id
         
         # Send confirmation email
+        email_sent = False
         try:
-            send_confirmation_email(data)
+            email_sent = send_confirmation_email(data)
         except Exception as e:
             print(f"Email sending failed: {e}")
         
-        return render_template('confirmation.html', 
-                             submission_id=submission_id,
-                             child_name=f"{data['child_first_name']} {data['child_last_name']}",
-                             camp_config=CAMP_CONFIG)
+        # Return JSON success response
+        return jsonify({
+            "success": True,
+            "submission_id": submission_id,
+            "email_sent": email_sent,
+            "message": f"Registration successful for {data['child_first_name']} {data['child_last_name']}"
+        })
                              
     except Exception as e:
         print(f"Registration error: {str(e)}")
-        flash('Registration failed. Please try again.', 'error')
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "message": "Registration failed. Please try again."
+        }), 500
+
+@app.route('/confirmation/<submission_id>')
+def confirmation(submission_id):
+    """Show confirmation page for successful registration."""
+    try:
+        # Get registration details from database
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
+        registration = cursor.fetchone()
+        conn.close()
+        
+        if not registration:
+            flash('Registration not found.', 'error')
+            return redirect(url_for('index'))
+        
+        return render_template('confirmation.html', 
+                             submission_id=submission_id,
+                             child_name=f"{registration['child_first_name']} {registration['child_last_name']}",
+                             registration=dict(registration),
+                             camp_config=CAMP_CONFIG)
+    except Exception as e:
+        print(f"Confirmation error: {e}")
+        flash('Error loading confirmation page.', 'error')
         return redirect(url_for('index'))
 
 @app.route('/admin/login', methods=['GET', 'POST'])
