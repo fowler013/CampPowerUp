@@ -25,8 +25,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
 # Admin configuration
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'camp2025!')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')  # Original working username
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')  # Original working password
 
 def require_admin_auth(f):
     """Decorator to require admin authentication."""
