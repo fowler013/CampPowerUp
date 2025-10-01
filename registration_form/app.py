@@ -287,6 +287,79 @@ def test_db():
     except Exception as e:
         return jsonify({"error": str(e), "success": False}), 500
 
+@app.route('/admin/export')
+@require_admin_auth
+def admin_export():
+    """Export registrations as CSV."""
+    try:
+        import io
+        import csv
+        from flask import make_response
+        
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=registrations[0].keys() if registrations else [])
+        writer.writeheader()
+        for registration in registrations:
+            writer.writerow(registration)
+        
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=camp_registrations.csv'
+        
+        return response
+        
+    except Exception as e:
+        flash(f'Export error: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/analytics')
+@require_admin_auth
+def admin_analytics():
+    """Admin analytics page."""
+    try:
+        conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), 'registration_submissions.db'))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        # Basic analytics
+        total_count = len(registrations)
+        returning_count = len([r for r in registrations if r.get('is_returning_camper')])
+        new_count = total_count - returning_count
+        
+        analytics = {
+            'total_registrations': total_count,
+            'returning_campers': returning_count,
+            'new_campers': new_count,
+            'registrations': registrations
+        }
+        
+        return render_template('admin_analytics.html', analytics=analytics, camp_config=CAMP_CONFIG)
+        
+    except Exception as e:
+        flash(f'Analytics error: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/config')
+@require_admin_auth 
+def admin_config():
+    """Admin configuration page."""
+    return render_template('admin_config.html', 
+                         camp_config=CAMP_CONFIG,
+                         config=app.config)
+
 if __name__ == '__main__':
     init_registration_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
