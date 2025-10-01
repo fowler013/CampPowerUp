@@ -47,9 +47,13 @@ REGISTRATION_DB = os.path.join(os.path.dirname(__file__), 'registration_submissi
 
 def get_safe_db_connection():
     """Get database connection with fallback to SQLite."""
-    if DATABASE_AVAILABLE and DB_CONFIG.get('database_url'):
+    if DATABASE_AVAILABLE:
         try:
-            return get_db_connection()
+            # Check if it's a context manager
+            conn = get_db_connection()
+            if hasattr(conn, '__enter__'):
+                return conn.__enter__()
+            return conn
         except:
             pass
     # Fallback to SQLite
