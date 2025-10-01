@@ -1471,8 +1471,15 @@ def verify_returning_campers():
     cursor = conn.cursor()
     
     # Get all registrations claiming to be returning campers
-    query = "SELECT id, submission_id, child_first_name, child_last_name, parent_email, previous_year, previous_instructor, returning_camper_details, timestamp FROM registrations WHERE is_returning_camper = 1 ORDER BY timestamp DESC"
-    cursor.execute(query)
+    cursor.execute('''
+        SELECT 
+            id, submission_id, child_first_name, child_last_name, parent_email,
+            previous_year, previous_instructor, returning_camper_details,
+            timestamp
+        FROM registrations 
+        WHERE is_returning_camper = 1
+        ORDER BY timestamp DESC
+    ''')
     
     returning_campers = cursor.fetchall()
     verified_campers = []
@@ -1513,7 +1520,10 @@ def admin_analytics():
     conn.row_factory = sqlite3.Row
     
     # Get current registrations
-    cursor = conn.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+    cursor = conn.execute('''
+        SELECT * FROM registrations 
+        ORDER BY timestamp DESC
+    ''')
     registrations = [dict(row) for row in cursor.fetchall()]
     
     # Calculate analytics
@@ -1610,8 +1620,10 @@ def send_reminder(submission_id):
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
-        query = "SELECT child_first_name, child_last_name, parent_email, payment_status FROM registrations WHERE submission_id = ?"
-        cursor.execute(query, (submission_id,))
+        cursor.execute('''
+            SELECT child_first_name, child_last_name, parent_email, payment_status 
+            FROM registrations WHERE submission_id = ?
+        ''', (submission_id,))
         
         registration = cursor.fetchone()
         if not registration:
@@ -1693,12 +1705,21 @@ def export_registrations():
     import io
     
     try:
-        conn = get_db_connection()
+        conn = sqlite3.connect(REGISTRATION_DB)
+        conn.row_factory = sqlite3.Row  # This enables column access by name
         cursor = conn.cursor()
         
-        query = "SELECT submission_id, timestamp, child_first_name, child_last_name, child_age, parent_first_name, parent_last_name, parent_email, parent_phone, emergency_contact_name, emergency_contact_phone, has_allergies, allergies_description, has_medical_conditions, medical_conditions_description, is_returning_camper, returning_years, how_heard_about_camp, additional_comments FROM registrations ORDER BY timestamp DESC"
+        cursor.execute('''
+            SELECT submission_id, timestamp, child_first_name, child_last_name, 
+                   child_age, parent_first_name, parent_last_name, parent_email,
+                   parent_phone, emergency_contact_name, emergency_contact_phone,
+                   has_allergies, allergies_description, has_medical_conditions,
+                   medical_conditions_description, is_returning_camper,
+                   returning_years, how_heard_about_camp, additional_comments
+            FROM registrations 
+            ORDER BY timestamp DESC
+        ''')
         
-        cursor.execute(query)
         registrations = cursor.fetchall()
         conn.close()
         
@@ -1715,13 +1736,16 @@ def export_registrations():
             'Returning Camper', 'Previous Years', 'How Heard About Camp', 'Comments'
         ])
         
-        # Write data rows  
+        # Write data rows
         for reg in registrations:
             writer.writerow([
-                reg[0], reg[1], reg[2], reg[3], reg[4], reg[5], reg[6], reg[7],
-                reg[8], reg[9], reg[10], 'Yes' if reg[11] else 'No', reg[12] or '',
-                'Yes' if reg[13] else 'No', reg[14] or '', 'Yes' if reg[15] else 'No', 
-                reg[16] or '', reg[17] or '', reg[18] or ''
+                reg['submission_id'], reg['timestamp'], reg['child_first_name'], reg['child_last_name'],
+                reg['child_age'], reg['parent_first_name'], reg['parent_last_name'], reg['parent_email'],
+                reg['parent_phone'], reg['emergency_contact_name'], reg['emergency_contact_phone'],
+                'Yes' if reg['has_allergies'] else 'No', reg['allergies_description'] or '',
+                'Yes' if reg['has_medical_conditions'] else 'No', reg['medical_conditions_description'] or '',
+                'Yes' if reg['is_returning_camper'] else 'No', reg['returning_years'] or '',
+                reg['how_heard_about_camp'] or '', reg['additional_comments'] or ''
             ])
         
         output.seek(0)
