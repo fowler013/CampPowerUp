@@ -606,7 +606,8 @@ def submit_registration():
             placeholders = ', '.join([placeholder] * 34)
             print(f"🔧 Using placeholder: {placeholder}")
             
-            cursor.execute(f'''
+            # Build SQL query without f-string to avoid % character conflicts
+            sql_query = '''
             INSERT INTO registrations (
                 submission_id, status, payment_status, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
@@ -617,7 +618,10 @@ def submit_registration():
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES ({placeholders})
+            ) VALUES ({})
+            '''.format(placeholders)
+            
+            cursor.execute(sql_query,
         ''', (
             submission_id,
             'pending',  # status
