@@ -18,6 +18,20 @@ from functools import wraps
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'camp_power_up_registration_2025_dev_only')
 
+# Configure pricing in Flask config for templates
+app.config['pricing'] = {
+    'returning_camper': {
+        'total': 200,
+        'deposit': 50,
+        'final_payment': 150
+    },
+    'new_camper': {
+        'total': 250,
+        'deposit': 75,
+        'final_payment': 175
+    }
+}
+
 # Admin credentials
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')
