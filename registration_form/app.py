@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
 # Configure pricing in Flask config for templates
@@ -75,26 +75,38 @@ def init_db():
 @app.route('/')
 def home():
     """Main registration form."""
-    # Create pricing object that template expects
-    pricing = {
-        'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
-        'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
-        'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-26th, 10am-3pm daily.'
-    }
-    
-    # Mock camp config
-    camp_config = {
-        'camp_name': 'Camp Power-Up 2025',
-        'camp_dates': 'November 24-26, 2025',
-        'camp_times': '10am-3pm daily'
-    }
-    
-    return render_template('registration_form.html', 
-                         camp_config=camp_config,
-                         camp_title='Camp Power-Up 2025 Registration',
-                         camp_subtitle='Nintendo Switch Gaming Camp - November 24-26, 2025',
-                         pricing_text='Registration fees listed below',
-                         pricing=pricing)
+    try:
+        # Create pricing object that template expects
+        pricing = {
+            'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
+            'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
+            'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-26th, 10am-3pm daily.'
+        }
+        
+        # Mock camp config
+        camp_config = {
+            'camp_name': 'Camp Power-Up 2025',
+            'camp_dates': 'November 24-26, 2025',
+            'camp_times': '10am-3pm daily'
+        }
+        
+        return render_template('registration_form.html', 
+                             camp_config=camp_config,
+                             camp_title='Camp Power-Up 2025 Registration',
+                             camp_subtitle='Nintendo Switch Gaming Camp - November 24-26, 2025',
+                             pricing_text='Registration fees listed below',
+                             pricing=pricing)
+    except Exception as e:
+        # Fallback if template fails
+        return f'''
+        <html><head><title>Camp Power-Up Registration</title></head>
+        <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
+        <h1>🏕️ Camp Power-Up Registration</h1>
+        <p><strong>Template Error:</strong> {str(e)}</p>
+        <p>Please contact support. Error loading registration form template.</p>
+        <p><a href="/test-db">Test Database</a></p>
+        </body></html>
+        '''
 
 @app.route('/test-db')
 def test_db():
