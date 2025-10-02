@@ -296,6 +296,88 @@ def debug_registration(submission_id):
     except Exception as e:
         return jsonify({"error": str(e), "submission_id": submission_id}), 500
 
+@app.route('/test-submit')
+def test_submit():
+    """Test submission endpoint with sample data."""
+    try:
+        # Sample registration data for testing
+        test_data = {
+            "childFirstName": "Test",
+            "childLastName": "Camper", 
+            "childAge": "8",
+            "childGrade": "3rd",
+            "parentFirstName": "Test",
+            "parentLastName": "Parent",
+            "parentEmail": "test@example.com",
+            "parentPhone": "555-1234",
+            "emergencyContactName": "Emergency Contact",
+            "emergencyContactPhone": "555-5678",
+            "hasAllergies": False,
+            "allergiesDescription": "",
+            "hasMedicalConditions": False,
+            "medicalConditionsDescription": "",
+            "isReturningCamper": False,
+            "returningYears": "",
+            "bringingOwnSwitch": False,
+            "howHeardAboutCamp": "Testing",
+            "additionalComments": "Test submission"
+        }
+        
+        # Test database connection and table structure
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get table schema
+        cursor.execute("PRAGMA table_info(registrations)")
+        schema = cursor.fetchall()
+        
+        # Test if we can insert
+        submission_id = f"TEST_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        cursor.execute("""
+            INSERT INTO registrations (
+                submission_id, child_first_name, child_last_name, child_age, child_grade,
+                parent_first_name, parent_last_name, parent_email, parent_phone,
+                emergency_contact_name, emergency_contact_phone,
+                has_allergies, allergies_description, has_medical_conditions, 
+                medical_conditions_description, is_returning_camper, returning_years,
+                bringing_own_switch, how_heard_about_camp, additional_comments
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            submission_id, test_data['childFirstName'], test_data['childLastName'],
+            test_data['childAge'], test_data['childGrade'],
+            test_data['parentFirstName'], test_data['parentLastName'],
+            test_data['parentEmail'], test_data['parentPhone'],
+            test_data['emergencyContactName'], test_data['emergencyContactPhone'],
+            test_data['hasAllergies'], test_data['allergiesDescription'],
+            test_data['hasMedicalConditions'], test_data['medicalConditionsDescription'],
+            test_data['isReturningCamper'], test_data['returningYears'],
+            test_data['bringingOwnSwitch'], test_data['howHeardAboutCamp'],
+            test_data['additionalComments']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "message": "Test submission successful",
+            "test_submission_id": submission_id,
+            "database_file": DB_FILE,
+            "table_schema": schema,
+            "database_exists": os.path.exists(DB_FILE)
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+            "database_file": DB_FILE
+        }), 500
+
 @app.route('/railway-status')
 def railway_status():
     """Check Railway configuration and provide setup instructions."""
@@ -394,7 +476,19 @@ def submit():
         })
         
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        # Enhanced error logging for debugging submission failures
+        import traceback
+        error_details = {
+            "success": False, 
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+            "database_file": DB_FILE,
+            "submission_id": submission_id if 'submission_id' in locals() else 'not_generated',
+            "database_exists": os.path.exists(DB_FILE) if 'DB_FILE' in globals() else False
+        }
+        print(f"❌ Registration submission error: {error_details}")
+        return jsonify(error_details), 500
 
 @app.route('/confirmation/<submission_id>')
 def confirmation(submission_id):
