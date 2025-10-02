@@ -108,6 +108,17 @@ def home():
         </body></html>
         '''
 
+@app.route('/test-template')
+def test_template():
+    """Test if templates are working."""
+    try:
+        return render_template('registration_form.html', 
+                             camp_title='TEST TITLE',
+                             camp_subtitle='TEST SUBTITLE',
+                             pricing={'returning_text': 'TEST', 'new_text': 'TEST', 'payment_deadline': 'TEST'})
+    except Exception as e:
+        return f'Template error: {str(e)}'
+
 @app.route('/test-db')
 def test_db():
     """Test database."""
