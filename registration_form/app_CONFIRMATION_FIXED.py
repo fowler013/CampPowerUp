@@ -29,20 +29,8 @@ app.config['pricing'] = {
     }
 }
 
-# Railway-aware database setup for persistent data
-def get_database_path():
-    """Get the appropriate database path based on environment."""
-    if os.environ.get('RAILWAY_ENVIRONMENT'):
-        # Railway production - use persistent volume path
-        data_dir = '/app/data'
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir, exist_ok=True)
-        return os.path.join(data_dir, 'registration_submissions.db')
-    else:
-        # Local development
-        return 'registration_submissions.db'
-
-DB_FILE = get_database_path()
+# Simple database setup
+DB_FILE = 'registration_submissions.db'
 
 # Helper functions for templates
 def get_camp_title():
