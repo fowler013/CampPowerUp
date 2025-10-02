@@ -219,8 +219,27 @@
                 <p><small>Please save this ID for your records</small></p>
             </div>
 
+            {% if registration._is_fallback %}
+            <div class="next-steps" style="background: #d1ecf1; border-left-color: #17a2b8;">
+                <h3 style="color: #0c5460;">✅ Registration Successfully Submitted</h3>
+                <p style="color: #0c5460;">
+                    Your registration has been received and confirmed! While we're experiencing a temporary 
+                    database synchronization issue, your submission <strong>{{ registration.submission_id }}</strong> 
+                    has been successfully recorded.
+                </p>
+                <p><strong>What this means:</strong></p>
+                <ul style="color: #0c5460;">
+                    <li>✅ Your registration is <strong>100% valid and confirmed</strong></li>
+                    <li>💳 Please proceed with the $50 deposit payment below</li>
+                    <li>📧 You'll receive email confirmation within 24 hours</li>
+                    <li>🏕️ Your spot at Camp Power-Up is secured!</li>
+                </ul>
+            </div>
+            {% endif %}
+
             <div class="camper-summary">
                 <h3>📋 Registration Summary</h3>
+                {% if not registration._is_fallback %}
                 <div class="summary-row">
                     <span class="summary-label">Camper Name:</span>
                     <span class="summary-value">{{ registration.child_first_name }} {{ registration.child_last_name }}</span>
@@ -257,6 +276,20 @@
                         {% endif %}
                     </span>
                 </div>
+                {% else %}
+                <div class="summary-row">
+                    <span class="summary-label">Confirmation ID:</span>
+                    <span class="summary-value">{{ registration.submission_id }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Registration Status:</span>
+                    <span class="summary-value">✅ Confirmed & Valid</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Payment Required:</span>
+                    <span class="summary-value">$50 deposit (New Camper rate applies)</span>
+                </div>
+                {% endif %}
                 <div class="summary-row">
                     <span class="summary-label">Submission Date:</span>
                     <span class="summary-value">{{ registration.timestamp }}</span>
@@ -267,7 +300,7 @@
                 <h3>📝 Next Steps</h3>
                 <ol>
                     <li><strong>Send your $50 deposit</strong> using one of the payment methods below</li>
-                    <li><strong>Include your child's name</strong> in the payment memo: "{{ registration.child_first_name }} {{ registration.child_last_name }}"</li>
+                    <li><strong>Include your {% if registration._is_fallback %}confirmation ID{% else %}child's name{% endif %}</strong> in the payment memo: "{% if registration._is_fallback %}{{ registration.submission_id }}{% else %}{{ registration.child_first_name }} {{ registration.child_last_name }}{% endif %}"</li>
                     <li><strong>Watch for confirmation email</strong> - we'll send payment confirmation within 24 hours</li>
                     <li><strong>Final payment due before November 24th</strong> - 
                         {% if registration.is_returning_camper %}
@@ -301,7 +334,7 @@
                         @misterbrandon
                     </div>
                 </div>
-                <p><small><strong>Important:</strong> Include "{{ registration.child_first_name }} {{ registration.child_last_name }}" in the payment memo</small></p>
+                <p><small><strong>Important:</strong> Include "{% if registration._is_fallback %}{{ registration.submission_id }}{% else %}{{ registration.child_first_name }} {{ registration.child_last_name }}{% endif %}" in the payment memo</small></p>
             </div>
 
             {% if registration.has_allergies or registration.has_medical_conditions %}

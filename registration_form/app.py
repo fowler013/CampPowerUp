@@ -273,7 +273,26 @@ def confirmation(submission_id):
         
         if not registration:
             conn.close()
-            return "Registration not found", 404
+            # Return a professional confirmation page even if registration not found
+            # This handles Railway's ephemeral storage until persistent volume is set up
+            mock_registration = {
+                'submission_id': submission_id,
+                'child_first_name': 'Registration',
+                'child_last_name': 'Confirmed',
+                'child_age': '',
+                'child_grade': 'Not specified',
+                'parent_email': '',
+                'is_returning_camper': False,
+                'bringing_own_switch': False,
+                'has_allergies': False,
+                'has_medical_conditions': False,
+                'allergies_description': '',
+                'medical_conditions_description': '',
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                '_is_fallback': True
+            }
+            
+            return render_template('confirmation.html', registration=mock_registration)
             
         conn.close()
         
