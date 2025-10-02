@@ -219,27 +219,8 @@
                 <p><small>Please save this ID for your records</small></p>
             </div>
 
-            {% if registration._railway_warning %}
-            <div class="next-steps" style="background: #fff3cd; border-left-color: #ffc107;">
-                <h3 style="color: #856404;">⚠️ Registration Received</h3>
-                <p style="color: #856404;">
-                    Your registration has been submitted successfully! Due to a temporary database issue, 
-                    we cannot display your detailed information right now, but your registration 
-                    <strong>{{ registration.submission_id }}</strong> has been recorded.
-                </p>
-                <p><strong>What this means:</strong></p>
-                <ul style="color: #856404;">
-                    <li>Your registration is valid and confirmed</li>
-                    <li>Please proceed with payment as outlined below</li>
-                    <li>We will contact you via email with full details</li>
-                    <li>Use your confirmation ID for any questions</li>
-                </ul>
-            </div>
-            {% endif %}
-
             <div class="camper-summary">
                 <h3>📋 Registration Summary</h3>
-                {% if not registration._railway_warning %}
                 <div class="summary-row">
                     <span class="summary-label">Camper Name:</span>
                     <span class="summary-value">{{ registration.child_first_name }} {{ registration.child_last_name }}</span>
@@ -249,12 +230,16 @@
                     <span class="summary-value">{{ registration.child_age }} years old</span>
                 </div>
                 <div class="summary-row">
+                    <span class="summary-label">Grade:</span>
+                    <span class="summary-value">{{ registration.child_grade or 'Not specified' }}</span>
+                </div>
+                <div class="summary-row">
                     <span class="summary-label">Camper Type:</span>
                     <span class="summary-value">
                         {% if registration.is_returning_camper %}
-                            Returning Camper ($80 total)
+                            Returning Camper ($180 total)
                         {% else %}
-                            New Camper ($100 total)
+                            New Camper ($200 total)
                         {% endif %}
                     </span>
                 </div>
@@ -262,20 +247,16 @@
                     <span class="summary-label">Contact Email:</span>
                     <span class="summary-value">{{ registration.parent_email }}</span>
                 </div>
-                {% else %}
                 <div class="summary-row">
-                    <span class="summary-label">Confirmation ID:</span>
-                    <span class="summary-value">{{ registration.submission_id }}</span>
+                    <span class="summary-label">Bringing Switch:</span>
+                    <span class="summary-value">
+                        {% if registration.bringing_own_switch %}
+                            Yes ✅
+                        {% else %}
+                            No - Will use camp equipment
+                        {% endif %}
+                    </span>
                 </div>
-                <div class="summary-row">
-                    <span class="summary-label">Camper Type:</span>
-                    <span class="summary-value">New Camper ($100 total)</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Payment Required:</span>
-                    <span class="summary-value">$50 deposit + $50 final payment</span>
-                </div>
-                {% endif %}
                 <div class="summary-row">
                     <span class="summary-label">Submission Date:</span>
                     <span class="summary-value">{{ registration.timestamp }}</span>
@@ -286,13 +267,13 @@
                 <h3>📝 Next Steps</h3>
                 <ol>
                     <li><strong>Send your $50 deposit</strong> using one of the payment methods below</li>
-                    <li><strong>Include your {% if registration._railway_warning %}confirmation ID{% else %}child's name{% endif %}</strong> in the payment memo: "{% if registration._railway_warning %}{{ registration.submission_id }}{% else %}{{ registration.child_first_name }} {{ registration.child_last_name }}{% endif %}"</li>
+                    <li><strong>Include your child's name</strong> in the payment memo: "{{ registration.child_first_name }} {{ registration.child_last_name }}"</li>
                     <li><strong>Watch for confirmation email</strong> - we'll send payment confirmation within 24 hours</li>
                     <li><strong>Final payment due before November 24th</strong> - 
                         {% if registration.is_returning_camper %}
-                            $30 remaining ($80 total)
+                            $130 remaining ($180 total)
                         {% else %}
-                            $50 remaining ($100 total)
+                            $150 remaining ($200 total)
                         {% endif %}
                     </li>
                     <li><strong>Camp runs November 24th-26th</strong>, 10am-3pm daily - details will be emailed closer to camp</li>
@@ -320,7 +301,7 @@
                         @misterbrandon
                     </div>
                 </div>
-                <p><small><strong>Important:</strong> Include "{% if registration._railway_warning %}{{ registration.submission_id }}{% else %}{{ registration.child_first_name }} {{ registration.child_last_name }}{% endif %}" in the payment memo</small></p>
+                <p><small><strong>Important:</strong> Include "{{ registration.child_first_name }} {{ registration.child_last_name }}" in the payment memo</small></p>
             </div>
 
             {% if registration.has_allergies or registration.has_medical_conditions %}

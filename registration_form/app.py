@@ -79,6 +79,7 @@ def init_db():
             child_first_name TEXT,
             child_last_name TEXT,
             child_age INTEGER,
+            child_grade TEXT,
             parent_first_name TEXT,
             parent_last_name TEXT,
             parent_email TEXT,
@@ -91,6 +92,7 @@ def init_db():
             medical_conditions_description TEXT,
             is_returning_camper BOOLEAN DEFAULT 0,
             returning_years TEXT,
+            bringing_own_switch BOOLEAN DEFAULT 0,
             how_heard_about_camp TEXT,
             additional_comments TEXT
         )
@@ -205,6 +207,7 @@ def submit():
             'child_first_name': json_data.get('childFirstName', ''),
             'child_last_name': json_data.get('childLastName', ''),
             'child_age': json_data.get('childAge', ''),
+            'child_grade': json_data.get('childGrade', ''),
             'parent_first_name': json_data.get('parentFirstName', ''),
             'parent_last_name': json_data.get('parentLastName', ''),
             'parent_email': json_data.get('parentEmail', ''),
@@ -217,6 +220,7 @@ def submit():
             'medical_conditions_description': json_data.get('medicalConditionsDescription', ''),
             'is_returning_camper': json_data.get('isReturningCamper', False),
             'returning_years': json_data.get('returningYears', ''),
+            'bringing_own_switch': json_data.get('bringingOwnSwitch', False),
             'how_heard_about_camp': json_data.get('howHeardAboutCamp', ''),
             'additional_comments': json_data.get('additionalComments', '')
         }
@@ -226,21 +230,21 @@ def submit():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO registrations (
-                submission_id, child_first_name, child_last_name, child_age,
+                submission_id, child_first_name, child_last_name, child_age, child_grade,
                 parent_first_name, parent_last_name, parent_email, parent_phone,
                 emergency_contact_name, emergency_contact_phone,
                 has_allergies, allergies_description, has_medical_conditions, 
                 medical_conditions_description, is_returning_camper, returning_years,
-                how_heard_about_camp, additional_comments
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                bringing_own_switch, how_heard_about_camp, additional_comments
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             submission_id, data['child_first_name'], data['child_last_name'], 
-            data['child_age'], data['parent_first_name'], data['parent_last_name'],
+            data['child_age'], data['child_grade'], data['parent_first_name'], data['parent_last_name'],
             data['parent_email'], data['parent_phone'], 
             data['emergency_contact_name'], data['emergency_contact_phone'],
             data['has_allergies'], data['allergies_description'],
             data['has_medical_conditions'], data['medical_conditions_description'],
-            data['is_returning_camper'], data['returning_years'],
+            data['is_returning_camper'], data['returning_years'], data['bringing_own_switch'],
             data['how_heard_about_camp'], data['additional_comments']
         ))
         conn.commit()
@@ -267,45 +271,9 @@ def confirmation(submission_id):
         cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
         registration = cursor.fetchone()
         
-        # Debug: Check if registration exists and log details
         if not registration:
-            # Check if any registrations exist at all
-            cursor.execute("SELECT COUNT(*) as count FROM registrations")
-            count_result = cursor.fetchone()
-            total_registrations = count_result[0] if count_result else 0
-            
-            # Check if table exists
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='registrations'")
-            table_exists = cursor.fetchone() is not None
-            
             conn.close()
-            
-            # If no registrations exist, show a generic confirmation with the submission ID
-            # This handles Railway's ephemeral storage issue
-            mock_registration = {
-                'submission_id': submission_id,
-                'child_first_name': '',
-                'child_last_name': '',
-                'child_age': '',
-                'parent_email': '',
-                'is_returning_camper': False,
-                'has_allergies': False,
-                'has_medical_conditions': False,
-                'allergies_description': '',
-                'medical_conditions_description': '',
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-            
-            # Add a warning about data persistence to the template
-            mock_registration['_railway_warning'] = True
-            mock_registration['_debug_info'] = {
-                'database_path': DB_FILE,
-                'table_exists': table_exists,
-                'total_registrations': total_registrations,
-                'environment': "Railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "Local"
-            }
-            
-            return render_template('confirmation.html', registration=mock_registration)
+            return "Registration not found", 404
             
         conn.close()
         
