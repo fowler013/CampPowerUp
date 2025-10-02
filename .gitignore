@@ -21,6 +21,10 @@ security_key.key
 # Exception: Allow historical data for deployment
 !camp_power_up.db
 
+# Auto-backup files (keep local, don't commit to git)
+registration_form/registrations_backup.json
+registrations.json
+
 # Python
 __pycache__/
 *.py[cod]

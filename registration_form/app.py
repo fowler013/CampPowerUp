@@ -158,6 +158,55 @@ def init_db_with_logging():
         count = cursor.fetchone()[0]
         print(f"Database initialized with {count} existing registrations")
         
+        # Auto-restore from backup if database is empty and backup exists
+        if count == 0:
+            backup_file = os.path.join(os.path.dirname(__file__), 'registrations_backup.json')
+            if os.path.exists(backup_file):
+                try:
+                    print(f"📦 Found backup file, attempting auto-restore...")
+                    import json
+                    with open(backup_file, 'r') as f:
+                        backup_data = json.load(f)
+                    
+                    if 'registrations' in backup_data:
+                        registrations = backup_data['registrations']
+                        restored_count = 0
+                        
+                        for reg in registrations:
+                            try:
+                                # Insert registration
+                                cursor.execute("""
+                                    INSERT OR IGNORE INTO registrations (
+                                        submission_id, timestamp, child_first_name, child_last_name, 
+                                        child_age, child_grade, parent_first_name, parent_last_name,
+                                        parent_email, parent_phone, emergency_contact_name, 
+                                        emergency_contact_phone, has_allergies, allergies_description,
+                                        has_medical_conditions, medical_conditions_description,
+                                        is_returning_camper, returning_years, bringing_own_switch,
+                                        how_heard_about_camp, additional_comments
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    reg.get('submission_id'), reg.get('timestamp'),
+                                    reg.get('child_first_name'), reg.get('child_last_name'),
+                                    reg.get('child_age'), reg.get('child_grade'),
+                                    reg.get('parent_first_name'), reg.get('parent_last_name'),
+                                    reg.get('parent_email'), reg.get('parent_phone'),
+                                    reg.get('emergency_contact_name'), reg.get('emergency_contact_phone'),
+                                    reg.get('has_allergies'), reg.get('allergies_description'),
+                                    reg.get('has_medical_conditions'), reg.get('medical_conditions_description'),
+                                    reg.get('is_returning_camper'), reg.get('returning_years'),
+                                    reg.get('bringing_own_switch'), reg.get('how_heard_about_camp'),
+                                    reg.get('additional_comments')
+                                ))
+                                restored_count += 1
+                            except Exception as restore_error:
+                                print(f"⚠️ Could not restore registration {reg.get('submission_id')}: {restore_error}")
+                        
+                        conn.commit()
+                        print(f"✅ Auto-restored {restored_count} registrations from backup")
+                except Exception as backup_error:
+                    print(f"⚠️ Auto-restore failed: {backup_error}")
+        
         # Update global DB_FILE to current path
         global DB_FILE
         DB_FILE = db_file
@@ -600,6 +649,30 @@ def submit():
         ))
         conn.commit()
         conn.close()
+        
+        # Auto-backup to JSON file after each registration (for ephemeral storage protection)
+        try:
+            backup_file = os.path.join(os.path.dirname(__file__), 'registrations_backup.json')
+            conn = sqlite3.connect(db_file)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM registrations ORDER BY timestamp ASC")
+            all_registrations = [dict(row) for row in cursor.fetchall()]
+            conn.close()
+            
+            import json
+            with open(backup_file, 'w') as f:
+                json.dump({
+                    "success": True,
+                    "count": len(all_registrations),
+                    "last_backup": datetime.now().isoformat(),
+                    "source_database": db_file,
+                    "registrations": all_registrations
+                }, f, indent=2, default=str)
+            
+            print(f"💾 Auto-backup created: {len(all_registrations)} registrations saved to {backup_file}")
+        except Exception as backup_error:
+            print(f"⚠️ Auto-backup failed (non-critical): {backup_error}")
         
         # Return JSON success response
         return jsonify({
