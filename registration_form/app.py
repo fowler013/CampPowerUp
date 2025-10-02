@@ -494,28 +494,34 @@ def submit():
         # Generate ID
         submission_id = f"REG_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
         
-        # Get form data from JSON
+        # Get form data from JSON - accept both camelCase AND snake_case for compatibility
         data = {
-            'child_first_name': json_data.get('childFirstName', ''),
-            'child_last_name': json_data.get('childLastName', ''),
-            'child_age': json_data.get('childAge', ''),
-            'child_grade': json_data.get('childGrade', ''),
-            'parent_first_name': json_data.get('parentFirstName', ''),
-            'parent_last_name': json_data.get('parentLastName', ''),
-            'parent_email': json_data.get('parentEmail', ''),
-            'parent_phone': json_data.get('parentPhone', ''),
-            'emergency_contact_name': json_data.get('emergencyContactName', ''),
-            'emergency_contact_phone': json_data.get('emergencyContactPhone', ''),
-            'has_allergies': json_data.get('hasAllergies', False),
-            'allergies_description': json_data.get('allergiesDescription', ''),
-            'has_medical_conditions': json_data.get('hasMedicalConditions', False),
-            'medical_conditions_description': json_data.get('medicalConditionsDescription', ''),
-            'is_returning_camper': json_data.get('isReturningCamper', False),
-            'returning_years': json_data.get('returningYears', ''),
-            'bringing_own_switch': json_data.get('bringingOwnSwitch', False),
-            'how_heard_about_camp': json_data.get('howHeardAboutCamp', ''),
-            'additional_comments': json_data.get('additionalComments', '')
+            'child_first_name': json_data.get('child_first_name') or json_data.get('childFirstName', ''),
+            'child_last_name': json_data.get('child_last_name') or json_data.get('childLastName', ''),
+            'child_age': json_data.get('child_age') or json_data.get('childAge', ''),
+            'child_grade': json_data.get('child_grade') or json_data.get('childGrade', ''),
+            'parent_first_name': json_data.get('parent_first_name') or json_data.get('parentFirstName', ''),
+            'parent_last_name': json_data.get('parent_last_name') or json_data.get('parentLastName', ''),
+            'parent_email': json_data.get('parent_email') or json_data.get('parentEmail', ''),
+            'parent_phone': json_data.get('parent_phone') or json_data.get('parentPhone', ''),
+            'emergency_contact_name': json_data.get('emergency_contact_name') or json_data.get('emergencyContactName', ''),
+            'emergency_contact_phone': json_data.get('emergency_contact_phone') or json_data.get('emergencyContactPhone', ''),
+            'has_allergies': json_data.get('has_allergies', json_data.get('hasAllergies', False)),
+            'allergies_description': json_data.get('allergies_description') or json_data.get('allergiesDescription', ''),
+            'has_medical_conditions': json_data.get('has_medical_conditions', json_data.get('hasMedicalConditions', False)),
+            'medical_conditions_description': json_data.get('medical_conditions_description') or json_data.get('medicalConditionsDescription', ''),
+            'is_returning_camper': json_data.get('is_returning_camper', json_data.get('isReturningCamper', False)),
+            'returning_years': json_data.get('returning_years') or json_data.get('returningYears', ''),
+            'bringing_own_switch': json_data.get('bringing_own_switch', json_data.get('bringingOwnSwitch', False)),
+            'how_heard_about_camp': json_data.get('how_heard_about_camp') or json_data.get('howHeardAboutCamp', ''),
+            'additional_comments': json_data.get('additional_comments') or json_data.get('additionalComments', '')
         }
+        
+        # Debug logging
+        print(f"📝 Form data received:")
+        print(f"   child_first_name: '{data['child_first_name']}'")
+        print(f"   child_last_name: '{data['child_last_name']}'")
+        print(f"   parent_email: '{data['parent_email']}'")
         
         # Save to database - get fresh path for Railway compatibility
         db_file = get_database_path()
