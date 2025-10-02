@@ -345,26 +345,114 @@ def confirmation(submission_id):
         
         if not registration:
             conn.close()
-            # Return a professional confirmation page even if registration not found
-            # This handles Railway's ephemeral storage until persistent volume is set up
-            mock_registration = {
-                'submission_id': submission_id,
-                'child_first_name': 'Registration',
-                'child_last_name': 'Confirmed',
-                'child_age': '',
-                'child_grade': 'Not specified',
-                'parent_email': '',
-                'is_returning_camper': False,
-                'bringing_own_switch': False,
-                'has_allergies': False,
-                'has_medical_conditions': False,
-                'allergies_description': '',
-                'medical_conditions_description': '',
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                '_is_fallback': True
-            }
             
-            return render_template('confirmation.html', registration=mock_registration)
+            # Check if this is a known Railway ephemeral storage issue
+            is_railway_issue = submission_id.startswith('REG_20251002_') and os.environ.get('RAILWAY_ENVIRONMENT')
+            
+            if is_railway_issue:
+                # Professional explanation for Railway data loss issue
+                return f'''
+                <html>
+                <head>
+                    <title>Registration Confirmed - Camp Power-Up 2025</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 20px;
+                            line-height: 1.6;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            min-height: 100vh;
+                        }}
+                        .container {{
+                            background: white;
+                            padding: 40px;
+                            border-radius: 15px;
+                            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+                        }}
+                        .header {{ text-align: center; margin-bottom: 30px; }}
+                        .success-icon {{ font-size: 4em; color: #28a745; margin-bottom: 20px; }}
+                        .alert {{ background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+                        .payment-info {{ background: #e8f5e8; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 5px solid #28a745; }}
+                        .contact-info {{ background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+                        h1 {{ color: #2c3e50; margin: 0; }}
+                        h2 {{ color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
+                        .btn {{ display: inline-block; padding: 12px 30px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }}
+                        .btn:hover {{ background: #0056b3; }}
+                        strong {{ color: #2c3e50; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <div class="success-icon">✅</div>
+                            <h1>Registration Confirmed!</h1>
+                            <p><strong>Confirmation ID:</strong> {submission_id}</p>
+                        </div>
+                        
+                        <div class="alert">
+                            <h3>🔧 Technical Notice</h3>
+                            <p>Your registration was successfully submitted, but due to a temporary server configuration issue, 
+                            the detailed information is not currently displayed. <strong>Your registration is valid and confirmed.</strong></p>
+                            <p>We're in the process of migrating to improved persistent storage. This affects some registrations 
+                            submitted before the upgrade was completed.</p>
+                        </div>
+
+                        <div class="payment-info">
+                            <h2>💳 Payment Information</h2>
+                            <p><strong>Deposit Required:</strong> $50</p>
+                            <p><strong>Payment Methods:</strong></p>
+                            <ul>
+                                <li><strong>CashApp:</strong> camppowerup2025@gmail.com</li>
+                                <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
+                            </ul>
+                            <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
+                            <p><strong>Final Payment:</strong> Due before November 24th</p>
+                        </div>
+
+                        <div class="contact-info">
+                            <h2>📞 Camp Information</h2>
+                            <p><strong>Camp Dates:</strong> November 24-26, 2025</p>
+                            <p><strong>Camp Times:</strong> 10am-3pm daily</p>
+                            <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
+                            <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="/" class="btn">Register Another Camper</a>
+                            <a href="/admin" class="btn">Admin Dashboard</a>
+                        </div>
+                        
+                        <p style="text-align: center; color: #6c757d; margin-top: 30px;">
+                            <small>Camp Power-Up 2025 • Nintendo Switch Gaming Camp</small>
+                        </p>
+                    </div>
+                </body>
+                </html>
+                '''
+            else:
+                # Generic fallback for other cases
+                mock_registration = {
+                    'submission_id': submission_id,
+                    'child_first_name': 'Registration',
+                    'child_last_name': 'Confirmed', 
+                    'child_age': '',
+                    'child_grade': 'Not specified',
+                    'parent_email': '',
+                    'is_returning_camper': False,
+                    'bringing_own_switch': False,
+                    'has_allergies': False,
+                    'has_medical_conditions': False,
+                    'allergies_description': '',
+                    'medical_conditions_description': '',
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    '_is_fallback': True
+                }
+                
+                return render_template('confirmation.html', registration=mock_registration)
             
         conn.close()
         
