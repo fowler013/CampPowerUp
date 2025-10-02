@@ -79,16 +79,23 @@ def get_database_path():
         print(f"💻 Local development - using: {local_path}")
         return local_path
 
+# Get database path dynamically (not cached to ensure Railway detection works)
+def get_db_file():
+    """Get current database file path - called fresh each time."""
+    return get_database_path()
+
+# For backward compatibility, set initial value but allow dynamic updates
 DB_FILE = get_database_path()
 
 # Initialize database on startup
 def init_db_with_logging():
     """Initialize database with logging for Railway debugging."""
     try:
-        print(f"Initializing database at: {DB_FILE}")
-        print(f"Database file exists: {os.path.exists(DB_FILE)}")
+        db_file = get_database_path()
+        print(f"Initializing database at: {db_file}")
+        print(f"Database file exists: {os.path.exists(db_file)}")
         
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS registrations (
@@ -122,6 +129,10 @@ def init_db_with_logging():
         cursor.execute("SELECT COUNT(*) FROM registrations")
         count = cursor.fetchone()[0]
         print(f"Database initialized with {count} existing registrations")
+        
+        # Update global DB_FILE to current path
+        global DB_FILE
+        DB_FILE = db_file
         
         conn.close()
         return True
@@ -444,8 +455,10 @@ def submit():
             'additional_comments': json_data.get('additionalComments', '')
         }
         
-        # Save to database
-        conn = sqlite3.connect(DB_FILE)
+        # Save to database - get fresh path for Railway compatibility
+        db_file = get_database_path()
+        print(f"🔄 Using database path: {db_file}")
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO registrations (
@@ -479,14 +492,19 @@ def submit():
     except Exception as e:
         # Enhanced error logging for debugging submission failures
         import traceback
+        # Get fresh database path for error reporting
+        current_db_file = get_database_path()
         error_details = {
             "success": False, 
             "error": str(e),
             "error_type": type(e).__name__,
             "traceback": traceback.format_exc(),
-            "database_file": DB_FILE,
+            "database_file": current_db_file,
+            "cached_db_file": DB_FILE,
             "submission_id": submission_id if 'submission_id' in locals() else 'not_generated',
-            "database_exists": os.path.exists(DB_FILE) if 'DB_FILE' in globals() else False
+            "database_exists": os.path.exists(current_db_file),
+            "railway_env": os.environ.get('RAILWAY_ENVIRONMENT', 'Not set'),
+            "working_directory": os.getcwd()
         }
         print(f"❌ Registration submission error: {error_details}")
         return jsonify(error_details), 500
