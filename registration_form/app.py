@@ -513,6 +513,92 @@ def admin_dashboard():
         flash(f'Error loading dashboard: {str(e)}', 'error')
         return redirect(url_for('admin_login'))
 
+@app.route('/admin/export-json')
+def admin_export_json():
+    """Export all registrations as JSON for migration."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp ASC")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "count": len(registrations),
+            "exported_at": datetime.now().isoformat(),
+            "source_database": DB_FILE,
+            "registrations": registrations
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/admin/import-json', methods=['POST'])
+def admin_import_json():
+    """Import registrations from JSON for migration."""
+    try:
+        data = request.get_json()
+        if not data or 'registrations' not in data:
+            return jsonify({"success": False, "error": "Invalid JSON format"}), 400
+        
+        registrations = data['registrations']
+        imported_count = 0
+        skipped_count = 0
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        for reg in registrations:
+            try:
+                # Check if registration already exists
+                cursor.execute("SELECT id FROM registrations WHERE submission_id = ?", (reg.get('submission_id'),))
+                if cursor.fetchone():
+                    skipped_count += 1
+                    continue
+                
+                # Insert registration
+                cursor.execute("""
+                    INSERT INTO registrations (
+                        submission_id, timestamp, child_first_name, child_last_name, child_age, child_grade,
+                        parent_first_name, parent_last_name, parent_email, parent_phone,
+                        emergency_contact_name, emergency_contact_phone,
+                        has_allergies, allergies_description, has_medical_conditions, 
+                        medical_conditions_description, is_returning_camper, returning_years,
+                        bringing_own_switch, how_heard_about_camp, additional_comments
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    reg.get('submission_id'), reg.get('timestamp'), 
+                    reg.get('child_first_name'), reg.get('child_last_name'),
+                    reg.get('child_age'), reg.get('child_grade'),
+                    reg.get('parent_first_name'), reg.get('parent_last_name'),
+                    reg.get('parent_email'), reg.get('parent_phone'),
+                    reg.get('emergency_contact_name'), reg.get('emergency_contact_phone'),
+                    reg.get('has_allergies'), reg.get('allergies_description'),
+                    reg.get('has_medical_conditions'), reg.get('medical_conditions_description'),
+                    reg.get('is_returning_camper'), reg.get('returning_years'),
+                    reg.get('bringing_own_switch'), reg.get('how_heard_about_camp'),
+                    reg.get('additional_comments')
+                ))
+                imported_count += 1
+            except Exception as e:
+                print(f"Error importing registration {reg.get('submission_id', 'unknown')}: {e}")
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "imported": imported_count,
+            "skipped": skipped_count,
+            "total_processed": len(registrations),
+            "target_database": DB_FILE
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/admin/export')
 @require_admin_auth
 def admin_export():

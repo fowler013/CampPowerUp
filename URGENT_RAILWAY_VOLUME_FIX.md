@@ -12,20 +12,31 @@ Production site (https://camppowerup-registration.up.railway.app/) shows empty r
 ## IMMEDIATE FIX REQUIRED
 
 ### Step 1: Add Persistent Volume to Railway Production
-```bash
-# In Railway Dashboard for Production Project:
-1. Go to https://railway.app/dashboard
-2. Select your production project: "camppowerup-registration"
-3. Click "Variables" tab
-4. Click "New Variable"
-5. Add: RAILWAY_VOLUME_MOUNT_PATH = /data
-6. Click "Deploy"
 
-# Or via Railway CLI:
-railway login
-railway link [your-production-project-id]
-railway volume create --name registration-data --mount-path /data
+**Option A: Railway Dashboard (Recommended)**
 ```
+1. Go to https://railway.app/dashboard
+2. Select your production project "camppowerup-registration"
+3. Click on the service name 
+4. Go to "Storage" tab
+5. Click "Add Volume"
+6. Set:
+   - Volume Name: "registration-data"
+   - Mount Path: "/data"
+   - Size: "1GB" (more than enough for registration DB)
+7. Click "Create Volume"
+8. Railway will automatically redeploy
+```
+
+**Option B: Railway CLI (Alternative)**
+```bash
+railway login
+railway link # Select your production project
+railway volumes create registration-data --mount /data --size 1
+railway redeploy
+```
+
+**⚠️ CRITICAL:** After volume creation, Railway automatically redeploys. The updated code will detect `/data` mount and use persistent storage!
 
 ### Step 2: Verify Volume Mount
 ```bash
@@ -36,11 +47,41 @@ https://camppowerup-registration.up.railway.app/test-db
 # "database_file": "/data/registration_submissions.db" (not /app/)
 ```
 
-### Step 3: Migration Required
-After volume setup, you'll need to:
-1. Export any existing data from staging
-2. Import to production volume
-3. All future registrations will persist
+### Step 3: Data Migration Tools (Ready to Use)
+
+Once volume is configured, use these automated migration tools:
+
+**A. Export Staging Data:**
+```bash
+# Get all staging registrations as JSON:
+curl https://camppowerup-staging.up.railway.app/admin/export-json > staging_registrations.json
+
+# Verify export:
+curl https://camppowerup-staging.up.railway.app/test-db | jq .total_registrations
+```
+
+**B. Import to Production:**
+```bash
+# Upload to production (after volume setup):
+curl -X POST https://camppowerup-registration.up.railway.app/admin/import-json \
+  -H "Content-Type: application/json" \
+  -d @staging_registrations.json
+
+# Verify import success:
+curl https://camppowerup-registration.up.railway.app/test-db | jq .total_registrations
+```
+
+**C. Test Data Persistence:**
+```bash
+# Before: Check current count
+curl https://camppowerup-registration.up.railway.app/test-db | jq .total_registrations
+
+# Trigger deployment (should NOT lose data):
+git push origin main
+
+# After: Verify data survived
+curl https://camppowerup-registration.up.railway.app/test-db | jq .total_registrations
+```
 
 ## WHY STAGING WORKS
 - Staging has persistent volume at `/data`  
