@@ -242,11 +242,37 @@ def confirmation(submission_id):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
         registration = cursor.fetchone()
+        
+        # Debug: Check if registration exists and log details
+        if not registration:
+            # Check if any registrations exist at all
+            cursor.execute("SELECT COUNT(*) as count FROM registrations")
+            count_result = cursor.fetchone()
+            total_registrations = count_result[0] if count_result else 0
+            
+            # Check if table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='registrations'")
+            table_exists = cursor.fetchone() is not None
+            
+            conn.close()
+            
+            return f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+                <h1>⚠️ Registration Not Found</h1>
+                <p><strong>Submission ID:</strong> {submission_id}</p>
+                <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <h3>Debug Information:</h3>
+                    <p><strong>Database Path:</strong> {DB_FILE}</p>
+                    <p><strong>Table Exists:</strong> {table_exists}</p>
+                    <p><strong>Total Registrations:</strong> {total_registrations}</p>
+                    <p><strong>Environment:</strong> {"Railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "Local"}</p>
+                </div>
+                <p><a href="/">← Back to Registration Form</a></p>
+            </div>
+            ''', 404
+            
         conn.close()
         
-        if not registration:
-            return "Registration not found", 404
-            
         # Convert to dictionary for template
         registration_data = dict(registration)
         
