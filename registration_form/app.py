@@ -33,18 +33,47 @@ app.config['pricing'] = {
 def get_database_path():
     """Get the appropriate database path based on environment."""
     if os.environ.get('RAILWAY_ENVIRONMENT'):
-        # Railway - try persistent volume path first, fallback to app directory
-        volume_path = '/data/registration_submissions.db'
-        app_path = '/app/registration_submissions.db'
+        # Railway - check multiple possible volume mount paths
+        possible_volume_paths = [
+            '/data/registration_submissions.db',
+            os.path.join(os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', ''), 'registration_submissions.db'),
+        ]
         
-        # Check if volume mount exists
-        if os.path.exists('/data'):
-            return volume_path
-        else:
-            # No persistent volume - use app directory but warn about data loss
-            print("WARNING: No persistent volume found at /data - using ephemeral storage")
-            print("Database will reset on each deployment until persistent volume is configured")
-            return app_path
+        # Check for any mounted volume directory
+        for volume_path in ['/data', os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '')]:
+            if volume_path and os.path.exists(volume_path):
+                db_path = os.path.join(volume_path, 'registration_submissions.db')
+                print(f"✅ Found persistent volume at {volume_path}")
+                print(f"Using persistent database: {db_path}")
+                return db_path
+        
+        # Check if any volume mount exists using Railway's typical pattern
+        volume_mounts = [d for d in ['/var/lib/containers'] if os.path.exists(d)]
+        if volume_mounts:
+            # Look for Railway volume bind mounts
+            bind_mount_base = '/var/lib/containers/railwayapp/bind-mounts'
+            if os.path.exists(bind_mount_base):
+                # Find any volume directories
+                try:
+                    for project_dir in os.listdir(bind_mount_base):
+                        project_path = os.path.join(bind_mount_base, project_dir)
+                        if os.path.isdir(project_path):
+                            for vol_dir in os.listdir(project_path):
+                                if vol_dir.startswith('vol_'):
+                                    volume_path = os.path.join(project_path, vol_dir)
+                                    db_path = os.path.join(volume_path, 'registration_submissions.db')
+                                    print(f"✅ Found Railway volume mount at {volume_path}")
+                                    print(f"Using persistent database: {db_path}")
+                                    return db_path
+                except Exception as e:
+                    print(f"Volume discovery error: {e}")
+        
+        # No persistent volume found - use ephemeral storage with warning
+        app_path = '/app/registration_submissions.db'
+        print("⚠️ WARNING: No persistent volume found - using ephemeral storage")
+        print("Database will reset on each deployment until persistent volume is configured")
+        print("Available paths:", [d for d in ['/data', '/var/lib/containers'] if os.path.exists(d)])
+        return app_path
     else:
         # Local development
         return 'registration_submissions.db'
