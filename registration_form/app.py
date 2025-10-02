@@ -64,16 +64,26 @@ def get_database_path():
         bind_mount_base = '/var/lib/containers/railwayapp/bind-mounts'
         if os.path.exists(bind_mount_base):
             try:
+                print(f"🔍 Checking Railway bind mounts at {bind_mount_base}")
                 for project_dir in os.listdir(bind_mount_base):
                     project_path = os.path.join(bind_mount_base, project_dir)
+                    print(f"📁 Found project directory: {project_path}")
                     if os.path.isdir(project_path):
                         for vol_dir in os.listdir(project_path):
                             if vol_dir.startswith('vol_'):
                                 volume_path = os.path.join(project_path, vol_dir)
-                                db_path = os.path.join(volume_path, 'registration_submissions.db')
-                                print(f"✅ Found Railway bind mount at {volume_path}")
-                                print(f"Using persistent database: {db_path}")
-                                return db_path
+                                # Test write permissions
+                                try:
+                                    test_file = os.path.join(volume_path, '.write_test')
+                                    with open(test_file, 'w') as f:
+                                        f.write('test')
+                                    os.remove(test_file)
+                                    db_path = os.path.join(volume_path, 'registration_submissions.db')
+                                    print(f"✅ Found Railway bind mount at {volume_path}")
+                                    print(f"✅ Volume is writable - using persistent database: {db_path}")
+                                    return db_path
+                                except Exception as write_error:
+                                    print(f"⚠️ Volume at {volume_path} not writable: {write_error}")
             except Exception as e:
                 print(f"Volume discovery error: {e}")
         
