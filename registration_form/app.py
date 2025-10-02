@@ -147,22 +147,46 @@ def test_template():
 
 @app.route('/test-db')
 def test_db():
-    """Test database."""
+    """Test database with detailed information."""
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM registrations")
-        count = cursor.fetchone()[0]
+        
+        # Check if table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='registrations'")
+        table_exists = cursor.fetchone() is not None
+        
+        # Get count if table exists
+        count = 0
+        recent_registrations = []
+        if table_exists:
+            cursor.execute("SELECT COUNT(*) FROM registrations")
+            count = cursor.fetchone()[0]
+            
+            # Get last 3 registrations
+            cursor.execute("SELECT submission_id, child_first_name, child_last_name, timestamp FROM registrations ORDER BY timestamp DESC LIMIT 3")
+            recent_registrations = [dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()]
+        
         conn.close()
+        
         return jsonify({
             "database_type": "SQLite",
-            "environment": "production",
-            "registrations_count": count,
-            "success": True,
-            "message": "Database working - your registration data is safe!"
+            "database_file": DB_FILE,
+            "database_exists": os.path.exists(DB_FILE),
+            "table_exists": table_exists,
+            "total_registrations": count,
+            "recent_registrations": recent_registrations,
+            "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
+            "status": "✅ Working" if table_exists else "⚠️ No Table",
+            "message": f"Database {'working' if table_exists else 'table missing'} - {count} registrations found"
         })
     except Exception as e:
-        return jsonify({"error": str(e), "success": False}), 500
+        return jsonify({
+            "error": str(e), 
+            "status": "❌ Error",
+            "database_file": DB_FILE,
+            "database_exists": os.path.exists(DB_FILE) if 'DB_FILE' in locals() else False
+        }), 500
 
 @app.route('/submit', methods=['POST'])
 def submit():
