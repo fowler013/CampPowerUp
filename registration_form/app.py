@@ -552,15 +552,42 @@ def test_registration():
 @app.route('/admin/debug-login')
 def debug_login():
     """Debug admin login credentials."""
-    return jsonify({
-        "admin_username": ADMIN_USERNAME,
-        "admin_password_set": "Yes" if ADMIN_PASSWORD else "No",
-        "admin_password_length": len(ADMIN_PASSWORD),
-        "session_logged_in": session.get('admin_logged_in', False),
-        "message": "Use username: campadmin, password: PowerUp2025!"
-    })
+        return jsonify({
+            "admin_username": ADMIN_USERNAME,
+            "admin_password_set": "Yes" if ADMIN_PASSWORD else "No",
+            "admin_password_length": len(ADMIN_PASSWORD),
+            "session_logged_in": session.get('admin_logged_in', False),
+            "message": "Use username: campadmin, password: PowerUp2025!"
+        })
 
-@app.route('/admin/export')
+@app.route('/test-email/<email>')
+def test_email(email):
+    """Test email functionality with a specific email address."""
+    test_data = {
+        'child_first_name': 'Test',
+        'child_last_name': 'Email',
+        'child_age': 12,
+        'parent_first_name': 'Test',
+        'parent_last_name': 'Parent',
+        'parent_email': email,
+        'submission_id': f'TEST_EMAIL_{datetime.now().strftime("%H%M%S")}'
+    }
+    
+    try:
+        result = send_confirmation_email(test_data)
+        return jsonify({
+            "success": result,
+            "email": email,
+            "sendgrid_configured": bool(EMAIL_CONFIG.get('sendgrid_api_key')),
+            "message": "Email test completed - check logs for details"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "email": email,
+            "error": str(e),
+            "message": "Email test failed"
+        })@app.route('/admin/export')
 @require_admin_auth
 def admin_export():
     """Export registrations as CSV."""
