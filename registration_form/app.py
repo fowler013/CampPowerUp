@@ -43,6 +43,21 @@ def get_database_path():
             db_path = '/data/registration_submissions.db'
             print(f"✅ Found persistent volume at /data")
             print(f"Using persistent database: {db_path}")
+            
+            # Ensure we can write to the /data directory
+            try:
+                # Test write permissions
+                test_file = '/data/.write_test'
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                print(f"✅ /data directory is writable")
+            except Exception as e:
+                print(f"⚠️ /data directory write test failed: {e}")
+                # Fallback to /app if we can't write to /data
+                print(f"🔄 Falling back to /app directory")
+                db_path = '/app/registration_submissions.db'
+            
             return db_path
         
         # Check for Railway bind mounts (advanced volume detection)
@@ -461,6 +476,57 @@ def submit():
         # Save to database - get fresh path for Railway compatibility
         db_file = get_database_path()
         print(f"🔄 Using database path: {db_file}")
+        
+        # Ensure database directory exists and is writable
+        db_dir = os.path.dirname(db_file)
+        if db_dir and not os.path.exists(db_dir):
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+                print(f"📁 Created database directory: {db_dir}")
+            except Exception as e:
+                print(f"⚠️ Could not create database directory: {e}")
+        
+        # Initialize database if it doesn't exist
+        if not os.path.exists(db_file):
+            print(f"🆕 Database doesn't exist, initializing: {db_file}")
+            try:
+                # Create and initialize the database
+                conn = sqlite3.connect(db_file)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS registrations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        submission_id TEXT UNIQUE,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        child_first_name TEXT,
+                        child_last_name TEXT,
+                        child_age INTEGER,
+                        child_grade TEXT,
+                        parent_first_name TEXT,
+                        parent_last_name TEXT,
+                        parent_email TEXT,
+                        parent_phone TEXT,
+                        emergency_contact_name TEXT,
+                        emergency_contact_phone TEXT,
+                        has_allergies BOOLEAN DEFAULT 0,
+                        allergies_description TEXT,
+                        has_medical_conditions BOOLEAN DEFAULT 0,
+                        medical_conditions_description TEXT,
+                        is_returning_camper BOOLEAN DEFAULT 0,
+                        returning_years TEXT,
+                        bringing_own_switch BOOLEAN DEFAULT 0,
+                        how_heard_about_camp TEXT,
+                        additional_comments TEXT
+                    )
+                """)
+                conn.commit()
+                conn.close()
+                print(f"✅ Database initialized successfully: {db_file}")
+            except Exception as init_error:
+                print(f"❌ Database initialization failed: {init_error}")
+                raise init_error
+        
+        # Connect to database
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         cursor.execute("""
