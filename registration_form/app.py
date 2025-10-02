@@ -247,7 +247,9 @@ def test_template():
 def test_db():
     """Test database with detailed information."""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"🧪 Test-db using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
         # Check if table exists
@@ -276,8 +278,9 @@ def test_db():
         
         return jsonify({
             "database_type": "SQLite", 
-            "database_file": DB_FILE,
-            "database_exists": os.path.exists(DB_FILE),
+            "database_file": db_file,
+            "cached_db_file": DB_FILE,
+            "database_exists": os.path.exists(db_file),
             "table_exists": table_exists,
             "table_schema": table_schema,
             "total_registrations": count,
@@ -287,10 +290,11 @@ def test_db():
             "message": f"Database {'working' if table_exists else 'table missing'} - {count} registrations found"
         })
     except Exception as e:
+        db_file = get_database_path()
         return jsonify({
             "error": str(e), 
             "status": "❌ Error",
-            "database_file": DB_FILE,
+            "database_file": db_file,
             "database_exists": os.path.exists(DB_FILE) if 'DB_FILE' in locals() else False
         }), 500
 
@@ -298,7 +302,9 @@ def test_db():
 def debug_registration(submission_id):
     """Debug specific registration by ID."""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"🔍 Debug-registration using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -308,7 +314,8 @@ def debug_registration(submission_id):
         
         result = {
             "submission_id": submission_id,
-            "database_file": DB_FILE,
+            "database_file": db_file,
+            "cached_db_file": DB_FILE,
             "found": registration is not None,
             "railway_environment": bool(os.environ.get('RAILWAY_ENVIRONMENT')),
             "persistent_volume_exists": os.path.exists('/data'),
@@ -364,7 +371,9 @@ def test_submit():
         }
         
         # Test database connection and table structure
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"🧪 Test-submit using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
         # Get table schema
@@ -592,8 +601,10 @@ def submit():
 def confirmation(submission_id):
     """Show professional confirmation page with registration details."""
     try:
-        # Fetch registration details from database
-        conn = sqlite3.connect(DB_FILE)
+        # Fetch registration details from database - use fresh path for Railway compatibility
+        db_file = get_database_path()
+        print(f"🔍 Confirmation page using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
@@ -770,7 +781,10 @@ def admin_dashboard():
         if is_railway_without_volume:
             flash('⚠️ STORAGE WARNING: Railway production has no persistent volume configured. Registration data will be lost on deployment. Configure persistent volume at /data to fix this issue.', 'warning')
         
-        conn = sqlite3.connect(DB_FILE)
+        # Use fresh database path for Railway compatibility
+        db_file = get_database_path()
+        print(f"📊 Admin dashboard using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
@@ -867,7 +881,9 @@ def admin_dashboard():
 def admin_export_json():
     """Export all registrations as JSON for migration."""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"💾 Export JSON using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM registrations ORDER BY timestamp ASC")
@@ -878,7 +894,8 @@ def admin_export_json():
             "success": True,
             "count": len(registrations),
             "exported_at": datetime.now().isoformat(),
-            "source_database": DB_FILE,
+            "source_database": db_file,
+            "cached_db_file": DB_FILE,
             "registrations": registrations
         })
     except Exception as e:
@@ -896,7 +913,9 @@ def admin_import_json():
         imported_count = 0
         skipped_count = 0
         
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"💾 Import JSON using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
         for reg in registrations:
@@ -958,7 +977,9 @@ def admin_export():
         import csv
         from flask import make_response
         
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"💾 Export CSV using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
@@ -991,7 +1012,9 @@ def admin_export():
 def admin_delete(registration_id):
     """Delete a specific registration."""
     try:
-        conn = sqlite3.connect(DB_FILE)
+        db_file = get_database_path()
+        print(f"🗑️ Delete using database: {db_file}")
+        conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
         # First check if registration exists
