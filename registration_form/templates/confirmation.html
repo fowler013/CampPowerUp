@@ -230,32 +230,18 @@
                     <span class="summary-value">{{ registration.child_age }} years old</span>
                 </div>
                 <div class="summary-row">
-                    <span class="summary-label">Grade:</span>
-                    <span class="summary-value">{{ registration.child_grade or 'Not specified' }}</span>
-                </div>
-                <div class="summary-row">
                     <span class="summary-label">Camper Type:</span>
                     <span class="summary-value">
                         {% if registration.is_returning_camper %}
-                            Returning Camper ($180 total)
+                            Returning Camper ($80 total)
                         {% else %}
-                            New Camper ($200 total)
+                            New Camper ($100 total)
                         {% endif %}
                     </span>
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Contact Email:</span>
                     <span class="summary-value">{{ registration.parent_email }}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Bringing Switch:</span>
-                    <span class="summary-value">
-                        {% if registration.bringing_own_switch %}
-                            Yes ✅
-                        {% else %}
-                            No - Will use camp equipment
-                        {% endif %}
-                    </span>
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Submission Date:</span>
@@ -269,14 +255,14 @@
                     <li><strong>Send your $50 deposit</strong> using one of the payment methods below</li>
                     <li><strong>Include your child's name</strong> in the payment memo: "{{ registration.child_first_name }} {{ registration.child_last_name }}"</li>
                     <li><strong>Watch for confirmation email</strong> - we'll send payment confirmation within 24 hours</li>
-                    <li><strong>Final payment due November 26th</strong> - 
+                    <li><strong>Final payment due before November 24th</strong> - 
                         {% if registration.is_returning_camper %}
-                            $130 remaining ($180 total)
+                            $30 remaining ($80 total)
                         {% else %}
-                            $150 remaining ($200 total)
+                            $50 remaining ($100 total)
                         {% endif %}
                     </li>
-                    <li><strong>Camp starts November 24th</strong> at 10:00 AM - details will be emailed closer to camp</li>
+                    <li><strong>Camp runs November 24th-26th</strong>, 10am-3pm daily - details will be emailed closer to camp</li>
                 </ol>
             </div>
 
@@ -304,7 +290,7 @@
                 <p><small><strong>Important:</strong> Include "{{ registration.child_first_name }} {{ registration.child_last_name }}" in the payment memo</small></p>
             </div>
 
-            {% if registration.has_allergies or registration.has_sensory_issues %}
+            {% if registration.has_allergies or registration.has_medical_conditions %}
             <div class="next-steps" style="background: #f8d7da; border-left-color: #dc3545;">
                 <h3 style="color: #721c24;">⚠️ Special Attention Required</h3>
                 <p style="color: #721c24;">
@@ -312,11 +298,11 @@
                     Our team will review these details and may contact you for additional information 
                     to ensure we provide the best possible camp experience.
                 </p>
-                {% if registration.allergy_details %}
-                <p><strong>Allergies/Medical:</strong> {{ registration.allergy_details }}</p>
+                {% if registration.allergies_description %}
+                <p><strong>Allergies:</strong> {{ registration.allergies_description }}</p>
                 {% endif %}
-                {% if registration.sensory_details %}
-                <p><strong>Sensory Needs:</strong> {{ registration.sensory_details }}</p>
+                {% if registration.medical_conditions_description %}
+                <p><strong>Medical Conditions:</strong> {{ registration.medical_conditions_description }}</p>
                 {% endif %}
             </div>
             {% endif %}
@@ -329,8 +315,8 @@
             <div class="contact-info">
                 <h3>❓ Questions?</h3>
                 <p>If you have any questions about your registration or Camp Power-Up, please contact us:</p>
-                <p><strong>Email:</strong> {{ registration.parent_email }} (we'll respond from our camp email)</p>
-                <p><strong>Check Dashboard:</strong> <a href="../">View all registrations</a></p>
+                <p><strong>Email:</strong> camppowerup2025@gmail.com (we'll respond from our camp email)</p>
+                <p><strong>Check Dashboard:</strong> <a href="/">View all registrations</a></p>
             </div>
         </div>
     </div>

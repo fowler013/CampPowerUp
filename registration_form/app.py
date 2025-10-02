@@ -222,22 +222,42 @@ def submit():
 
 @app.route('/confirmation/<submission_id>')
 def confirmation(submission_id):
-    """Show confirmation page."""
-    return f'''
-    <html><head><title>Registration Confirmed</title></head>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
-    <h1>✅ Registration Confirmed!</h1>
-    <p><strong>Submission ID:</strong> {submission_id}</p>
-    <p>Thank you for registering for Camp Power-Up!</p>
-    <div style="background: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0;">
-        <h3>Payment Information:</h3>
-        <p><strong>Deposit:</strong> $50 (due now)</p>
-        <p><strong>Payment:</strong> CashApp or Venmo to camppowerup2025@gmail.com</p>
-        <p><strong>Include child's name in payment memo</strong></p>
-    </div>
-    <p><a href="/">Register Another Camper</a></p>
-    </body></html>
-    '''
+    """Show professional confirmation page with registration details."""
+    try:
+        # Fetch registration details from database
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
+        registration = cursor.fetchone()
+        conn.close()
+        
+        if not registration:
+            return "Registration not found", 404
+            
+        # Convert to dictionary for template
+        registration_data = dict(registration)
+        
+        return render_template('confirmation.html', registration=registration_data)
+        
+    except Exception as e:
+        # Fallback to basic confirmation if there's an error
+        return f'''
+        <html><head><title>Registration Confirmed</title></head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
+        <h1>✅ Registration Confirmed!</h1>
+        <p><strong>Submission ID:</strong> {submission_id}</p>
+        <p>Thank you for registering for Camp Power-Up!</p>
+        <div style="background: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3>Payment Information:</h3>
+            <p><strong>Deposit:</strong> $50 (due now)</p>
+            <p><strong>Payment:</strong> CashApp or Venmo to camppowerup2025@gmail.com</p>
+            <p><strong>Include child's name in payment memo</strong></p>
+        </div>
+        <p><a href="/">Register Another Camper</a></p>
+        <p><small>Error loading full details: {str(e)}</small></p>
+        </body></html>
+        '''
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
