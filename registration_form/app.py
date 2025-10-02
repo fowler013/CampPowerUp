@@ -35,18 +35,13 @@ def get_database_path():
     if os.environ.get('RAILWAY_ENVIRONMENT'):
         print("🚀 Railway environment detected - finding database path...")
         
-        # Railway - check for persistent volume first
-        volume_mount_path = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '')
-        if volume_mount_path and os.path.exists(volume_mount_path):
-            db_path = os.path.join(volume_mount_path, 'registration_submissions.db')
-            print(f"✅ Found Railway volume at {volume_mount_path}")
-            print(f"Using persistent database: {db_path}")
-            return db_path
+        # Railway server - only check server paths, ignore any local development paths
+        server_paths_to_check = ['/data', '/app']
         
-        # Check standard /data path
+        # Check standard /data path first (persistent volume)
         if os.path.exists('/data'):
             db_path = '/data/registration_submissions.db'
-            print(f"✅ Found /data volume")
+            print(f"✅ Found persistent volume at /data")
             print(f"Using persistent database: {db_path}")
             return db_path
         
@@ -67,11 +62,19 @@ def get_database_path():
             except Exception as e:
                 print(f"Volume discovery error: {e}")
         
-        # Fallback to Railway app directory (ephemeral)
+        # Fallback to Railway app directory (ephemeral but functional)
         app_path = '/app/registration_submissions.db'
         print("⚠️ WARNING: No persistent volume found - using ephemeral storage")
         print("Database will reset on each deployment until persistent volume is configured")
         print(f"Using ephemeral database: {app_path}")
+        
+        # Ensure the /app directory is writable
+        try:
+            os.makedirs('/app', exist_ok=True)
+            print("📁 Ensured /app directory exists")
+        except Exception as e:
+            print(f"⚠️ Could not create /app directory: {e}")
+            
         return app_path
     else:
         # Local development - use relative path
