@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Confirmed - Camp Power-Up 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .confirmation-content {
+            padding: 40px;
+        }
+
+        .confirmation-id {
+            background: #f8f9fa;
+            border: 2px solid #28a745;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .confirmation-id h2 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .confirmation-id .id {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .next-steps {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .next-steps h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .next-steps ol {
+            margin-left: 20px;
+        }
+
+        .next-steps li {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .payment-info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .payment-method {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .camper-summary {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .summary-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .summary-value {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .actions {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            margin: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .contact-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .contact-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .container {
+                box-shadow: none;
+                background: white;
+            }
+            
+            .actions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">✅</div>
+            <h1>Registration Confirmed!</h1>
+            <p>Thank you for registering for Camp Power-Up 2025</p>
+        </div>
+
+        <div class="confirmation-content">
+            <div class="confirmation-id">
+                <h2>Confirmation ID</h2>
+                <div class="id">{{ registration.submission_id }}</div>
+                <p><small>Please save this ID for your records</small></p>
+            </div>
+
+            <div class="camper-summary">
+                <h3>📋 Registration Summary</h3>
+                <div class="summary-row">
+                    <span class="summary-label">Camper Name:</span>
+                    <span class="summary-value">{{ registration.child_first_name }} {{ registration.child_last_name }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Age:</span>
+                    <span class="summary-value">{{ registration.child_age }} years old</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Grade:</span>
+                    <span class="summary-value">{{ registration.child_grade or 'Not specified' }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Camper Type:</span>
+                    <span class="summary-value">
+                        {% if registration.is_returning_camper %}
+                            Returning Camper ($180 total)
+                        {% else %}
+                            New Camper ($200 total)
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Contact Email:</span>
+                    <span class="summary-value">{{ registration.parent_email }}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Bringing Switch:</span>
+                    <span class="summary-value">
+                        {% if registration.bringing_own_switch %}
+                            Yes ✅
+                        {% else %}
+                            No - Will use camp equipment
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Submission Date:</span>
+                    <span class="summary-value">{{ registration.timestamp }}</span>
+                </div>
+            </div>
+
+            <div class="next-steps">
+                <h3>📝 Next Steps</h3>
+                <ol>
+                    <li><strong>Send your $50 deposit</strong> using one of the payment methods below</li>
+                    <li><strong>Include your child's name</strong> in the payment memo: "{{ registration.child_first_name }} {{ registration.child_last_name }}"</li>
+                    <li><strong>Watch for confirmation email</strong> - we'll send payment confirmation within 24 hours</li>
+                    <li><strong>Final payment due November 26th</strong> - 
+                        {% if registration.is_returning_camper %}
+                            $130 remaining ($180 total)
+                        {% else %}
+                            $150 remaining ($200 total)
+                        {% endif %}
+                    </li>
+                    <li><strong>Camp starts November 24th</strong> at 10:00 AM - details will be emailed closer to camp</li>
+                </ol>
+            </div>
+
+            <div class="payment-info">
+                <h3>💳 Send Your $50 Deposit</h3>
+                <p>Please send your deposit using one of these methods:</p>
+                <div class="payment-methods">
+                    <div class="payment-method">
+                        <strong>Cash App</strong><br>
+                        $TevinFowler
+                    </div>
+                    <div class="payment-method">
+                        <strong>Venmo</strong><br>
+                        @Brandon-Ballard
+                    </div>
+                    <div class="payment-method">
+                        <strong>Venmo</strong><br>
+                        @Tevin-Fowler
+                    </div>
+                    <div class="payment-method">
+                        <strong>PayPal</strong><br>
+                        @misterbrandon
+                    </div>
+                </div>
+                <p><small><strong>Important:</strong> Include "{{ registration.child_first_name }} {{ registration.child_last_name }}" in the payment memo</small></p>
+            </div>
+
+            {% if registration.has_allergies or registration.has_sensory_issues %}
+            <div class="next-steps" style="background: #f8d7da; border-left-color: #dc3545;">
+                <h3 style="color: #721c24;">⚠️ Special Attention Required</h3>
+                <p style="color: #721c24;">
+                    We noted that {{ registration.child_first_name }} has special needs. 
+                    Our team will review these details and may contact you for additional information 
+                    to ensure we provide the best possible camp experience.
+                </p>
+                {% if registration.allergy_details %}
+                <p><strong>Allergies/Medical:</strong> {{ registration.allergy_details }}</p>
+                {% endif %}
+                {% if registration.sensory_details %}
+                <p><strong>Sensory Needs:</strong> {{ registration.sensory_details }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="actions">
+                <a href="javascript:window.print()" class="btn btn-secondary">🖨️ Print Confirmation</a>
+                <a href="/" class="btn btn-primary">📝 Register Another Camper</a>
+            </div>
+
+            <div class="contact-info">
+                <h3>❓ Questions?</h3>
+                <p>If you have any questions about your registration or Camp Power-Up, please contact us:</p>
+                <p><strong>Email:</strong> {{ registration.parent_email }} (we'll respond from our camp email)</p>
+                <p><strong>Check Dashboard:</strong> <a href="../">View all registrations</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print option (uncomment if desired)
+        // window.onload = function() {
+        //     setTimeout(function() {
+        //         if (confirm('Would you like to print this confirmation?')) {
+        //             window.print();
+        //         }
+        //     }, 1000);
+        // };
+    </script>
+</body>
+</html>

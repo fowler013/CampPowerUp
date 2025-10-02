@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Admin - Camp Power-Up 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .nav-bar {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #f0f0ff;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            background: #dc3545;
+            color: white !important;
+        }
+
+        .logout-btn:hover {
+            background: #c82333 !important;
+        }
+
+        .stats-bar {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 250px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .registrations-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 2px solid #ddd;
+            font-weight: 500;
+        }
+
+        .registration-card {
+            border-bottom: 1px solid #eee;
+            padding: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .registration-card:hover {
+            background: #f8f9fa;
+        }
+
+        .registration-card:last-child {
+            border-bottom: none;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .camper-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .submission-id {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .card-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-group {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .status-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .badge-returning {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-new {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .badge-allergies {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-sensory {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-switch {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .special-notes {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .search-box input {
+                width: 100%;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateX(400px);
+            transition: transform 0.3s ease-in-out;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #28a745;
+        }
+        
+        .toast.error {
+            background: #dc3545;
+        }
+        
+        .toast.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .toast .close-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            float: right;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* Loading spinner styles */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive Design Improvements */
+        @media (max-width: 768px) {
+            .nav-links {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .nav-links a {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .stat-card {
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .search-box {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .card-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .card-actions .btn {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .registration-card {
+                margin-bottom: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .stat-number {
+                font-size: 28px;
+            }
+            
+            .registration-card {
+                padding: 15px;
+            }
+        }
+        
+        .btn.loading {
+            position: relative;
+            pointer-events: none;
+        }
+        
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            margin: auto;
+            border: 2px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏕️ Camp Power-Up Registration Admin</h1>
+        <p>Manage and review camp registrations</p>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="/admin">📊 Current Registrations</a>
+            <a href="/admin/historical">📚 Historical Data</a>
+            <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
+            <a href="/admin/config">⚙️ Configuration</a>
+            <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+
+    <!-- Live Session Tracking Dashboard -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" id="totalRegistrations">{{ session_stats.total_registrations }}</div>
+            <div class="stat-label">Total Registrations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="todaysRegistrations">{{ session_stats.todays_count }}</div>
+            <div class="stat-label">Today's Registrations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="weeksRegistrations">{{ session_stats.weeks_count }}</div>
+            <div class="stat-label">This Week</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="registrationRate">{{ session_stats.registration_rate }}</div>
+            <div class="stat-label">Registration Rate</div>
+        </div>
+    </div>
+
+    <!-- Payment & Camper Status Tracking -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" style="color: #28a745;">{{ session_stats.paid_count }}</div>
+            <div class="stat-label">Paid ✅</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #ffc107;">{{ session_stats.pending_payment }}</div>
+            <div class="stat-label">Payment Pending ⏳</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #17a2b8;">{{ session_stats.returning_campers }}</div>
+            <div class="stat-label">Returning Campers 🔄</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #6c757d;">{{ session_stats.new_campers }}</div>
+            <div class="stat-label">New Campers ✨</div>
+        </div>
+    </div>
+
+    <!-- Equipment & Special Needs Tracking -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" style="color: #e83e8c;">{{ session_stats.bringing_switch }}</div>
+            <div class="stat-label">Bringing Switch 🎮</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #fd7e14;">{{ session_stats.has_allergies }}</div>
+            <div class="stat-label">Has Allergies ⚠️</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #20c997;">{{ session_stats.has_sensory_issues }}</div>
+            <div class="stat-label">Sensory Needs 👂</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #6f42c1;">
+                {% if session_stats.last_registration != 'None' %}
+                    {{ session_stats.last_registration[:10] }}
+                {% else %}
+                    None
+                {% endif %}
+            </div>
+            <div class="stat-label">Last Registration 📅</div>
+        </div>
+    </div>
+
+    <!-- Age Distribution Chart -->
+    <div style="background: white; margin: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 15px; color: #333;">📊 Age Distribution</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px;">
+            {% for age_range, count in session_stats.age_groups.items() %}
+            <div style="text-align: center;">
+                <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 10px; border-radius: 5px; margin-bottom: 5px;">
+                    <strong>{{ count }}</strong>
+                </div>
+                <small>Ages {{ age_range }}</small>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by name, email, or submission ID..." 
+                       aria-label="Search registrations by name, email, or submission ID">
+                <button class="btn btn-primary" onclick="searchRegistrations()" 
+                        aria-label="Search registrations">🔍 Search</button>
+                <button class="btn btn-primary" onclick="clearSearch()" 
+                        aria-label="Clear search results">Clear</button>
+            </div>
+            <div>
+                <a href="/" class="btn btn-success">➕ New Registration</a>
+                <button class="btn btn-primary" onclick="exportData()">📊 Export Data</button>
+                                    <a href="/admin/analytics" class="dashboard-btn">
+                        � View Analytics
+                    </a>
+                <a href="/admin/historical" class="btn btn-info">📚 Historical Data</a>
+                <a href="/admin/logout" class="btn btn-danger">🚪 Logout</a>
+                <a href="/admin/verify-returning-campers" class="btn" style="background: #dc3545; color: white;">🔍 Verify Returning Campers</a>
+            </div>
+        </div>
+
+        <!-- Fraud Prevention Alert -->
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h4 style="color: #856404; margin: 0 0 10px 0;">🛡️ Fraud Prevention Alert</h4>
+            <p style="color: #856404; margin: 0;">
+                <strong>Important:</strong> Some registrations may claim "returning camper" status fraudulently to get the discount. 
+                Use the <a href="/admin/verify-returning-campers" style="color: #dc3545; font-weight: bold;">"Verify Returning Campers"</a> tool above to check all claims against your database.
+            </p>
+        </div>
+
+        <div class="registrations-table">
+            <div class="table-header">
+                <h3>Recent Registrations ({{ registrations|length }} total)</h3>
+            </div>
+
+            <div id="registrationsList">
+                {% for registration in registrations %}
+                <div class="registration-card" data-search-text="{{ registration.child_first_name }} {{ registration.child_last_name }} {{ registration.parent_email }} {{ registration.submission_id }}">
+                    <div class="card-header">
+                        <div>
+                            <div class="camper-name">
+                                {{ registration.child_first_name }} {{ registration.child_last_name }}
+                            </div>
+                            <div class="submission-id">{{ registration.submission_id }}</div>
+                        </div>
+                        <div class="status-badges">
+                            {% if registration.is_returning_camper %}
+                                <span class="badge badge-returning">Returning Camper</span>
+                            {% else %}
+                                <span class="badge badge-new">New Camper</span>
+                            {% endif %}
+                            
+                            {% if registration.has_allergies %}
+                                <span class="badge badge-allergies">Allergies</span>
+                            {% endif %}
+                            
+                            {% if registration.has_sensory_issues %}
+                                <span class="badge badge-sensory">Sensory Needs</span>
+                            {% endif %}
+                            
+                            {% if registration.bringing_own_switch %}
+                                <span class="badge badge-switch">Bringing Switch</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card-details">
+                        <div class="detail-group">
+                            <div class="detail-label">Contact Information</div>
+                            <div class="detail-value">
+                                <strong>Email:</strong> {{ registration.parent_email }}<br>
+                                {% if registration.parent_phone %}
+                                <strong>Phone:</strong> {{ registration.parent_phone }}<br>
+                                {% endif %}
+                                <strong>Age:</strong> {{ registration.child_age }} years old<br>
+                                <strong>Grade:</strong> {{ registration.child_grade or 'Not specified' }}
+                            </div>
+                        </div>
+
+                        <div class="detail-group">
+                            <div class="detail-label">Registration Details</div>
+                            <div class="detail-value">
+                                <strong>Submitted:</strong> {{ registration.timestamp }}<br>
+                                <strong>Payment Status:</strong> {{ registration.payment_status|title }}<br>
+                                <strong>Total Fee:</strong> 
+                                {% if registration.is_returning_camper %}
+                                    $180 (Returning)
+                                {% else %}
+                                    $200 (New)
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if registration.favorite_games or registration.gaming_behavior %}
+                        <div class="detail-group">
+                            <div class="detail-label">Gaming Information</div>
+                            <div class="detail-value">
+                                {% if registration.favorite_games %}
+                                <strong>Favorite Games:</strong> {{ registration.favorite_games }}<br>
+                                {% endif %}
+                                {% if registration.gaming_behavior %}
+                                <strong>Gaming Behavior:</strong> {{ registration.gaming_behavior }}<br>
+                                {% endif %}
+                                {% if registration.game_restrictions %}
+                                <strong>Restrictions:</strong> {{ registration.game_restrictions }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if registration.emergency_contact_name %}
+                        <div class="detail-group">
+                            <div class="detail-label">Emergency Contact</div>
+                            <div class="detail-value">
+                                <strong>Name:</strong> {{ registration.emergency_contact_name }}<br>
+                                <strong>Phone:</strong> {{ registration.emergency_contact_phone or 'Not provided' }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if registration.allergy_details or registration.sensory_details or registration.additional_notes %}
+                    <div class="special-notes">
+                        <strong>⚠️ Important Notes:</strong><br>
+                        {% if registration.allergy_details %}
+                        <strong>Allergies/Medical:</strong> {{ registration.allergy_details }}<br>
+                        {% endif %}
+                        {% if registration.sensory_details %}
+                        <strong>Sensory Needs:</strong> {{ registration.sensory_details }}<br>
+                        {% endif %}
+                        {% if registration.additional_notes %}
+                        <strong>Additional Notes:</strong> {{ registration.additional_notes }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="card-actions" role="group" aria-label="Registration actions">
+                        <a href="/confirmation/{{ registration.submission_id }}" class="btn btn-primary" 
+                           aria-label="View full details for {{ registration.child_first_name }} {{ registration.child_last_name }}">👁️ View Full Details</a>
+                        <a href="/admin/edit/{{ registration.id }}" class="btn btn-info" 
+                           aria-label="Edit registration for {{ registration.child_first_name }} {{ registration.child_last_name }}">✏️ Edit</a>
+                        <button class="btn btn-success" onclick="markPaid('{{ registration.submission_id }}')" 
+                                aria-label="Mark registration as paid for {{ registration.child_first_name }} {{ registration.child_last_name }}">💰 Mark Paid</button>
+                        <button class="btn btn-warning" onclick="sendReminder('{{ registration.submission_id }}')" 
+                                aria-label="Send payment reminder to {{ registration.parent_email }}">📧 Send Reminder</button>
+                        <button class="btn btn-danger delete-btn" 
+                                data-camper-id="{{ registration.id }}" 
+                                data-camper-name="{{ registration.child_first_name|e }} {{ registration.child_last_name|e }}"
+                                aria-label="Delete registration for {{ registration.child_first_name }} {{ registration.child_last_name }}">🗑️ Delete</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toast notification system
+        function showToast(message, type = 'success', duration = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                ${message}
+                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+            
+            return toast;
+        }
+        
+        // Loading state management
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.classList.add('loading');
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.textContent = 'Loading...';
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+                if (button.dataset.originalText) {
+                    button.textContent = button.dataset.originalText;
+                }
+            }
+        }
+
+        function searchRegistrations() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.registration-card');
+            
+            cards.forEach(card => {
+                const searchText = card.getAttribute('data-search-text').toLowerCase();
+                if (searchText.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            const cards = document.querySelectorAll('.registration-card');
+            cards.forEach(card => {
+                card.style.display = 'block';
+            });
+        }
+
+        function markPaid(submissionId) {
+            if (confirm('Mark this registration as paid?')) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
+                fetch(`/admin/mark-paid/${submissionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    setButtonLoading(button, false);
+                    if (data.status === 'success') {
+                        showToast('Registration marked as paid successfully!', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast('Error: ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    setButtonLoading(button, false);
+                    console.error('Error marking as paid:', error);
+                    showToast('Error marking as paid. Please try again.', 'error');
+                });
+            }
+        }
+
+        function sendReminder(submissionId) {
+            if (confirm('Send payment reminder email?')) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
+                fetch(`/admin/send-reminder/${submissionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    setButtonLoading(button, false);
+                    if (data.status === 'success') {
+                        showToast('Payment reminder sent successfully!', 'success');
+                    } else {
+                        showToast('Error: ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    setButtonLoading(button, false);
+                    console.error('Error sending reminder:', error);
+                    showToast('Error sending reminder. Please try again.', 'error');
+                });
+            }
+        }
+
+        function deleteCamper(camperId, camperName) {
+            if (confirm(`Are you sure you want to delete the registration for ${camperName}? This action cannot be undone.`)) {
+                const button = event.target;
+                setButtonLoading(button, true);
+                
+                fetch(`/admin/delete/${camperId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    }
+                })
+                .then(response => {
+                    setButtonLoading(button, false);
+                    if (response.ok) {
+                        showToast('Registration deleted successfully!', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        return response.text().then(text => {
+                            throw new Error(text || 'Unknown error');
+                        });
+                    }
+                })
+                .catch(error => {
+                    setButtonLoading(button, false);
+                    console.error('Delete error:', error);
+                    showToast('Error deleting registration. Please try again.', 'error');
+                });
+            }
+        }
+
+        function exportData() {
+            try {
+                // Show loading toast
+                showToast('Preparing export...', 'success', 2000);
+                
+                // Add small delay to show user feedback
+                setTimeout(() => {
+                    window.location.href = '/admin/export';
+                }, 500);
+            } catch (error) {
+                console.error('Export error:', error);
+                showToast('Error preparing export. Please try again.', 'error');
+            }
+        }
+        
+        // Enhanced error handling for API calls
+        function handleApiError(error, operation = 'operation') {
+            console.error(`Error during ${operation}:`, error);
+            
+            if (error.message) {
+                showToast(`Error: ${error.message}`, 'error');
+            } else if (error.status === 403) {
+                showToast('Access denied. Please check your permissions.', 'error');
+            } else if (error.status === 404) {
+                showToast('Resource not found. Please refresh the page.', 'error');
+            } else if (error.status >= 500) {
+                showToast('Server error. Please try again later.', 'error');
+            } else {
+                showToast(`Error during ${operation}. Please try again.`, 'error');
+            }
+        }
+
+        // Real-time search
+        document.getElementById('searchInput').addEventListener('input', searchRegistrations);
+
+        // Enter key search
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchRegistrations();
+            }
+        });
+        
+        // Event delegation for delete buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                const camperId = e.target.getAttribute('data-camper-id');
+                const camperName = e.target.getAttribute('data-camper-name');
+                deleteCamper(camperId, camperName);
+            }
+        });
+    </script>
+</body>
+</html>
