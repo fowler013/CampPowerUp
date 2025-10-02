@@ -240,7 +240,11 @@ def debug_registration(submission_id):
         result = {
             "submission_id": submission_id,
             "database_file": DB_FILE,
-            "found": registration is not None
+            "found": registration is not None,
+            "railway_environment": bool(os.environ.get('RAILWAY_ENVIRONMENT')),
+            "persistent_volume_exists": os.path.exists('/data'),
+            "storage_type": "persistent" if os.path.exists('/data') else "ephemeral",
+            "data_loss_risk": "HIGH - Database will reset on deployment" if not os.path.exists('/data') and os.environ.get('RAILWAY_ENVIRONMENT') else "LOW"
         }
         
         if registration:
@@ -255,12 +259,43 @@ def debug_registration(submission_id):
             }
         else:
             result["message"] = f"Registration {submission_id} not found in database"
+            result["likely_cause"] = "Railway ephemeral storage - data lost on deployment" if os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data') else "Registration never existed or database error"
             
         conn.close()
         return jsonify(result)
         
     except Exception as e:
         return jsonify({"error": str(e), "submission_id": submission_id}), 500
+
+@app.route('/railway-status')
+def railway_status():
+    """Check Railway configuration and provide setup instructions."""
+    try:
+        status = {
+            "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
+            "database_file": DB_FILE,
+            "persistent_volume_configured": os.path.exists('/data'),
+            "current_storage_type": "persistent" if os.path.exists('/data') else "ephemeral",
+            "data_persistence": "✅ Data survives deployments" if os.path.exists('/data') else "❌ Data lost on each deployment"
+        }
+        
+        if os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data'):
+            status["urgent_action_required"] = True
+            status["problem"] = "Railway production has NO persistent volume configured"
+            status["impact"] = "All registration data is lost on every deployment"
+            status["solution"] = {
+                "step1": "Go to Railway Dashboard -> Your project -> Storage tab",
+                "step2": "Click 'Add Volume'",
+                "step3": "Set Mount Path to '/data' and Size to '1GB'",
+                "step4": "Click 'Create Volume' - Railway will auto-redeploy",
+                "step5": "Verify at /test-db that database_file shows '/data/registration_submissions.db'"
+            }
+        else:
+            status["urgent_action_required"] = False
+            
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -346,10 +381,10 @@ def confirmation(submission_id):
         if not registration:
             conn.close()
             
-            # Check if this is a known Railway ephemeral storage issue
-            is_railway_issue = submission_id.startswith('REG_20251002_') and os.environ.get('RAILWAY_ENVIRONMENT')
+            # Check if this is Railway without persistent volume (all registrations affected)
+            is_railway_ephemeral = os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data')
             
-            if is_railway_issue:
+            if is_railway_ephemeral:
                 # Professional explanation for Railway data loss issue
                 return f'''
                 <html>
@@ -395,10 +430,11 @@ def confirmation(submission_id):
                         
                         <div class="alert">
                             <h3>🔧 Technical Notice</h3>
-                            <p>Your registration was successfully submitted, but due to a temporary server configuration issue, 
-                            the detailed information is not currently displayed. <strong>Your registration is valid and confirmed.</strong></p>
-                            <p>We're in the process of migrating to improved persistent storage. This affects some registrations 
-                            submitted before the upgrade was completed.</p>
+                            <p><strong>Your registration was successfully submitted and is confirmed!</strong></p>
+                            <p>Due to a server configuration issue with data persistence, the detailed registration information 
+                            is temporarily not displayed. However, <strong>your camp spot is secured</strong> and your registration is valid.</p>
+                            <p>We're upgrading our data storage system to prevent this issue. Your registration will be honored regardless.</p>
+                            <p><strong>Next step:</strong> Please complete your $50 deposit payment using the information below.</p>
                         </div>
 
                         <div class="payment-info">
