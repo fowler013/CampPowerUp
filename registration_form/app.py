@@ -72,8 +72,14 @@ def require_admin_auth(f):
 
 def send_email_via_sendgrid(to_email, subject, html_content):
     """Send email using SendGrid API."""
-    if not EMAIL_CONFIG['sendgrid_api_key']:
+    print(f"🔍 SendGrid Debug - To: {to_email}, API Key configured: {bool(EMAIL_CONFIG.get('sendgrid_api_key'))}")
+    
+    if not EMAIL_CONFIG.get('sendgrid_api_key'):
         print("❌ SendGrid API key not configured")
+        return False
+        
+    if not to_email:
+        print("❌ No recipient email provided")
         return False
         
     url = "https://api.sendgrid.com/v3/mail/send"
@@ -101,10 +107,14 @@ def send_email_via_sendgrid(to_email, subject, html_content):
     }
     
     try:
+        print(f"📤 Sending to SendGrid API...")
         response = requests.post(url, headers=headers, json=data)
+        print(f"📨 SendGrid response: {response.status_code}")
+        if response.status_code != 202:
+            print(f"❌ SendGrid error response: {response.text}")
         return response.status_code == 202
     except Exception as e:
-        print(f"SendGrid error: {e}")
+        print(f"❌ SendGrid request exception: {e}")
         return False
 
 def send_confirmation_email(registration_data):
@@ -153,14 +163,23 @@ def send_confirmation_email(registration_data):
     """
     
     try:
-        result = send_email_via_sendgrid(registration_data['parent_email'], subject, html_content)
+        parent_email = registration_data.get('parent_email', '')
+        if not parent_email:
+            print(f"❌ No parent email provided in registration data: {list(registration_data.keys())}")
+            return False
+            
+        print(f"🔄 Attempting to send email to: {parent_email}")
+        print(f"📧 SendGrid config check - API key length: {len(EMAIL_CONFIG.get('sendgrid_api_key', ''))}")
+        
+        result = send_email_via_sendgrid(parent_email, subject, html_content)
         if result:
-            print(f"✅ Confirmation email sent to {registration_data['parent_email']}")
+            print(f"✅ Confirmation email sent to {parent_email}")
         else:
-            print(f"❌ Failed to send confirmation email to {registration_data['parent_email']}")
+            print(f"❌ Failed to send confirmation email to {parent_email}")
         return result
     except Exception as e:
         print(f"❌ Email error: {e}")
+        print(f"❌ Registration data keys: {list(registration_data.keys())}")
         return False
 
 def init_registration_db():
