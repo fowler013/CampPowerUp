@@ -505,10 +505,41 @@ def test_submit():
 def railway_status():
     """Check Railway configuration and provide setup instructions."""
     try:
+        # Get fresh database path
+        current_db_path = get_database_path()
+        
+        # Check all possible volume locations
+        volume_checks = {
+            "/data": os.path.exists('/data'),
+            "/app": os.path.exists('/app'),
+            "/var/lib/containers/railwayapp/bind-mounts": os.path.exists('/var/lib/containers/railwayapp/bind-mounts')
+        }
+        
+        # List bind mount contents if they exist
+        bind_mount_contents = []
+        bind_mount_base = '/var/lib/containers/railwayapp/bind-mounts'
+        if os.path.exists(bind_mount_base):
+            try:
+                for project_dir in os.listdir(bind_mount_base):
+                    project_path = os.path.join(bind_mount_base, project_dir)
+                    if os.path.isdir(project_path):
+                        volumes = [vol for vol in os.listdir(project_path) if vol.startswith('vol_')]
+                        bind_mount_contents.append({
+                            "project": project_dir,
+                            "volumes": volumes,
+                            "full_paths": [os.path.join(project_path, vol) for vol in volumes]
+                        })
+            except Exception as e:
+                bind_mount_contents.append({"error": str(e)})
+        
         status = {
             "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
-            "database_file": DB_FILE,
+            "database_file_cached": DB_FILE,
+            "database_file_current": current_db_path,
+            "database_exists": os.path.exists(current_db_path),
             "persistent_volume_configured": os.path.exists('/data'),
+            "volume_checks": volume_checks,
+            "bind_mount_contents": bind_mount_contents,
             "current_storage_type": "persistent" if os.path.exists('/data') else "ephemeral",
             "data_persistence": "✅ Data survives deployments" if os.path.exists('/data') else "❌ Data lost on each deployment"
         }
