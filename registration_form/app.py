@@ -544,6 +544,11 @@ def admin_logout():
 def admin_dashboard():
     """Professional admin dashboard with statistics."""
     try:
+        # Check for Railway storage issue
+        is_railway_without_volume = os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data')
+        if is_railway_without_volume:
+            flash('⚠️ STORAGE WARNING: Railway production has no persistent volume configured. Registration data will be lost on deployment. Configure persistent volume at /data to fix this issue.', 'warning')
+        
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
