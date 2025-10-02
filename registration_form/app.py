@@ -176,6 +176,91 @@ def confirmation(submission_id):
     </body></html>
     '''
 
+@app.route('/admin')
+def admin():
+    """Simple admin view."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        # Simple HTML response with registration list
+        html = '''
+        <html><head><title>Camp Power-Up Admin</title></head>
+        <body style="font-family: Arial, sans-serif; margin: 20px;">
+        <h1>🏕️ Camp Power-Up Admin Dashboard</h1>
+        '''
+        
+        if registrations:
+            html += f'<p><strong>Total Registrations:</strong> {len(registrations)}</p>'
+            html += '<table border="1" style="border-collapse: collapse; width: 100%;">'
+            html += '''<tr style="background: #f0f0f0;">
+                <th>ID</th><th>Child Name</th><th>Age</th><th>Parent</th><th>Email</th><th>Phone</th><th>Timestamp</th>
+            </tr>'''
+            
+            for reg in registrations:
+                html += f'''<tr>
+                    <td>{reg["submission_id"]}</td>
+                    <td>{reg["child_first_name"]} {reg["child_last_name"]}</td>
+                    <td>{reg["child_age"]}</td>
+                    <td>{reg["parent_first_name"]} {reg["parent_last_name"]}</td>
+                    <td>{reg["parent_email"]}</td>
+                    <td>{reg["parent_phone"]}</td>
+                    <td>{reg["timestamp"]}</td>
+                </tr>'''
+            html += '</table>'
+        else:
+            html += '<p>No registrations yet.</p>'
+            
+        html += '''
+        <p style="margin-top: 20px;">
+            <a href="/admin/export">📥 Export CSV</a> | 
+            <a href="/">📝 Registration Form</a>
+        </p>
+        </body></html>
+        '''
+        return html
+        
+    except Exception as e:
+        return f'Admin Error: {str(e)}', 500
+
+@app.route('/admin/export')
+def admin_export():
+    """Export registrations as CSV."""
+    try:
+        import io
+        import csv
+        from flask import make_response
+        
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        if not registrations:
+            return "No registrations to export", 404
+            
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=registrations[0].keys())
+        writer.writeheader()
+        for registration in registrations:
+            writer.writerow(registration)
+        
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=camp_registrations.csv'
+        
+        return response
+        
+    except Exception as e:
+        return f'Export Error: {str(e)}', 500
+
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
