@@ -35,6 +35,13 @@ def get_database_path():
     if os.environ.get('RAILWAY_ENVIRONMENT'):
         print("🚀 Railway environment detected - finding database path...")
         
+        # Check if RAILWAY_VOLUME_MOUNT_PATH is set
+        volume_mount_path = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH')
+        if volume_mount_path:
+            print(f"📌 RAILWAY_VOLUME_MOUNT_PATH is set to: {volume_mount_path}")
+        else:
+            print("⚠️ RAILWAY_VOLUME_MOUNT_PATH environment variable is NOT set")
+        
         # Railway server - only check server paths, ignore any local development paths
         server_paths_to_check = ['/data', '/app']
         
@@ -534,6 +541,7 @@ def railway_status():
         
         status = {
             "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
+            "railway_volume_mount_path_env": os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', 'NOT SET'),
             "database_file_cached": DB_FILE,
             "database_file_current": current_db_path,
             "database_exists": os.path.exists(current_db_path),
@@ -546,14 +554,22 @@ def railway_status():
         
         if os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data'):
             status["urgent_action_required"] = True
-            status["problem"] = "Railway production has NO persistent volume configured"
-            status["impact"] = "All registration data is lost on every deployment"
+            status["problem"] = "Railway RAILWAY_VOLUME_MOUNT_PATH is set, but /data directory does NOT exist"
+            status["impact"] = "Environment variable exists but actual volume is not mounted"
+            status["diagnosis"] = {
+                "env_var_set": os.environ.get('RAILWAY_VOLUME_MOUNT_PATH') is not None,
+                "env_var_value": os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', 'NOT SET'),
+                "directory_exists": os.path.exists('/data'),
+                "issue": "You need to create an ACTUAL volume in Railway dashboard, not just the environment variable"
+            }
             status["solution"] = {
-                "step1": "Go to Railway Dashboard -> Your project -> Storage tab",
-                "step2": "Click 'Add Volume'",
-                "step3": "Set Mount Path to '/data' and Size to '1GB'",
-                "step4": "Click 'Create Volume' - Railway will auto-redeploy",
-                "step5": "Verify at /test-db that database_file shows '/data/registration_submissions.db'"
+                "step1": "Go to Railway Dashboard -> Your project -> Click on your service",
+                "step2": "Go to Settings tab (not Variables)",
+                "step3": "Scroll down to 'Volumes' section",
+                "step4": "Click '+ New Volume'",
+                "step5": "Mount Path: /data (must match RAILWAY_VOLUME_MOUNT_PATH)",
+                "step6": "Size: 1 GB",
+                "step7": "Click 'Add' - Railway will auto-redeploy and mount the volume"
             }
         else:
             status["urgent_action_required"] = False
