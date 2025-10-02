@@ -9,13 +9,37 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+# Configure pricing in Flask config for templates
+app.config['pricing'] = {
+    'returning_camper': {
+        'total': 80,
+        'deposit': 50,
+        'final_payment': 30
+    },
+    'new_camper': {
+        'total': 100,
+        'deposit': 50,
+        'final_payment': 50
+    }
+}
 
 # Simple database setup
 DB_FILE = 'registration_submissions.db'
+
+# Helper functions for templates
+def get_camp_title():
+    return "Camp Power-Up 2025 Registration"
+
+def get_camp_subtitle():
+    return "Nintendo Switch Gaming Camp - November 24-26, 2025"
+
+def get_pricing_text():
+    return "Registration fees listed below"
 
 def init_db():
     """Initialize database."""
@@ -50,25 +74,27 @@ def init_db():
 
 @app.route('/')
 def home():
-    """Registration form page."""
-    return '''
-    <html>
-    <head><title>Camp Power-Up Registration</title></head>
-    <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-        <h1>🏕️ Camp Power-Up Registration 2025</h1>
-        <p><strong>Registration is WORKING!</strong> The system is back online.</p>
-        <p>📧 For registration assistance, please contact: fowler0613@gmail.com</p>
-        <p>🔧 Admin functionality is being restored.</p>
-        <h3>System Status</h3>
-        <ul>
-            <li>✅ Registration submissions: WORKING</li>
-            <li>✅ Database: WORKING</li>
-            <li>🔧 Admin dashboard: Being restored</li>
-        </ul>
-        <p><a href="/test-db">Test Database Connection</a></p>
-    </body>
-    </html>
-    '''
+    """Main registration form."""
+    # Create pricing object that template expects
+    pricing = {
+        'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
+        'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
+        'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-26th, 10am-3pm daily.'
+    }
+    
+    # Mock camp config
+    camp_config = {
+        'camp_name': 'Camp Power-Up 2025',
+        'camp_dates': 'November 24-26, 2025',
+        'camp_times': '10am-3pm daily'
+    }
+    
+    return render_template('registration_form.html', 
+                         camp_config=camp_config,
+                         camp_title='Camp Power-Up 2025 Registration',
+                         camp_subtitle='Nintendo Switch Gaming Camp - November 24-26, 2025',
+                         pricing_text='Registration fees listed below',
+                         pricing=pricing)
 
 @app.route('/test-db')
 def test_db():
