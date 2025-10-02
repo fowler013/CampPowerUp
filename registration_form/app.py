@@ -196,6 +196,31 @@ def init_db():
     """Legacy database initialization.""" 
     return init_db_with_logging()
 
+@app.route('/debug-all-registrations')
+def debug_all_registrations():
+    """Show all registrations with full details for debugging."""
+    try:
+        db_file = get_database_path()
+        print(f"🔍 Debug all registrations using database: {db_file}")
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC LIMIT 10")
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({
+            "database_file": db_file,
+            "total_count": len(registrations),
+            "registrations": registrations
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
 @app.route('/')
 def home():
     """Main registration form."""
@@ -604,11 +629,27 @@ def confirmation(submission_id):
         # Fetch registration details from database - use fresh path for Railway compatibility
         db_file = get_database_path()
         print(f"🔍 Confirmation page using database: {db_file}")
+        print(f"🔍 Looking for submission_id: {submission_id}")
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+        
+        # First check if the registration exists
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id = ?", (submission_id,))
+        count = cursor.fetchone()[0]
+        print(f"🔍 Found {count} matching registrations")
+        
         cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
         registration = cursor.fetchone()
+        
+        if registration:
+            print(f"✅ Registration found!")
+            print(f"   child_first_name: '{registration['child_first_name']}'")
+            print(f"   child_last_name: '{registration['child_last_name']}'")
+            print(f"   child_age: '{registration['child_age']}'")
+            print(f"   parent_email: '{registration['parent_email']}'")
+        else:
+            print(f"❌ No registration found for {submission_id}")
         
         if not registration:
             conn.close()
