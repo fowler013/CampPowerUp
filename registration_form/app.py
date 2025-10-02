@@ -29,20 +29,75 @@ app.config['pricing'] = {
     }
 }
 
-# Railway-aware database setup for persistent data
+# Railway-aware database setup for persistent data  
 def get_database_path():
     """Get the appropriate database path based on environment."""
     if os.environ.get('RAILWAY_ENVIRONMENT'):
-        # Railway production - use persistent volume path
-        data_dir = '/app/data'
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir, exist_ok=True)
-        return os.path.join(data_dir, 'registration_submissions.db')
+        # Railway - try persistent volume path first, fallback to app directory
+        volume_path = '/data/registration_submissions.db'
+        app_path = '/app/registration_submissions.db'
+        
+        # Check if volume mount exists
+        if os.path.exists('/data'):
+            return volume_path
+        else:
+            # No persistent volume - use app directory but warn about data loss
+            print("WARNING: No persistent volume found at /data - using ephemeral storage")
+            print("Database will reset on each deployment until persistent volume is configured")
+            return app_path
     else:
         # Local development
         return 'registration_submissions.db'
 
 DB_FILE = get_database_path()
+
+# Initialize database on startup
+def init_db_with_logging():
+    """Initialize database with logging for Railway debugging."""
+    try:
+        print(f"Initializing database at: {DB_FILE}")
+        print(f"Database file exists: {os.path.exists(DB_FILE)}")
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS registrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                submission_id TEXT UNIQUE,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                child_first_name TEXT,
+                child_last_name TEXT,
+                child_age INTEGER,
+                child_grade TEXT,
+                parent_first_name TEXT,
+                parent_last_name TEXT,
+                parent_email TEXT,
+                parent_phone TEXT,
+                emergency_contact_name TEXT,
+                emergency_contact_phone TEXT,
+                has_allergies BOOLEAN DEFAULT 0,
+                allergies_description TEXT,
+                has_medical_conditions BOOLEAN DEFAULT 0,
+                medical_conditions_description TEXT,
+                is_returning_camper BOOLEAN DEFAULT 0,
+                returning_years TEXT,
+                bringing_own_switch BOOLEAN DEFAULT 0,
+                how_heard_about_camp TEXT,
+                additional_comments TEXT
+            )
+        """)
+        conn.commit()
+        
+        # Check existing data
+        cursor.execute("SELECT COUNT(*) FROM registrations")
+        count = cursor.fetchone()[0]
+        print(f"Database initialized with {count} existing registrations")
+        
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        return False
 
 # Helper functions for templates
 def get_camp_title():
@@ -67,38 +122,10 @@ def require_admin_auth(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Keep the old init_db for backward compatibility
 def init_db():
-    """Initialize database."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS registrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            submission_id TEXT UNIQUE,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            child_first_name TEXT,
-            child_last_name TEXT,
-            child_age INTEGER,
-            child_grade TEXT,
-            parent_first_name TEXT,
-            parent_last_name TEXT,
-            parent_email TEXT,
-            parent_phone TEXT,
-            emergency_contact_name TEXT,
-            emergency_contact_phone TEXT,
-            has_allergies BOOLEAN DEFAULT 0,
-            allergies_description TEXT,
-            has_medical_conditions BOOLEAN DEFAULT 0,
-            medical_conditions_description TEXT,
-            is_returning_camper BOOLEAN DEFAULT 0,
-            returning_years TEXT,
-            bringing_own_switch BOOLEAN DEFAULT 0,
-            how_heard_about_camp TEXT,
-            additional_comments TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+    """Legacy database initialization.""" 
+    return init_db_with_logging()
 
 @app.route('/')
 def home():
@@ -161,21 +188,29 @@ def test_db():
         # Get count if table exists
         count = 0
         recent_registrations = []
+        table_schema = []
+        
         if table_exists:
             cursor.execute("SELECT COUNT(*) FROM registrations")
             count = cursor.fetchone()[0]
             
-            # Get last 3 registrations
-            cursor.execute("SELECT submission_id, child_first_name, child_last_name, timestamp FROM registrations ORDER BY timestamp DESC LIMIT 3")
-            recent_registrations = [dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()]
+            # Get table schema
+            cursor.execute("PRAGMA table_info(registrations)")
+            table_schema = [dict(zip(['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk'], row)) for row in cursor.fetchall()]
+            
+            # Get last 3 registrations with ALL fields
+            cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC LIMIT 3")
+            columns = [description[0] for description in cursor.description]
+            recent_registrations = [dict(zip(columns, row)) for row in cursor.fetchall()]
         
         conn.close()
         
         return jsonify({
-            "database_type": "SQLite",
+            "database_type": "SQLite", 
             "database_file": DB_FILE,
             "database_exists": os.path.exists(DB_FILE),
             "table_exists": table_exists,
+            "table_schema": table_schema,
             "total_registrations": count,
             "recent_registrations": recent_registrations,
             "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
@@ -189,6 +224,43 @@ def test_db():
             "database_file": DB_FILE,
             "database_exists": os.path.exists(DB_FILE) if 'DB_FILE' in locals() else False
         }), 500
+
+@app.route('/debug-registration/<submission_id>')
+def debug_registration(submission_id):
+    """Debug specific registration by ID."""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get the specific registration
+        cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
+        registration = cursor.fetchone()
+        
+        result = {
+            "submission_id": submission_id,
+            "database_file": DB_FILE,
+            "found": registration is not None
+        }
+        
+        if registration:
+            result["registration_data"] = dict(registration)
+            result["data_completeness"] = {
+                "has_child_name": bool(registration['child_first_name'] and registration['child_last_name']),
+                "has_email": bool(registration['parent_email']),
+                "has_age": bool(registration['child_age']),
+                "has_grade": bool(registration['child_grade']),
+                "total_fields": len([v for v in registration if v is not None and str(v).strip()]),
+                "empty_fields": len([v for v in registration if v is None or str(v).strip() == ""])
+            }
+        else:
+            result["message"] = f"Registration {submission_id} not found in database"
+            
+        conn.close()
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({"error": str(e), "submission_id": submission_id}), 500
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -505,6 +577,12 @@ def admin_delete(registration_id):
         flash(f'Delete error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+# Initialize database on module load (Railway compatibility)
+init_db_with_logging()
+
 if __name__ == '__main__':
-    init_db()
+    print("Starting Camp Power-Up Registration System...")
+    print(f"Environment: {'Railway' if os.environ.get('RAILWAY_ENVIRONMENT') else 'Local'}")
+    print(f"Database: {DB_FILE}")
+    
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
