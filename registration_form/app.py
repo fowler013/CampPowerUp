@@ -280,20 +280,32 @@ def confirmation(submission_id):
             
             conn.close()
             
-            return f'''
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
-                <h1>⚠️ Registration Not Found</h1>
-                <p><strong>Submission ID:</strong> {submission_id}</p>
-                <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <h3>Debug Information:</h3>
-                    <p><strong>Database Path:</strong> {DB_FILE}</p>
-                    <p><strong>Table Exists:</strong> {table_exists}</p>
-                    <p><strong>Total Registrations:</strong> {total_registrations}</p>
-                    <p><strong>Environment:</strong> {"Railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "Local"}</p>
-                </div>
-                <p><a href="/">← Back to Registration Form</a></p>
-            </div>
-            ''', 404
+            # If no registrations exist, show a generic confirmation with the submission ID
+            # This handles Railway's ephemeral storage issue
+            mock_registration = {
+                'submission_id': submission_id,
+                'child_first_name': '',
+                'child_last_name': '',
+                'child_age': '',
+                'parent_email': '',
+                'is_returning_camper': False,
+                'has_allergies': False,
+                'has_medical_conditions': False,
+                'allergies_description': '',
+                'medical_conditions_description': '',
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            # Add a warning about data persistence to the template
+            mock_registration['_railway_warning'] = True
+            mock_registration['_debug_info'] = {
+                'database_path': DB_FILE,
+                'table_exists': table_exists,
+                'total_registrations': total_registrations,
+                'environment': "Railway" if os.environ.get("RAILWAY_ENVIRONMENT") else "Local"
+            }
+            
+            return render_template('confirmation.html', registration=mock_registration)
             
         conn.close()
         
