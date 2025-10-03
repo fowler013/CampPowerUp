@@ -1835,14 +1835,26 @@ def import_historical_data():
     try:
         import csv
         
-        csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        # Try multiple possible paths for Railway compatibility
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv'),
+            os.path.join('/app', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv'),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        ]
         
-        if not os.path.exists(csv_path):
-            flash(f'Historical data file not found at: {csv_path}', 'error')
+        csv_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                csv_path = path
+                break
+        
+        if not csv_path:
+            flash(f'Historical data file not found. Tried paths: {", ".join(possible_paths)}', 'error')
             return redirect(url_for('admin_dashboard'))
         
         db_file = get_database_path()
-        print(f"📥 Importing historical data using database: {db_file}")
+        print(f"📥 Importing historical data from: {csv_path}")
+        print(f"📥 Using database: {db_file}")
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
@@ -1941,6 +1953,7 @@ def import_historical_data():
         conn.commit()
         conn.close()
         
+        print(f"📊 Import results - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
         flash(f'✅ Import complete! Imported: {imported_count}, Skipped (duplicates): {skipped_count}, Errors: {error_count}', 'success')
         return redirect(url_for('admin_historical'))
         
