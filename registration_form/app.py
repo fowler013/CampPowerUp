@@ -41,12 +41,44 @@ def get_database_path():
         volume_mount_path = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH')
         if volume_mount_path:
             print(f"📌 RAILWAY_VOLUME_MOUNT_PATH is set to: {volume_mount_path}")
+            
+            # First, try the RAILWAY_VOLUME_MOUNT_PATH directly
+            if os.path.exists(volume_mount_path):
+                try:
+                    # Test if it's writable
+                    test_file = os.path.join(volume_mount_path, '.write_test')
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    db_path = os.path.join(volume_mount_path, 'registration_submissions.db')
+                    print(f"✅ Found writable volume at RAILWAY_VOLUME_MOUNT_PATH: {volume_mount_path}")
+                    print(f"✅ Using persistent database: {db_path}")
+                    return db_path
+                except Exception as e:
+                    print(f"⚠️ RAILWAY_VOLUME_MOUNT_PATH exists but not writable: {e}")
+            else:
+                print(f"⚠️ RAILWAY_VOLUME_MOUNT_PATH set but directory doesn't exist: {volume_mount_path}")
         else:
             print("⚠️ RAILWAY_VOLUME_MOUNT_PATH environment variable is NOT set")
         
-        # Railway server - check bind mounts FIRST since /data might be a non-writable symlink
-        # Check for Railway bind mounts (advanced volume detection)
-
+        # Try common volume locations
+        print("🔍 Checking common Railway volume locations...")
+        common_paths = ['/data', '/mnt/data', '/volume', '/mnt/volume']
+        for path in common_paths:
+            if os.path.exists(path):
+                try:
+                    test_file = os.path.join(path, '.write_test')
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    db_path = os.path.join(path, 'registration_submissions.db')
+                    print(f"✅ Found writable volume at {path}")
+                    print(f"✅ Using persistent database: {db_path}")
+                    return db_path
+                except Exception as e:
+                    print(f"⚠️ Path {path} exists but not writable: {e}")
+        
+        # Check for Railway bind mounts (legacy/advanced detection)
         bind_mount_base = '/var/lib/containers/railwayapp/bind-mounts'
         if os.path.exists(bind_mount_base):
             try:
@@ -58,7 +90,6 @@ def get_database_path():
                         for vol_dir in os.listdir(project_path):
                             if vol_dir.startswith('vol_'):
                                 volume_path = os.path.join(project_path, vol_dir)
-                                # Test write permissions
                                 try:
                                     test_file = os.path.join(volume_path, '.write_test')
                                     with open(test_file, 'w') as f:
@@ -794,12 +825,27 @@ def railway_status():
         # Get fresh database path
         current_db_path = get_database_path()
         
-        # Check all possible volume locations
-        volume_checks = {
-            "/data": os.path.exists('/data'),
-            "/app": os.path.exists('/app'),
-            "/var/lib/containers/railwayapp/bind-mounts": os.path.exists('/var/lib/containers/railwayapp/bind-mounts')
-        }
+        # Check all possible volume locations with write test
+        volume_checks = {}
+        test_paths = ['/data', '/mnt/data', '/volume', '/mnt/volume', '/app', 
+                     '/var/lib/containers/railwayapp/bind-mounts']
+        
+        for path in test_paths:
+            exists = os.path.exists(path)
+            writable = False
+            if exists:
+                try:
+                    test_file = os.path.join(path, '.status_write_test')
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    writable = True
+                except:
+                    pass
+            volume_checks[path] = {
+                "exists": exists,
+                "writable": writable
+            }
         
         # List bind mount contents if they exist
         bind_mount_contents = []
@@ -818,17 +864,20 @@ def railway_status():
             except Exception as e:
                 bind_mount_contents.append({"error": str(e)})
         
+        # Determine if using persistent storage
+        is_persistent = '/app' not in current_db_path
+        
         status = {
             "environment": "Railway" if os.environ.get('RAILWAY_ENVIRONMENT') else "Local",
             "railway_volume_mount_path_env": os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', 'NOT SET'),
             "database_file_cached": DB_FILE,
             "database_file_current": current_db_path,
             "database_exists": os.path.exists(current_db_path),
-            "persistent_volume_configured": os.path.exists('/data'),
+            "using_persistent_storage": is_persistent,
             "volume_checks": volume_checks,
             "bind_mount_contents": bind_mount_contents,
-            "current_storage_type": "persistent" if os.path.exists('/data') else "ephemeral",
-            "data_persistence": "✅ Data survives deployments" if os.path.exists('/data') else "❌ Data lost on each deployment"
+            "current_storage_type": "persistent" if is_persistent else "ephemeral",
+            "data_persistence": "✅ Data survives deployments" if is_persistent else "❌ Data lost on each deployment"
         }
         
         if os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data'):
