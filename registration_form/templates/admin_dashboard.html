@@ -469,6 +469,12 @@
             <a href="/admin/historical">📚 Historical Data</a>
             <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
             <a href="/admin/config">⚙️ Configuration</a>
+            <form action="/admin/import-historical" method="POST" style="display: inline;" 
+                  onsubmit="return confirm('Import historical camper data from CSV? This will add past registrations to the database.');">
+                <button type="submit" style="color: #667eea; background: none; border: none; cursor: pointer; padding: 8px 15px; border-radius: 5px; font-size: inherit; font-family: inherit;">
+                    📥 Import Historical Data
+                </button>
+            </form>
             <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
         </div>
     </div>
