@@ -1478,7 +1478,8 @@ def admin_dashboard():
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        # Only show current registrations (exclude HIST_ historical records)
+        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
         registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
@@ -1616,7 +1617,8 @@ def admin_export_json():
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM registrations ORDER BY timestamp ASC")
+        # Only export current registrations (exclude HIST_ historical records)
+        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp ASC")
         registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
@@ -1712,7 +1714,8 @@ def admin_export():
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM registrations ORDER BY timestamp DESC")
+        # Only export current registrations (exclude HIST_ historical records)
+        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
         registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
