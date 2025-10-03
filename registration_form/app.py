@@ -833,19 +833,49 @@ def railway_status():
         for path in test_paths:
             exists = os.path.exists(path)
             writable = False
+            is_symlink = False
+            real_path = None
             if exists:
+                is_symlink = os.path.islink(path)
+                if is_symlink:
+                    try:
+                        real_path = os.path.realpath(path)
+                    except:
+                        real_path = "Unable to resolve"
                 try:
                     test_file = os.path.join(path, '.status_write_test')
                     with open(test_file, 'w') as f:
                         f.write('test')
                     os.remove(test_file)
                     writable = True
-                except:
+                except Exception as e:
                     pass
             volume_checks[path] = {
                 "exists": exists,
-                "writable": writable
+                "writable": writable,
+                "is_symlink": is_symlink,
+                "real_path": real_path
             }
+        
+        # Deep filesystem exploration - find ALL writable directories
+        writable_dirs = []
+        search_paths = ['/', '/mnt', '/var', '/opt', '/usr/local']
+        for base in search_paths:
+            if os.path.exists(base):
+                try:
+                    for item in os.listdir(base):
+                        item_path = os.path.join(base, item)
+                        if os.path.isdir(item_path):
+                            try:
+                                test_file = os.path.join(item_path, '.explore_write_test')
+                                with open(test_file, 'w') as f:
+                                    f.write('test')
+                                os.remove(test_file)
+                                writable_dirs.append(item_path)
+                            except:
+                                pass
+                except:
+                    pass
         
         # List bind mount contents if they exist
         bind_mount_contents = []
@@ -864,6 +894,10 @@ def railway_status():
             except Exception as e:
                 bind_mount_contents.append({"error": str(e)})
         
+        # Get all environment variables related to volumes
+        volume_env_vars = {k: v for k, v in os.environ.items() 
+                          if any(word in k.lower() for word in ['volume', 'mount', 'data', 'persist'])}
+        
         # Determine if using persistent storage
         is_persistent = '/app' not in current_db_path
         
@@ -875,7 +909,9 @@ def railway_status():
             "database_exists": os.path.exists(current_db_path),
             "using_persistent_storage": is_persistent,
             "volume_checks": volume_checks,
+            "writable_directories_found": writable_dirs,
             "bind_mount_contents": bind_mount_contents,
+            "volume_related_env_vars": volume_env_vars,
             "current_storage_type": "persistent" if is_persistent else "ephemeral",
             "data_persistence": "✅ Data survives deployments" if is_persistent else "❌ Data lost on each deployment"
         }
@@ -905,6 +941,79 @@ def railway_status():
         return jsonify(status)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/find-volumes')
+def find_volumes():
+    """Aggressively search the entire filesystem for Railway volumes."""
+    try:
+        import subprocess
+        
+        results = {
+            "search_method": "comprehensive filesystem scan",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Method 1: Check mount points
+        try:
+            mount_output = subprocess.check_output(['mount'], text=True)
+            results["mount_points"] = mount_output.split('\n')
+        except:
+            results["mount_points"] = "Unable to execute mount command"
+        
+        # Method 2: Check df for filesystem usage
+        try:
+            df_output = subprocess.check_output(['df', '-h'], text=True)
+            results["disk_usage"] = df_output.split('\n')
+        except:
+            results["disk_usage"] = "Unable to execute df command"
+        
+        # Method 3: Find all directories containing 'vol_' or 'railway'
+        suspicious_dirs = []
+        search_bases = ['/', '/mnt', '/var', '/opt', '/usr', '/home']
+        for base in search_bases:
+            if os.path.exists(base):
+                try:
+                    # Use find command for faster search
+                    find_cmd = f"find {base} -maxdepth 3 -type d \\( -name '*vol_*' -o -name '*railway*' -o -name '*volume*' \\) 2>/dev/null"
+                    find_output = subprocess.check_output(find_cmd, shell=True, text=True, timeout=5)
+                    if find_output.strip():
+                        suspicious_dirs.extend(find_output.strip().split('\n'))
+                except:
+                    pass
+        
+        results["suspicious_directories"] = suspicious_dirs
+        
+        # Method 4: Check what's in root directory
+        try:
+            root_contents = os.listdir('/')
+            root_dirs = [item for item in root_contents if os.path.isdir(f'/{item}')]
+            results["root_directories"] = root_dirs
+        except Exception as e:
+            results["root_directories"] = f"Error: {str(e)}"
+        
+        # Method 5: Test write to common volume locations
+        test_locations = {}
+        for path in ['/data', '/mnt/data', '/volume', '/mnt/volume', '/var/data', '/opt/data']:
+            if os.path.exists(path):
+                try:
+                    test_file = os.path.join(path, '.volume_test')
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    test_locations[path] = "✅ WRITABLE"
+                except Exception as e:
+                    test_locations[path] = f"❌ Not writable: {str(e)}"
+            else:
+                test_locations[path] = "Does not exist"
+        
+        results["volume_write_tests"] = test_locations
+        
+        # Method 6: All environment variables
+        results["all_env_vars"] = dict(os.environ)
+        
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": str(e.__traceback__)}), 500
 
 @app.route('/submit', methods=['POST'])
 def submit():
