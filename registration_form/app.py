@@ -1961,6 +1961,86 @@ def import_historical_data():
         flash(f'Import error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/fix-historical-records', methods=['POST'])
+@require_admin_auth
+def fix_historical_records():
+    """One-time fix: Add HIST_ prefix to imported historical records by matching against CSV."""
+    try:
+        import csv
+        
+        # First, load all names/emails from CSV
+        csv_path = None
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv'),
+            os.path.join('/app', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv'),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                csv_path = path
+                break
+        
+        if not csv_path:
+            flash('CSV file not found for verification', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Build set of historical campers from CSV
+        historical_campers = set()
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                first_name = row.get('Childs First Name?', '').strip()
+                last_name = row.get('Childs Last Name?', '').strip()
+                email = row.get('Email Address', '').strip()
+                if first_name and last_name:
+                    historical_campers.add((first_name.lower(), last_name.lower(), email.lower()))
+        
+        db_file = get_database_path()
+        print(f"🔧 Fixing historical records in database: {db_file}")
+        print(f"📚 Found {len(historical_campers)} unique campers in CSV")
+        
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        # Find ALL records without HIST_ prefix
+        cursor.execute("""
+            SELECT id, submission_id, child_first_name, child_last_name, parent_email
+            FROM registrations 
+            WHERE submission_id NOT LIKE 'HIST_%'
+        """)
+        
+        all_records = cursor.fetchall()
+        updated_count = 0
+        
+        for record in all_records:
+            record_id, old_submission_id, first_name, last_name, email = record
+            
+            # Check if this record matches a historical camper from CSV
+            key = (first_name.lower(), last_name.lower(), email.lower())
+            if key in historical_campers:
+                # Generate new HIST_ ID
+                new_submission_id = f"HIST_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
+                
+                cursor.execute("""
+                    UPDATE registrations 
+                    SET submission_id = ?
+                    WHERE id = ?
+                """, (new_submission_id, record_id))
+                
+                updated_count += 1
+                print(f"✅ Updated: {first_name} {last_name} ({email}) - {old_submission_id} → {new_submission_id}")
+        
+        conn.commit()
+        conn.close()
+        
+        flash(f'✅ Fixed {updated_count} historical records with HIST_ prefix', 'success')
+        return redirect(url_for('admin_historical'))
+        
+    except Exception as e:
+        flash(f'Fix error: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/delete/<int:registration_id>', methods=['POST'])
 @require_admin_auth
 def admin_delete(registration_id):

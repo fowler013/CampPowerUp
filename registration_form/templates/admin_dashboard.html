@@ -474,6 +474,11 @@
                     📥 Import Historical Data
                 </button>
             </form>
+            <form method="POST" action="/admin/fix-historical-records" style="display: inline; margin: 0;" onsubmit="return confirm('This will add HIST_ prefix to historical records. Continue?');">
+                <button type="submit" style="background: #ffc107; color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px;" onmouseover="this.style.background='#e0a800'" onmouseout="this.style.background='#ffc107'">
+                    🔧 Fix Historical Records
+                </button>
+            </form>
             <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
         </div>
     </div>
