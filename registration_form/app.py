@@ -1641,6 +1641,87 @@ def admin_historical():
         flash(f'Error loading historical data: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/verify-returning-campers')
+@require_admin_auth
+def verify_returning_campers():
+    """Verify returning camper claims against historical database."""
+    try:
+        db_file = get_database_path()
+        print(f"🔍 Verifying returning campers using database: {db_file}")
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get current registrations that claim to be returning campers
+        cursor.execute("""
+            SELECT * FROM registrations 
+            WHERE submission_id NOT LIKE 'HIST_%'
+            AND is_returning_camper = 1
+            ORDER BY timestamp DESC
+        """)
+        claimed_returning = [dict(row) for row in cursor.fetchall()]
+        
+        # Get all historical campers for lookup
+        cursor.execute("""
+            SELECT child_first_name, child_last_name, parent_email, timestamp
+            FROM registrations 
+            WHERE submission_id LIKE 'HIST_%'
+        """)
+        historical_campers = [dict(row) for row in cursor.fetchall()]
+        
+        conn.close()
+        
+        # Build lookup set of historical campers (name + email)
+        historical_lookup = set()
+        for h in historical_campers:
+            key = (
+                h['child_first_name'].lower().strip(),
+                h['child_last_name'].lower().strip(),
+                h['parent_email'].lower().strip()
+            )
+            historical_lookup.add(key)
+        
+        # Verify each claimed returning camper
+        verified_results = []
+        for claim in claimed_returning:
+            child_first = claim.get('child_first_name', '').lower().strip()
+            child_last = claim.get('child_last_name', '').lower().strip()
+            parent_email = claim.get('parent_email', '').lower().strip()
+            
+            key = (child_first, child_last, parent_email)
+            is_verified = key in historical_lookup
+            
+            verified_results.append({
+                'id': claim.get('id'),
+                'submission_id': claim.get('submission_id'),
+                'child_first_name': claim.get('child_first_name'),
+                'child_last_name': claim.get('child_last_name'),
+                'parent_email': claim.get('parent_email'),
+                'timestamp': claim.get('timestamp'),
+                'is_verified': is_verified,
+                'status': '✅ VERIFIED' if is_verified else '⚠️ UNVERIFIED'
+            })
+        
+        # Calculate stats
+        total_claims = len(verified_results)
+        verified_count = len([r for r in verified_results if r['is_verified']])
+        unverified_count = total_claims - verified_count
+        
+        stats = {
+            'total_claims': total_claims,
+            'verified_count': verified_count,
+            'unverified_count': unverified_count,
+            'fraud_rate': round((unverified_count / total_claims * 100) if total_claims > 0 else 0, 1)
+        }
+        
+        return render_template('verify_returning_campers.html',
+                             results=verified_results,
+                             stats=stats)
+                             
+    except Exception as e:
+        flash(f'Error verifying returning campers: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/export-json')
 def admin_export_json():
     """Export all registrations as JSON for migration."""
