@@ -1698,6 +1698,94 @@ def admin_export():
         flash(f'Export error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/edit/<int:registration_id>', methods=['GET', 'POST'])
+@require_admin_auth
+def admin_edit(registration_id):
+    """Edit a specific registration."""
+    db_file = get_database_path()
+    
+    if request.method == 'POST':
+        try:
+            print(f"✏️ Edit registration {registration_id} using database: {db_file}")
+            conn = sqlite3.connect(db_file)
+            cursor = conn.cursor()
+            
+            # Update the registration
+            cursor.execute("""
+                UPDATE registrations SET
+                    child_first_name = ?,
+                    child_last_name = ?,
+                    child_age = ?,
+                    child_grade = ?,
+                    parent_first_name = ?,
+                    parent_last_name = ?,
+                    parent_email = ?,
+                    parent_phone = ?,
+                    emergency_contact_name = ?,
+                    emergency_contact_phone = ?,
+                    has_allergies = ?,
+                    allergies_description = ?,
+                    has_medical_conditions = ?,
+                    medical_conditions_description = ?,
+                    is_returning_camper = ?,
+                    returning_years = ?,
+                    bringing_own_switch = ?,
+                    how_heard_about_camp = ?,
+                    additional_comments = ?
+                WHERE id = ?
+            """, (
+                request.form.get('child_first_name'),
+                request.form.get('child_last_name'),
+                request.form.get('child_age'),
+                request.form.get('child_grade'),
+                request.form.get('parent_first_name'),
+                request.form.get('parent_last_name'),
+                request.form.get('parent_email'),
+                request.form.get('parent_phone'),
+                request.form.get('emergency_contact_name'),
+                request.form.get('emergency_contact_phone'),
+                1 if request.form.get('has_allergies') == 'on' else 0,
+                request.form.get('allergies_description', ''),
+                1 if request.form.get('has_medical_conditions') == 'on' else 0,
+                request.form.get('medical_conditions_description', ''),
+                1 if request.form.get('is_returning_camper') == 'on' else 0,
+                request.form.get('returning_years', ''),
+                1 if request.form.get('bringing_own_switch') == 'on' else 0,
+                request.form.get('how_heard_about_camp', ''),
+                request.form.get('additional_comments', ''),
+                registration_id
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            flash('Registration updated successfully', 'success')
+            return redirect(url_for('admin_dashboard'))
+            
+        except Exception as e:
+            flash(f'Update error: {str(e)}', 'error')
+            return redirect(url_for('admin_dashboard'))
+    
+    # GET request - show edit form
+    try:
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM registrations WHERE id = ?", (registration_id,))
+        registration = cursor.fetchone()
+        conn.close()
+        
+        if not registration:
+            flash('Registration not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        return render_template('edit_registration.html', registration=registration)
+        
+    except Exception as e:
+        flash(f'Error loading registration: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/delete/<int:registration_id>', methods=['POST'])
 @require_admin_auth
 def admin_delete(registration_id):

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Registration - Camp Power-Up</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .edit-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .form-section h2 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="number"],
+        select,
+        textarea {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .flash-message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .flash-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flash-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="edit-container">
+        <h1>✏️ Edit Registration</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST">
+            <!-- Camper Information -->
+            <div class="form-section">
+                <h2>Camper Information</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="child_first_name">First Name *</label>
+                        <input type="text" id="child_first_name" name="child_first_name" 
+                               value="{{ registration['child_first_name'] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="child_last_name">Last Name *</label>
+                        <input type="text" id="child_last_name" name="child_last_name" 
+                               value="{{ registration['child_last_name'] }}" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="child_age">Age *</label>
+                        <input type="number" id="child_age" name="child_age" 
+                               value="{{ registration['child_age'] }}" min="5" max="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="child_grade">Grade *</label>
+                        <select id="child_grade" name="child_grade" required>
+                            <option value="">Select Grade</option>
+                            <option value="Kindergarten" {% if registration['child_grade'] == 'Kindergarten' %}selected{% endif %}>Kindergarten</option>
+                            <option value="1st" {% if registration['child_grade'] == '1st' %}selected{% endif %}>1st Grade</option>
+                            <option value="2nd" {% if registration['child_grade'] == '2nd' %}selected{% endif %}>2nd Grade</option>
+                            <option value="3rd" {% if registration['child_grade'] == '3rd' %}selected{% endif %}>3rd Grade</option>
+                            <option value="4th" {% if registration['child_grade'] == '4th' %}selected{% endif %}>4th Grade</option>
+                            <option value="5th" {% if registration['child_grade'] == '5th' %}selected{% endif %}>5th Grade</option>
+                            <option value="6th" {% if registration['child_grade'] == '6th' %}selected{% endif %}>6th Grade</option>
+                            <option value="7th" {% if registration['child_grade'] == '7th' %}selected{% endif %}>7th Grade</option>
+                            <option value="8th" {% if registration['child_grade'] == '8th' %}selected{% endif %}>8th Grade</option>
+                            <option value="9th" {% if registration['child_grade'] == '9th' %}selected{% endif %}>9th Grade</option>
+                            <option value="10th" {% if registration['child_grade'] == '10th' %}selected{% endif %}>10th Grade</option>
+                            <option value="11th" {% if registration['child_grade'] == '11th' %}selected{% endif %}>11th Grade</option>
+                            <option value="12th" {% if registration['child_grade'] == '12th' %}selected{% endif %}>12th Grade</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parent/Guardian Information -->
+            <div class="form-section">
+                <h2>Parent/Guardian Information</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="parent_first_name">First Name *</label>
+                        <input type="text" id="parent_first_name" name="parent_first_name" 
+                               value="{{ registration['parent_first_name'] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="parent_last_name">Last Name *</label>
+                        <input type="text" id="parent_last_name" name="parent_last_name" 
+                               value="{{ registration['parent_last_name'] }}" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="parent_email">Email *</label>
+                        <input type="email" id="parent_email" name="parent_email" 
+                               value="{{ registration['parent_email'] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="parent_phone">Phone *</label>
+                        <input type="tel" id="parent_phone" name="parent_phone" 
+                               value="{{ registration['parent_phone'] }}" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Contact -->
+            <div class="form-section">
+                <h2>Emergency Contact</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="emergency_contact_name">Name *</label>
+                        <input type="text" id="emergency_contact_name" name="emergency_contact_name" 
+                               value="{{ registration['emergency_contact_name'] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emergency_contact_phone">Phone *</label>
+                        <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" 
+                               value="{{ registration['emergency_contact_phone'] }}" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Information -->
+            <div class="form-section">
+                <h2>Medical Information</h2>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="has_allergies" name="has_allergies" 
+                           {% if registration['has_allergies'] %}checked{% endif %}>
+                    <label for="has_allergies">Child has allergies</label>
+                </div>
+                <div class="form-group full-width">
+                    <label for="allergies_description">Allergy Details</label>
+                    <textarea id="allergies_description" name="allergies_description">{{ registration['allergies_description'] or '' }}</textarea>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="has_medical_conditions" name="has_medical_conditions" 
+                           {% if registration['has_medical_conditions'] %}checked{% endif %}>
+                    <label for="has_medical_conditions">Child has medical conditions</label>
+                </div>
+                <div class="form-group full-width">
+                    <label for="medical_conditions_description">Medical Condition Details</label>
+                    <textarea id="medical_conditions_description" name="medical_conditions_description">{{ registration['medical_conditions_description'] or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Camp Information -->
+            <div class="form-section">
+                <h2>Camp Information</h2>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="is_returning_camper" name="is_returning_camper" 
+                           {% if registration['is_returning_camper'] %}checked{% endif %}>
+                    <label for="is_returning_camper">Returning camper</label>
+                </div>
+                <div class="form-group full-width">
+                    <label for="returning_years">Previous Years Attended</label>
+                    <input type="text" id="returning_years" name="returning_years" 
+                           value="{{ registration['returning_years'] or '' }}">
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="bringing_own_switch" name="bringing_own_switch" 
+                           {% if registration['bringing_own_switch'] %}checked{% endif %}>
+                    <label for="bringing_own_switch">Bringing own Nintendo Switch</label>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="how_heard_about_camp">How did you hear about Camp Power-Up?</label>
+                    <select id="how_heard_about_camp" name="how_heard_about_camp">
+                        <option value="">Select...</option>
+                        <option value="Friend/Family" {% if registration['how_heard_about_camp'] == 'Friend/Family' %}selected{% endif %}>Friend or Family</option>
+                        <option value="Social Media" {% if registration['how_heard_about_camp'] == 'Social Media' %}selected{% endif %}>Social Media</option>
+                        <option value="School" {% if registration['how_heard_about_camp'] == 'School' %}selected{% endif %}>School</option>
+                        <option value="Website" {% if registration['how_heard_about_camp'] == 'Website' %}selected{% endif %}>Website</option>
+                        <option value="Other" {% if registration['how_heard_about_camp'] == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="additional_comments">Additional Comments</label>
+                    <textarea id="additional_comments" name="additional_comments">{{ registration['additional_comments'] or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
