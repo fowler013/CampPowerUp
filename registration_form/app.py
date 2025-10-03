@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
 from functools import wraps
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -222,6 +224,306 @@ def init_db_with_logging():
         return True
     except Exception as e:
         print(f"Database initialization error: {e}")
+        return False
+
+# Email notification functions
+def send_email_notification(to_email, subject, html_content, text_content=None):
+    """Send email via SendGrid."""
+    try:
+        sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
+        if not sendgrid_api_key:
+            print("⚠️ SENDGRID_API_KEY not set - email not sent")
+            return False
+        
+        from_email = Email(
+            os.environ.get('SENDGRID_FROM_EMAIL', 'camppowerup2025@gmail.com'),
+            os.environ.get('SENDGRID_FROM_NAME', 'Camp Power-Up Registration')
+        )
+        to_email_obj = To(to_email)
+        
+        # Use HTML content as primary, fallback to text
+        if text_content:
+            content = Content("text/plain", text_content)
+        else:
+            content = Content("text/html", html_content)
+        
+        mail = Mail(from_email, to_email_obj, subject, content)
+        
+        # If HTML content provided, add it
+        if html_content and text_content:
+            mail.add_content(Content("text/html", html_content))
+        
+        sg = SendGridAPIClient(sendgrid_api_key)
+        response = sg.send(mail)
+        
+        print(f"✅ Email sent to {to_email}: {subject} (Status: {response.status_code})")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Email error: {str(e)}")
+        return False
+
+def send_parent_confirmation_email(registration_data):
+    """Send confirmation email to parent/guardian."""
+    try:
+        parent_email = registration_data.get('parent_email')
+        if not parent_email:
+            print("⚠️ No parent email provided")
+            return False
+        
+        child_name = f"{registration_data.get('child_first_name', '')} {registration_data.get('child_last_name', '')}"
+        parent_name = f"{registration_data.get('parent_first_name', '')} {registration_data.get('parent_last_name', '')}"
+        submission_id = registration_data.get('submission_id', 'N/A')
+        
+        # Determine pricing
+        is_returning = registration_data.get('is_returning_camper', False)
+        deposit = "$50"
+        final_payment = "$30" if is_returning else "$50"
+        total = "$80" if is_returning else "$100"
+        
+        subject = f"✅ Camp Power-Up Registration Confirmed - {child_name}"
+        
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(45deg, #28a745, #20c997); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f8f9fa; padding: 30px; }}
+                .confirmation-box {{ background: white; border: 2px solid #28a745; border-radius: 10px; padding: 20px; margin: 20px 0; }}
+                .payment-box {{ background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 20px; margin: 20px 0; border-radius: 5px; }}
+                .important {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+                .footer {{ text-align: center; padding: 20px; color: #6c757d; font-size: 0.9em; }}
+                .button {{ display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+                h2 {{ color: #2c3e50; }}
+                .success-icon {{ font-size: 3em; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="success-icon">✅</div>
+                    <h1>Registration Confirmed!</h1>
+                    <p>Welcome to Camp Power-Up 2025</p>
+                </div>
+                
+                <div class="content">
+                    <p>Dear {parent_name},</p>
+                    
+                    <p>Thank you for registering <strong>{child_name}</strong> for Camp Power-Up! We're excited to have them join us for an amazing Nintendo Switch gaming experience.</p>
+                    
+                    <div class="confirmation-box">
+                        <h2>📋 Registration Details</h2>
+                        <p><strong>Confirmation ID:</strong> <code>{submission_id}</code></p>
+                        <p><strong>Camper:</strong> {child_name}</p>
+                        <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
+                        <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
+                        <p><strong>Camp Dates:</strong> November 24-26, 2025</p>
+                        <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
+                    </div>
+                    
+                    <div class="payment-box">
+                        <h2>💳 Payment Information</h2>
+                        <p><strong>Total Fee:</strong> {total}</p>
+                        <p><strong>Deposit Required Now:</strong> {deposit}</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before November 24th)</p>
+                        
+                        <p><strong>Payment Methods:</strong></p>
+                        <ul>
+                            <li><strong>CashApp:</strong> camppowerup2025@gmail.com</li>
+                            <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
+                        </ul>
+                        
+                        <p>⚠️ <strong>Important:</strong> Include "{child_name}" or "{submission_id}" in the payment memo</p>
+                    </div>
+                    
+                    <div class="important">
+                        <h3>📝 Next Steps</h3>
+                        <ol>
+                            <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
+                            <li>Save this confirmation email for your records</li>
+                            <li>Mark your calendar: November 24-26, 2025</li>
+                            <li>Pay final {final_payment} before camp starts</li>
+                        </ol>
+                    </div>
+                    
+                    <h3>❓ Questions or Need to Make Changes?</h3>
+                    <p>Email us at: <a href="mailto:camppowerup2025@gmail.com">camppowerup2025@gmail.com</a></p>
+                    <p>Include your confirmation ID: <code>{submission_id}</code></p>
+                    
+                    <p style="margin-top: 30px;">We can't wait to see {child_name.split()[0]} at camp!</p>
+                    
+                    <p><strong>The Camp Power-Up Team</strong><br>
+                    Nintendo Switch Gaming Camp</p>
+                </div>
+                
+                <div class="footer">
+                    <p>Camp Power-Up 2025 | November 24-26, 2025</p>
+                    <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Camp Power-Up 2025 - Registration Confirmed
+        
+        Dear {parent_name},
+        
+        Thank you for registering {child_name} for Camp Power-Up!
+        
+        REGISTRATION DETAILS:
+        Confirmation ID: {submission_id}
+        Camper: {child_name}
+        Age: {registration_data.get('child_age', 'N/A')}
+        Grade: {registration_data.get('child_grade', 'N/A')}
+        Camp Dates: November 24-26, 2025
+        Camp Times: 10:00 AM - 3:00 PM daily
+        
+        PAYMENT INFORMATION:
+        Total Fee: {total}
+        Deposit Required Now: {deposit}
+        Final Payment: {final_payment} (due before November 24th)
+        
+        Payment Methods:
+        - CashApp: camppowerup2025@gmail.com
+        - Venmo: camppowerup2025@gmail.com
+        
+        IMPORTANT: Include "{child_name}" in the payment memo
+        
+        NEXT STEPS:
+        1. Complete your {deposit} deposit payment
+        2. Save this email for your records
+        3. Mark your calendar: November 24-26, 2025
+        4. Pay final {final_payment} before camp starts
+        
+        Questions? Email: camppowerup2025@gmail.com
+        Include your confirmation ID: {submission_id}
+        
+        View online: https://camppowerup-registration.up.railway.app/confirmation/{submission_id}
+        
+        The Camp Power-Up Team
+        """
+        
+        return send_email_notification(parent_email, subject, html_content, text_content)
+        
+    except Exception as e:
+        print(f"❌ Parent email error: {str(e)}")
+        return False
+
+def send_admin_notification_email(registration_data):
+    """Send notification email to admin about new registration."""
+    try:
+        admin_email = os.environ.get('CAMP_EMAIL', 'camppowerup2025@gmail.com')
+        
+        child_name = f"{registration_data.get('child_first_name', '')} {registration_data.get('child_last_name', '')}"
+        parent_name = f"{registration_data.get('parent_first_name', '')} {registration_data.get('parent_last_name', '')}"
+        submission_id = registration_data.get('submission_id', 'N/A')
+        
+        subject = f"🎮 New Registration: {child_name}"
+        
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #007bff; color: white; padding: 20px; text-align: center; }}
+                .content {{ background: #f8f9fa; padding: 20px; }}
+                .info-box {{ background: white; border-left: 4px solid #007bff; padding: 15px; margin: 10px 0; }}
+                table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+                td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
+                td:first-child {{ font-weight: bold; width: 40%; }}
+                .button {{ display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎮 New Camp Registration</h1>
+                    <p>{child_name}</p>
+                </div>
+                
+                <div class="content">
+                    <div class="info-box">
+                        <p><strong>Confirmation ID:</strong> {submission_id}</p>
+                        <p><strong>Registration Time:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+                    </div>
+                    
+                    <h2>Camper Information</h2>
+                    <table>
+                        <tr><td>Name</td><td>{child_name}</td></tr>
+                        <tr><td>Age</td><td>{registration_data.get('child_age', 'N/A')}</td></tr>
+                        <tr><td>Grade</td><td>{registration_data.get('child_grade', 'N/A')}</td></tr>
+                    </table>
+                    
+                    <h2>Parent/Guardian Information</h2>
+                    <table>
+                        <tr><td>Name</td><td>{parent_name}</td></tr>
+                        <tr><td>Email</td><td>{registration_data.get('parent_email', 'N/A')}</td></tr>
+                        <tr><td>Phone</td><td>{registration_data.get('parent_phone', 'N/A')}</td></tr>
+                    </table>
+                    
+                    <h2>Emergency Contact</h2>
+                    <table>
+                        <tr><td>Name</td><td>{registration_data.get('emergency_contact_name', 'N/A')}</td></tr>
+                        <tr><td>Phone</td><td>{registration_data.get('emergency_contact_phone', 'N/A')}</td></tr>
+                    </table>
+                    
+                    <h2>Special Notes</h2>
+                    <table>
+                        <tr><td>Allergies</td><td>{"YES: " + registration_data.get('allergies_description', '') if registration_data.get('has_allergies') else "None reported"}</td></tr>
+                        <tr><td>Medical Conditions</td><td>{"YES: " + registration_data.get('medical_conditions_description', '') if registration_data.get('has_medical_conditions') else "None reported"}</td></tr>
+                        <tr><td>Returning Camper</td><td>{"Yes" if registration_data.get('is_returning_camper') else "No"}</td></tr>
+                        <tr><td>Bringing Switch</td><td>{"Yes" if registration_data.get('bringing_own_switch') else "No"}</td></tr>
+                    </table>
+                    
+                    {f'<h2>Additional Comments</h2><p>{registration_data.get("additional_comments", "")}</p>' if registration_data.get('additional_comments') else ''}
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://camppowerup-registration.up.railway.app/admin" class="button">View in Admin Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        NEW CAMP REGISTRATION
+        
+        Confirmation ID: {submission_id}
+        Time: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}
+        
+        CAMPER INFORMATION:
+        Name: {child_name}
+        Age: {registration_data.get('child_age', 'N/A')}
+        Grade: {registration_data.get('child_grade', 'N/A')}
+        
+        PARENT/GUARDIAN:
+        Name: {parent_name}
+        Email: {registration_data.get('parent_email', 'N/A')}
+        Phone: {registration_data.get('parent_phone', 'N/A')}
+        
+        EMERGENCY CONTACT:
+        Name: {registration_data.get('emergency_contact_name', 'N/A')}
+        Phone: {registration_data.get('emergency_contact_phone', 'N/A')}
+        
+        SPECIAL NOTES:
+        Allergies: {"YES: " + registration_data.get('allergies_description', '') if registration_data.get('has_allergies') else "None"}
+        Medical: {"YES: " + registration_data.get('medical_conditions_description', '') if registration_data.get('has_medical_conditions') else "None"}
+        Returning Camper: {"Yes" if registration_data.get('is_returning_camper') else "No"}
+        Bringing Switch: {"Yes" if registration_data.get('bringing_own_switch') else "No"}
+        
+        View full details: https://camppowerup-registration.up.railway.app/admin
+        """
+        
+        return send_email_notification(admin_email, subject, html_content, text_content)
+        
+    except Exception as e:
+        print(f"❌ Admin email error: {str(e)}")
         return False
 
 # Helper functions for templates
@@ -721,11 +1023,64 @@ def submit():
         except Exception as backup_error:
             print(f"⚠️ Auto-backup failed (non-critical): {backup_error}")
         
+        # Send email notifications
+        email_status = {
+            "parent_email_sent": False,
+            "admin_email_sent": False
+        }
+        
+        # Prepare registration data for emails
+        email_data = {
+            'submission_id': submission_id,
+            'child_first_name': data['child_first_name'],
+            'child_last_name': data['child_last_name'],
+            'child_age': data['child_age'],
+            'child_grade': data['child_grade'],
+            'parent_first_name': data['parent_first_name'],
+            'parent_last_name': data['parent_last_name'],
+            'parent_email': data['parent_email'],
+            'parent_phone': data['parent_phone'],
+            'emergency_contact_name': data['emergency_contact_name'],
+            'emergency_contact_phone': data['emergency_contact_phone'],
+            'has_allergies': data['has_allergies'],
+            'allergies_description': data['allergies_description'],
+            'has_medical_conditions': data['has_medical_conditions'],
+            'medical_conditions_description': data['medical_conditions_description'],
+            'is_returning_camper': data['is_returning_camper'],
+            'returning_years': data['returning_years'],
+            'bringing_own_switch': data['bringing_own_switch'],
+            'how_heard_about_camp': data['how_heard_about_camp'],
+            'additional_comments': data['additional_comments']
+        }
+        
+        # Send parent confirmation email
+        try:
+            parent_email_sent = send_parent_confirmation_email(email_data)
+            email_status["parent_email_sent"] = parent_email_sent
+            if parent_email_sent:
+                print(f"✅ Parent confirmation email sent to {data['parent_email']}")
+            else:
+                print(f"⚠️ Parent confirmation email failed for {data['parent_email']}")
+        except Exception as email_error:
+            print(f"❌ Parent email exception: {str(email_error)}")
+        
+        # Send admin notification email
+        try:
+            admin_email_sent = send_admin_notification_email(email_data)
+            email_status["admin_email_sent"] = admin_email_sent
+            if admin_email_sent:
+                print(f"✅ Admin notification email sent")
+            else:
+                print(f"⚠️ Admin notification email failed")
+        except Exception as email_error:
+            print(f"❌ Admin email exception: {str(email_error)}")
+        
         # Return JSON success response
         return jsonify({
             "success": True,
             "submission_id": submission_id,
-            "message": f"Registration successful for {data['child_first_name']} {data['child_last_name']}"
+            "message": f"Registration successful for {data['child_first_name']} {data['child_last_name']}",
+            "email_notifications": email_status
         })
         
     except Exception as e:
