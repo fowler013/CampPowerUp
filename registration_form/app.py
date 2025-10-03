@@ -53,7 +53,7 @@ def get_database_path():
             print(f"✅ Found persistent volume at /data")
             print(f"Using persistent database: {db_path}")
             
-            # Ensure we can write to the /data directory
+            # Try to ensure we can write to the /data directory
             try:
                 # Test write permissions
                 test_file = '/data/.write_test'
@@ -61,13 +61,31 @@ def get_database_path():
                     f.write('test')
                 os.remove(test_file)
                 print(f"✅ /data directory is writable")
+                return db_path
+            except PermissionError as e:
+                print(f"⚠️ /data directory has permission issues: {e}")
+                print(f"🔧 Attempting to fix permissions or use bind mount directly...")
+                
+                # Try to create the database file directly (sometimes that works even if test file doesn't)
+                try:
+                    # Try to create/touch the database file
+                    if not os.path.exists(db_path):
+                        import sqlite3
+                        conn = sqlite3.connect(db_path)
+                        conn.close()
+                        print(f"✅ Successfully created database at {db_path}")
+                        return db_path
+                    else:
+                        # Database exists, try to open it
+                        import sqlite3
+                        conn = sqlite3.connect(db_path)
+                        conn.close()
+                        print(f"✅ Successfully accessed existing database at {db_path}")
+                        return db_path
+                except Exception as db_error:
+                    print(f"❌ Cannot access /data database: {db_error}")
             except Exception as e:
                 print(f"⚠️ /data directory write test failed: {e}")
-                # Fallback to /app if we can't write to /data
-                print(f"🔄 Falling back to /app directory")
-                db_path = '/app/registration_submissions.db'
-            
-            return db_path
         
         # Check for Railway bind mounts (advanced volume detection)
         bind_mount_base = '/var/lib/containers/railwayapp/bind-mounts'
