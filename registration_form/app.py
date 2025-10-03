@@ -1084,11 +1084,19 @@ def submit():
             'additional_comments': json_data.get('additional_comments') or json_data.get('additionalComments', '')
         }
         
+        # Convert string "true"/"false" to boolean for is_returning_camper
+        if isinstance(data['is_returning_camper'], str):
+            data['is_returning_camper'] = data['is_returning_camper'].lower() in ['true', '1', 'yes']
+        
+        # Convert to integer for database (SQLite uses 0/1 for boolean)
+        data['is_returning_camper'] = 1 if data['is_returning_camper'] else 0
+        
         # Debug logging
         print(f"📝 Form data received:")
         print(f"   child_first_name: '{data['child_first_name']}'")
         print(f"   child_last_name: '{data['child_last_name']}'")
         print(f"   parent_email: '{data['parent_email']}'")
+        print(f"   is_returning_camper: {data['is_returning_camper']}")
         
         # Save to database - get fresh path for Railway compatibility
         db_file = get_database_path()
