@@ -1568,6 +1568,45 @@ def admin_dashboard():
         flash(f'Error loading dashboard: {str(e)}', 'error')
         return redirect(url_for('admin_login'))
 
+@app.route('/admin/historical')
+@require_admin_auth
+def admin_historical():
+    """View historical camper registrations (imported from CSV)."""
+    try:
+        db_file = get_database_path()
+        print(f"📚 Historical data using database: {db_file}")
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get only historical records (those with HIST_ prefix)
+        cursor.execute("""
+            SELECT * FROM registrations 
+            WHERE submission_id LIKE 'HIST_%'
+            ORDER BY timestamp DESC
+        """)
+        historical_registrations = [dict(row) for row in cursor.fetchall()]
+        
+        # Get statistics
+        total_historical = len(historical_registrations)
+        returning_from_history = len([r for r in historical_registrations if r.get('is_returning_camper')])
+        
+        conn.close()
+        
+        stats = {
+            'total_historical': total_historical,
+            'returning_from_history': returning_from_history,
+            'new_from_history': total_historical - returning_from_history
+        }
+        
+        return render_template('admin_historical.html', 
+                             registrations=historical_registrations,
+                             stats=stats)
+                             
+    except Exception as e:
+        flash(f'Error loading historical data: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/export-json')
 def admin_export_json():
     """Export all registrations as JSON for migration."""
