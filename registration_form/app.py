@@ -42,20 +42,54 @@ def get_database_path():
         if volume_mount_path:
             print(f"📌 RAILWAY_VOLUME_MOUNT_PATH is set to: {volume_mount_path}")
             
+            # Remove trailing slash if present
+            volume_mount_path = volume_mount_path.rstrip('/')
+            
             # First, try the RAILWAY_VOLUME_MOUNT_PATH directly
             if os.path.exists(volume_mount_path):
+                print(f"✅ Volume directory exists at: {volume_mount_path}")
+                
+                # Check permissions
+                import stat
                 try:
-                    # Test if it's writable
-                    test_file = os.path.join(volume_mount_path, '.write_test')
+                    st = os.stat(volume_mount_path)
+                    print(f"📊 Volume permissions: {oct(st.st_mode)}, Owner UID: {st.st_uid}, Group GID: {st.st_gid}")
+                    print(f"📊 Current process UID: {os.getuid()}, GID: {os.getgid()}")
+                except Exception as perm_error:
+                    print(f"⚠️ Could not check permissions: {perm_error}")
+                
+                # Try to fix permissions if needed
+                try:
+                    # Create a subdirectory that we can control
+                    app_data_dir = os.path.join(volume_mount_path, 'app_data')
+                    os.makedirs(app_data_dir, exist_ok=True)
+                    
+                    # Test if subdirectory is writable
+                    test_file = os.path.join(app_data_dir, '.write_test')
                     with open(test_file, 'w') as f:
                         f.write('test')
                     os.remove(test_file)
-                    db_path = os.path.join(volume_mount_path, 'registration_submissions.db')
-                    print(f"✅ Found writable volume at RAILWAY_VOLUME_MOUNT_PATH: {volume_mount_path}")
+                    
+                    db_path = os.path.join(app_data_dir, 'registration_submissions.db')
+                    print(f"✅ Created writable subdirectory: {app_data_dir}")
                     print(f"✅ Using persistent database: {db_path}")
                     return db_path
-                except Exception as e:
-                    print(f"⚠️ RAILWAY_VOLUME_MOUNT_PATH exists but not writable: {e}")
+                    
+                except Exception as subdir_error:
+                    print(f"⚠️ Could not create subdirectory: {subdir_error}")
+                    
+                    # Last resort: try to write directly to /data
+                    try:
+                        test_file = os.path.join(volume_mount_path, '.write_test')
+                        with open(test_file, 'w') as f:
+                            f.write('test')
+                        os.remove(test_file)
+                        db_path = os.path.join(volume_mount_path, 'registration_submissions.db')
+                        print(f"✅ Volume is writable - using persistent database: {db_path}")
+                        return db_path
+                    except Exception as write_error:
+                        print(f"❌ Volume not writable: {write_error}")
+                        print("🔧 This is a permissions issue - the volume exists but your app can't write to it")
             else:
                 print(f"⚠️ RAILWAY_VOLUME_MOUNT_PATH set but directory doesn't exist: {volume_mount_path}")
         else:

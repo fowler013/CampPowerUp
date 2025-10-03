@@ -29,17 +29,16 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Create non-root user for security
+# Create non-root user for security (but we'll run as root on Railway for volume access)
 RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
-USER appuser
+
+# Copy and set permissions for startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 # Expose port (Railway will set the PORT environment variable)
 EXPOSE 8080
 
-# Health check - Railway will handle health checks
-# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-#     CMD curl -f http://localhost:$PORT/ || exit 1
-
-# Command to run the application - registration form
-CMD ["python", "registration_form/app.py"]
+# Run as root to access Railway volumes, fix permissions at startup
+CMD ["/bin/bash", "/start.sh"]
