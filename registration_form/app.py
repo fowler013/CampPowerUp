@@ -1617,7 +1617,23 @@ def admin_historical():
             'new_from_history': total_historical - returning_from_history
         }
         
+        # Map database field names to template field names
+        historical_data = []
+        for reg in historical_registrations:
+            historical_data.append({
+                'first_name': reg.get('child_first_name'),
+                'last_name': reg.get('child_last_name'),
+                'age': reg.get('child_age'),
+                'grade': reg.get('child_grade'),
+                'email': reg.get('parent_email'),
+                'is_returning': 'Yes' if reg.get('is_returning_camper') else 'No',
+                'favorite_games': reg.get('additional_comments', ''),
+                'has_allergies': 'Yes' if reg.get('has_allergies') else 'No',
+                'bringing_switch': 'Yes' if reg.get('bringing_own_switch') else 'No'
+            })
+        
         return render_template('admin_historical.html', 
+                             historical_data=historical_data,
                              registrations=historical_registrations,
                              stats=stats)
                              
