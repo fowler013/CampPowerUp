@@ -1580,6 +1580,23 @@ def admin_historical():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        # Debug: Check total records
+        cursor.execute("SELECT COUNT(*) FROM registrations")
+        total_all = cursor.fetchone()[0]
+        print(f"🔍 Total records in database: {total_all}")
+        
+        # Debug: Check HIST_ records
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        total_hist = cursor.fetchone()[0]
+        print(f"🔍 Records with HIST_ prefix: {total_hist}")
+        
+        # Debug: Check submission_id patterns
+        cursor.execute("SELECT submission_id, child_first_name, child_last_name FROM registrations LIMIT 10")
+        sample = cursor.fetchall()
+        print(f"🔍 Sample records:")
+        for s in sample:
+            print(f"   - {s[0]}: {s[1]} {s[2]}")
+        
         # Get only historical records (those with HIST_ prefix)
         cursor.execute("""
             SELECT * FROM registrations 
@@ -2011,6 +2028,7 @@ def fix_historical_records():
         """)
         
         all_records = cursor.fetchall()
+        print(f"🔍 Found {len(all_records)} records without HIST_ prefix")
         updated_count = 0
         
         for record in all_records:
@@ -2034,6 +2052,7 @@ def fix_historical_records():
         conn.commit()
         conn.close()
         
+        print(f"✅ Successfully updated {updated_count} records with HIST_ prefix")
         flash(f'✅ Fixed {updated_count} historical records with HIST_ prefix', 'success')
         return redirect(url_for('admin_historical'))
         
