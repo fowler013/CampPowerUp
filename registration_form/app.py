@@ -573,7 +573,7 @@ def get_camp_title():
     return "Camp Power-Up 2025 Registration"
 
 def get_camp_subtitle():
-    return "Nintendo Switch Gaming Camp - November 24-26, 2025"
+    return "Nintendo Switch Gaming Camp - November 24-25, 2025"
 
 def get_pricing_text():
     return "Registration fees listed below"
@@ -629,20 +629,20 @@ def home():
         pricing = {
             'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
             'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
-            'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-26th, 10am-3pm daily.'
+            'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-25th, 10am-3pm daily.'
         }
         
         # Mock camp config
         camp_config = {
             'camp_name': 'Camp Power-Up 2025',
-            'camp_dates': 'November 24-26, 2025',
+            'camp_dates': 'November 24-25, 2025',
             'camp_times': '10am-3pm daily'
         }
         
         return render_template('registration_form.html', 
                              camp_config=camp_config,
                              camp_title='Camp Power-Up 2025 Registration',
-                             camp_subtitle='Nintendo Switch Gaming Camp - November 24-26, 2025',
+                             camp_subtitle='Nintendo Switch Gaming Camp - November 24-25, 2025',
                              pricing_text='Registration fees listed below',
                              pricing=pricing)
     except Exception as e:
@@ -1382,7 +1382,7 @@ def confirmation(submission_id):
 
                         <div class="contact-info">
                             <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> November 24-26, 2025</p>
+                            <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
                             <p><strong>Camp Times:</strong> 10am-3pm daily</p>
                             <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
                             <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
@@ -1548,7 +1548,7 @@ def admin_dashboard():
         # Mock camp config for template
         camp_config = {
             'camp_name': 'Camp Power-Up 2025',
-            'camp_dates': 'November 24-26, 2025',
+            'camp_dates': 'November 24-25, 2025',
             'camp_times': '10am-3pm daily'
         }
         
