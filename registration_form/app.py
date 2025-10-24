@@ -361,7 +361,7 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> November 24-26, 2025</p>
+                        <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
                         <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
                     </div>
                     
@@ -385,7 +385,7 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: November 24-26, 2025</li>
+                            <li>Mark your calendar: November 24-25, 2025</li>
                             <li>Pay final {final_payment} before camp starts</li>
                         </ol>
                     </div>
@@ -401,7 +401,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up 2025 | November 24-26, 2025</p>
+                    <p>Camp Power-Up 2025 | November 24-25, 2025</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -421,7 +421,7 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: November 24-26, 2025
+        Camp Dates: November 24-25, 2025
         Camp Times: 10:00 AM - 3:00 PM daily
         
         PAYMENT INFORMATION:
@@ -438,7 +438,7 @@ def send_parent_confirmation_email(registration_data):
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: November 24-26, 2025
+        3. Mark your calendar: November 24-25, 2025
         4. Pay final {final_payment} before camp starts
         
         Questions? Email: camppowerup2025@gmail.com
