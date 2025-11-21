@@ -317,11 +317,24 @@ def send_parent_confirmation_email(registration_data):
         parent_name = f"{registration_data.get('parent_first_name', '')} {registration_data.get('parent_last_name', '')}"
         submission_id = registration_data.get('submission_id', 'N/A')
         
-        # Determine pricing
-        is_returning = registration_data.get('is_returning_camper', False)
+        # Determine pricing - Handle string "true"/"false" from old database records
+        is_returning_raw = registration_data.get('is_returning_camper', False)
+        
+        # Convert string "true"/"false" or integer 1/0 to proper boolean
+        if isinstance(is_returning_raw, str):
+            is_returning = is_returning_raw.lower() in ['true', '1', 'yes']
+        else:
+            is_returning = bool(is_returning_raw)
+        
+        # Debug: Print the actual value
+        print(f"💰 Email pricing debug - raw value: {is_returning_raw} (type: {type(is_returning_raw)})")
+        print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
+        
         deposit = "$50"
         final_payment = "$30" if is_returning else "$50"
         total = "$80" if is_returning else "$100"
+        
+        print(f"💰 Calculated prices - Deposit: {deposit}, Final: {final_payment}, Total: {total}")
         
         subject = f"✅ Camp Power-Up Registration Confirmed - {child_name}"
         
