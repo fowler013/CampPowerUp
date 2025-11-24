@@ -200,6 +200,50 @@
             color: #666;
         }
         
+        .payment-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .payment-badge.paid {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .payment-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .payment-btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .payment-btn:hover {
+            background: #764ba2;
+            transform: scale(1.02);
+        }
+        
+        .payment-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
         .back-btn {
             display: inline-block;
             padding: 12px 30px;
@@ -259,17 +303,23 @@
         
         <div class="campers-grid" id="campers-grid">
             {% for reg in registrations %}
-            <div class="camper-card" data-id="{{ reg.submission_id }}" data-name="{{ reg.child_first_name }} {{ reg.child_last_name }}">
+            <div class="camper-card" data-id="{{ reg.submission_id }}" data-name="{{ reg.child_first_name }} {{ reg.child_last_name }}" data-payment-status="{{ reg.payment_status or 'pending' }}">
                 <div class="camper-name">{{ reg.child_first_name }} {{ reg.child_last_name }}</div>
                 <div class="camper-info">
                     Age: {{ reg.child_age }} | Grade: {{ reg.child_grade }}<br>
-                    {% if reg.is_returning_camper %}🔄 Returning{% else %}🆕 New{% endif %}
-                    {% if reg.bringing_own_switch %}| 🎮 Own Switch{% endif %}
+                    {% if reg.is_returning_camper %}🔄 Returning ($80){% else %}🆕 New ($100){% endif %}
+                    {% if reg.bringing_own_switch %}| 🎮 Own Switch{% endif %}<br>
+                    <span class="payment-badge {{ 'paid' if reg.payment_status == 'paid' else 'pending' }}">
+                        {% if reg.payment_status == 'paid' %}✅ Paid{% else %}💳 Payment Pending{% endif %}
+                    </span>
                 </div>
                 <div class="status-buttons">
                     <button class="status-btn present" onclick="checkIn('{{ reg.submission_id }}', 'present')">✅ Present</button>
                     <button class="status-btn late" onclick="checkIn('{{ reg.submission_id }}', 'late')">⏰ Late</button>
                     <button class="status-btn absent" onclick="checkIn('{{ reg.submission_id }}', 'absent')">❌ Absent</button>
+                </div>
+                <div class="payment-actions" style="margin-top: 10px;">
+                    <button class="payment-btn" onclick="markPaid('{{ reg.submission_id }}')">💰 Mark Paid</button>
                 </div>
                 <div class="check-time"></div>
             </div>
@@ -369,6 +419,51 @@
                 const name = card.dataset.name.toLowerCase();
                 card.style.display = name.includes(search) ? 'block' : 'none';
             });
+        }
+        
+        function markPaid(submissionId) {
+            const card = document.querySelector(`.camper-card[data-id="${submissionId}"]`);
+            const button = card.querySelector('.payment-btn');
+            
+            if (confirm('Mark this registration as paid?')) {
+                button.disabled = true;
+                button.textContent = '⏳ Processing...';
+                
+                fetch(`/admin/mark-paid/${submissionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the payment badge
+                        const badge = card.querySelector('.payment-badge');
+                        badge.className = 'payment-badge paid';
+                        badge.textContent = '✅ Paid';
+                        
+                        // Update button
+                        button.textContent = '✅ Paid';
+                        button.style.background = '#28a745';
+                        
+                        // Update data attribute
+                        card.dataset.paymentStatus = 'paid';
+                        
+                        alert('Payment marked as paid successfully!');
+                    } else {
+                        button.disabled = false;
+                        button.textContent = '💰 Mark Paid';
+                        alert('Error: ' + (data.error || data.message));
+                    }
+                })
+                .catch(error => {
+                    button.disabled = false;
+                    button.textContent = '💰 Mark Paid';
+                    console.error('Error marking as paid:', error);
+                    alert('Error marking as paid. Please try again.');
+                });
+            }
         }
     </script>
 </body>
