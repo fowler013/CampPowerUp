@@ -199,9 +199,19 @@ def init_db_with_logging():
                 returning_years TEXT,
                 bringing_own_switch BOOLEAN DEFAULT 0,
                 how_heard_about_camp TEXT,
-                additional_comments TEXT
+                additional_comments TEXT,
+                payment_status TEXT DEFAULT 'pending'
             )
         """)
+        
+        # Migrate existing database to add payment_status column if it doesn't exist
+        cursor.execute("PRAGMA table_info(registrations)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'payment_status' not in columns:
+            print("🔧 Migrating database: Adding payment_status column...")
+            cursor.execute("ALTER TABLE registrations ADD COLUMN payment_status TEXT DEFAULT 'pending'")
+            print("✅ Migration complete: payment_status column added")
+        
         conn.commit()
         
         # Check existing data
@@ -1154,7 +1164,8 @@ def submit():
                         returning_years TEXT,
                         bringing_own_switch BOOLEAN DEFAULT 0,
                         how_heard_about_camp TEXT,
-                        additional_comments TEXT
+                        additional_comments TEXT,
+                        payment_status TEXT DEFAULT 'pending'
                     )
                 """)
                 conn.commit()
