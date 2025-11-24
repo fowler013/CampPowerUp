@@ -2207,6 +2207,127 @@ def admin_delete(registration_id):
         flash(f'Delete error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/mark-paid/<submission_id>', methods=['POST'])
+@require_admin_auth
+def mark_paid(submission_id):
+    """Mark a registration as paid."""
+    try:
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE registrations 
+            SET payment_status = 'paid' 
+            WHERE submission_id = ?
+        """, (submission_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Payment status updated'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/attendance')
+@require_admin_auth
+def attendance():
+    """Daily attendance check-in page."""
+    try:
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get all active registrations (not historical)
+        cursor.execute("""
+            SELECT * FROM registrations 
+            WHERE submission_id NOT LIKE 'HIST_%'
+            ORDER BY child_last_name, child_first_name
+        """)
+        
+        registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        # Get today's date to highlight current day
+        from datetime import datetime
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        return render_template('attendance.html', 
+                             registrations=registrations,
+                             today=today,
+                             camp_dates=['2025-11-24', '2025-11-25'])
+    except Exception as e:
+        flash(f'Error loading attendance: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/attendance/check-in', methods=['POST'])
+@require_admin_auth
+def check_in():
+    """Record attendance check-in."""
+    try:
+        data = request.get_json()
+        submission_id = data.get('submission_id')
+        date = data.get('date')
+        status = data.get('status', 'present')  # present, absent, late
+        
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        # Create attendance table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS attendance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                submission_id TEXT NOT NULL,
+                date TEXT NOT NULL,
+                status TEXT NOT NULL,
+                checked_in_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(submission_id, date)
+            )
+        """)
+        
+        # Insert or update attendance
+        cursor.execute("""
+            INSERT INTO attendance (submission_id, date, status)
+            VALUES (?, ?, ?)
+            ON CONFLICT(submission_id, date) 
+            DO UPDATE SET status = ?, checked_in_at = CURRENT_TIMESTAMP
+        """, (submission_id, date, status, status))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/attendance/status/<date>')
+@require_admin_auth
+def get_attendance_status(date):
+    """Get attendance status for a specific date."""
+    try:
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT submission_id, status, checked_in_at
+            FROM attendance
+            WHERE date = ?
+        """, (date,))
+        
+        attendance = {row['submission_id']: {
+            'status': row['status'],
+            'checked_in_at': row['checked_in_at']
+        } for row in cursor.fetchall()}
+        
+        conn.close()
+        return jsonify(attendance)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Initialize database on module load (Railway compatibility)
 print("🔧 Initializing database on startup...")
 init_db_with_logging()

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Attendance - Camp Power-Up 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .date-tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        .date-tab {
+            padding: 15px 30px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .date-tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .date-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card.present { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stat-card.absent { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        .stat-card.late { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        .search-box {
+            margin-bottom: 20px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+        
+        .campers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .camper-card {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .camper-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .camper-card.checked-in {
+            border-color: #38ef7d;
+            background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+        }
+        
+        .camper-card.absent {
+            border-color: #eb3349;
+            background: #ffe0e0;
+        }
+        
+        .camper-card.late {
+            border-color: #ffa726;
+            background: #fff3e0;
+        }
+        
+        .camper-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .camper-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        
+        .status-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .status-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .status-btn.present {
+            background: #38ef7d;
+            color: white;
+        }
+        
+        .status-btn.absent {
+            background: #eb3349;
+            color: white;
+        }
+        
+        .status-btn.late {
+            background: #ffa726;
+            color: white;
+        }
+        
+        .status-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .check-time {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .back-btn:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin" class="back-btn">← Back to Admin Dashboard</a>
+        
+        <div class="header">
+            <h1>📋 Daily Attendance</h1>
+            <p>Camp Power-Up 2025 - November 24-25</p>
+        </div>
+        
+        <div class="date-tabs">
+            <div class="date-tab" data-date="2025-11-24" onclick="selectDate('2025-11-24')">
+                📅 Day 1 - Monday, Nov 24
+            </div>
+            <div class="date-tab" data-date="2025-11-25" onclick="selectDate('2025-11-25')">
+                📅 Day 2 - Tuesday, Nov 25
+            </div>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-number" id="total-count">{{ registrations|length }}</div>
+                <div class="stat-label">Total Campers</div>
+            </div>
+            <div class="stat-card present">
+                <div class="stat-number" id="present-count">0</div>
+                <div class="stat-label">Present</div>
+            </div>
+            <div class="stat-card late">
+                <div class="stat-number" id="late-count">0</div>
+                <div class="stat-label">Late</div>
+            </div>
+            <div class="stat-card absent">
+                <div class="stat-number" id="absent-count">0</div>
+                <div class="stat-label">Not Checked In</div>
+            </div>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="search" placeholder="🔍 Search camper by name..." onkeyup="filterCampers()">
+        </div>
+        
+        <div class="campers-grid" id="campers-grid">
+            {% for reg in registrations %}
+            <div class="camper-card" data-id="{{ reg.submission_id }}" data-name="{{ reg.child_first_name }} {{ reg.child_last_name }}">
+                <div class="camper-name">{{ reg.child_first_name }} {{ reg.child_last_name }}</div>
+                <div class="camper-info">
+                    Age: {{ reg.child_age }} | Grade: {{ reg.child_grade }}<br>
+                    {% if reg.is_returning_camper %}🔄 Returning{% else %}🆕 New{% endif %}
+                    {% if reg.bringing_own_switch %}| 🎮 Own Switch{% endif %}
+                </div>
+                <div class="status-buttons">
+                    <button class="status-btn present" onclick="checkIn('{{ reg.submission_id }}', 'present')">✅ Present</button>
+                    <button class="status-btn late" onclick="checkIn('{{ reg.submission_id }}', 'late')">⏰ Late</button>
+                    <button class="status-btn absent" onclick="checkIn('{{ reg.submission_id }}', 'absent')">❌ Absent</button>
+                </div>
+                <div class="check-time"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <script>
+        let currentDate = '{{ today }}';
+        
+        // Initialize with today's date
+        window.onload = function() {
+            const todayTab = document.querySelector(`.date-tab[data-date="${currentDate}"]`);
+            if (todayTab) {
+                todayTab.classList.add('active');
+            } else {
+                // Default to first camp day if not today
+                selectDate('2025-11-24');
+            }
+            loadAttendance(currentDate);
+        };
+        
+        function selectDate(date) {
+            currentDate = date;
+            document.querySelectorAll('.date-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.date-tab[data-date="${date}"]`).classList.add('active');
+            loadAttendance(date);
+        }
+        
+        function loadAttendance(date) {
+            fetch(`/admin/attendance/status/${date}`)
+                .then(response => response.json())
+                .then(attendance => {
+                    // Reset all cards
+                    document.querySelectorAll('.camper-card').forEach(card => {
+                        card.classList.remove('checked-in', 'absent', 'late');
+                        card.querySelector('.check-time').textContent = '';
+                    });
+                    
+                    // Apply attendance status
+                    Object.keys(attendance).forEach(submissionId => {
+                        const card = document.querySelector(`.camper-card[data-id="${submissionId}"]`);
+                        if (card) {
+                            const status = attendance[submissionId].status;
+                            card.classList.add(status === 'present' ? 'checked-in' : status);
+                            const time = new Date(attendance[submissionId].checked_in_at).toLocaleTimeString();
+                            card.querySelector('.check-time').textContent = `Checked in: ${time}`;
+                        }
+                    });
+                    
+                    updateStats();
+                });
+        }
+        
+        function checkIn(submissionId, status) {
+            fetch('/admin/attendance/check-in', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    submission_id: submissionId,
+                    date: currentDate,
+                    status: status
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAttendance(currentDate);
+                } else {
+                    alert('Error checking in: ' + data.error);
+                }
+            });
+        }
+        
+        function updateStats() {
+            const cards = document.querySelectorAll('.camper-card');
+            let present = 0, late = 0, absent = 0;
+            
+            cards.forEach(card => {
+                if (card.classList.contains('checked-in')) present++;
+                else if (card.classList.contains('late')) late++;
+                else if (card.classList.contains('absent')) absent++;
+            });
+            
+            document.getElementById('present-count').textContent = present;
+            document.getElementById('late-count').textContent = late;
+            document.getElementById('absent-count').textContent = cards.length - present - late;
+        }
+        
+        function filterCampers() {
+            const search = document.getElementById('search').value.toLowerCase();
+            document.querySelectorAll('.camper-card').forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                card.style.display = name.includes(search) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
