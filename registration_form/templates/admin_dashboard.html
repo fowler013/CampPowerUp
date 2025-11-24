@@ -800,11 +800,11 @@
                 .then(response => response.json())
                 .then(data => {
                     setButtonLoading(button, false);
-                    if (data.status === 'success') {
+                    if (data.success) {
                         showToast('Registration marked as paid successfully!', 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        showToast('Error: ' + data.message, 'error');
+                        showToast('Error: ' + (data.error || data.message), 'error');
                     }
                 })
                 .catch(error => {
