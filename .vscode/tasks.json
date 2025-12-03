@@ -1,0 +1,333 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // ========================================================================
+    // Application Tasks (JetBrains-style Run Configurations)
+    // ========================================================================
+    {
+      "label": "🚀 Start Registration Server (Development)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["registration_form/app.py"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": {
+        "pattern": [
+          {
+            "regexp": ".",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*Running on.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+
+    {
+      "label": "📚 Start Game Library Server",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["game_library.py"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+
+    {
+      "label": "💬 Start Communication Server",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["communication/app.py"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+
+    // ========================================================================
+    // Testing Tasks (CYBV 302)
+    // ========================================================================
+    {
+      "label": "🧪 Run All Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": [
+        "tests/",
+        "-v",
+        "--cov=src",
+        "--cov-report=term",
+        "--cov-report=html"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+
+    {
+      "label": "🧪 Run Unit Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["tests/unit/", "-v", "--cov=src"],
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🧪 Run Integration Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["tests/integration/", "-v"],
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🔒 Run Security Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["tests/security/", "-v"],
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "📊 Generate Coverage Report",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["--cov=src", "--cov-report=html", "--cov-report=term"],
+      "problemMatcher": []
+    },
+
+    // ========================================================================
+    // Code Quality Tasks (CYBV 301, CYBV 302)
+    // ========================================================================
+    {
+      "label": "✨ Format Code (Black)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/black",
+      "args": ["src/", "tests/", "scripts/"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+
+    {
+      "label": "📦 Sort Imports (isort)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/isort",
+      "args": ["src/", "tests/", "scripts/", "--profile=black"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+
+    {
+      "label": "🔍 Lint Code (Pylint)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pylint",
+      "args": ["src/", "--disable=C0111,R0903"],
+      "problemMatcher": {
+        "owner": "python",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(\\w+):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+
+    {
+      "label": "🔎 Type Check (mypy)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/mypy",
+      "args": ["src/", "--ignore-missing-imports"],
+      "problemMatcher": {
+        "owner": "python",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):\\s+(.+):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      }
+    },
+
+    {
+      "label": "🛡️ Security Scan (Bandit)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/bandit",
+      "args": ["-r", "src/", "-f", "screen"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "✅ Run All Quality Checks",
+      "dependsOn": [
+        "✨ Format Code (Black)",
+        "📦 Sort Imports (isort)",
+        "🔍 Lint Code (Pylint)",
+        "🔎 Type Check (mypy)",
+        "🛡️ Security Scan (Bandit)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+
+    // ========================================================================
+    // Database Tasks (APCV 360)
+    // ========================================================================
+    {
+      "label": "💾 Backup Database",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["scripts/database/backup.py"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+
+    {
+      "label": "💾 Restore Database (Latest)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["scripts/database/restore.py", "--latest"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🔧 Run Database Maintenance",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["scripts/database/maintenance.py"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🔍 Check Missing Indexes",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["scripts/database/maintenance.py", "--check-indexes"],
+      "problemMatcher": []
+    },
+
+    // ========================================================================
+    // Git & GitHub Tasks
+    // ========================================================================
+    {
+      "label": "📊 Git Status",
+      "type": "shell",
+      "command": "git",
+      "args": ["status", "--short", "--branch"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "📈 Git Log (Recent)",
+      "type": "shell",
+      "command": "git",
+      "args": ["log", "--oneline", "--graph", "--decorate", "-10"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🔄 Git Pull",
+      "type": "shell",
+      "command": "git",
+      "args": ["pull", "--rebase"],
+      "problemMatcher": []
+    },
+
+    // ========================================================================
+    // Deployment Tasks
+    // ========================================================================
+    {
+      "label": "🚀 Deploy to Staging",
+      "type": "shell",
+      "command": "git",
+      "args": ["push", "origin", "develop"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🚀 Deploy to Production",
+      "type": "shell",
+      "command": "git",
+      "args": ["push", "origin", "main"],
+      "problemMatcher": []
+    },
+
+    // ========================================================================
+    // Project Setup Tasks
+    // ========================================================================
+    {
+      "label": "📦 Install Dependencies",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pip",
+      "args": ["install", "-r", "requirements.txt"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "📦 Update Dependencies",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pip",
+      "args": ["install", "--upgrade", "-r", "requirements.txt"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "🧹 Clean Python Cache",
+      "type": "shell",
+      "command": "find",
+      "args": [
+        ".",
+        "-type",
+        "d",
+        "-name",
+        "__pycache__",
+        "-exec",
+        "rm",
+        "-rf",
+        "{}",
+        "+"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
