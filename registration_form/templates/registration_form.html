@@ -268,6 +268,25 @@
             text-align: center;
             font-weight: 500;
         }
+
+        .faq-link {
+            text-align: center;
+            margin: 10px 0 20px 0;
+        }
+
+        .faq-link a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .faq-link a:hover {
+            background: rgba(255,255,255,0.3);
+        }
     </style>
 </head>
 <body>
@@ -275,6 +294,9 @@
         <div class="header">
             <h1>{{ camp_title }}</h1>
             <p>{{ camp_subtitle }}</p>
+            <div class="faq-link">
+                <a href="{{ url_for('faq') }}">📋 View FAQ & Camp Info</a>
+            </div>
         </div>
 
         <div class="pricing-info">
@@ -358,10 +380,6 @@
                             <option value="6th">6th Grade</option>
                             <option value="7th">7th Grade</option>
                             <option value="8th">8th Grade</option>
-                            <option value="9th">9th Grade</option>
-                            <option value="10th">10th Grade</option>
-                            <option value="11th">11th Grade</option>
-                            <option value="12th">12th Grade</option>
                         </select>
                     </div>
                 </div>
@@ -396,11 +414,11 @@
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" id="returning_yes" name="is_returning_camper" value="true" required>
-                            <label for="returning_yes">✅ Yes - My child has attended Camp Power-Up before (Returning Camper - $80 total)</label>
+                            <label for="returning_yes">✅ Yes - My child has attended Camp Power-Up before (Returning Camper - ${{ config.pricing.returning_camper.total }} total)</label>
                         </div>
                         <div class="radio-item">
                             <input type="radio" id="returning_no" name="is_returning_camper" value="false" required>
-                            <label for="returning_no">🆕 No - This is my child's first time at Camp Power-Up (New Camper - $100 total)</label>
+                            <label for="returning_no">🆕 No - This is my child's first time at Camp Power-Up (New Camper - ${{ config.pricing.new_camper.total }} total)</label>
                         </div>
                     </div>
                 </div>

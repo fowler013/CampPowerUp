@@ -7,36 +7,50 @@ This file contains the dynamic camp session information that changes
 between different camp offerings throughout the year.
 
 Update this file for each new camp session rather than modifying templates.
-LAST UPDATED: 2025-07-28 13:11:43
+LAST UPDATED: 2026-01-26
 """
 
 from datetime import datetime
 
 # Current Camp Session Configuration
-CAMP_CONFIG = {   'age_range': '5-18',
-    'camp_dates': 'November 24th-26th',
-    'camp_days': 3,
-    'camp_name': 'Camp Power-Up 2025',
-    'camp_subtitle': 'Gaming Camp Registration Form',
-    'daily_hours': '10am-3pm',
+CAMP_CONFIG = {
+    'age_range': 'K-8th Grade',
+    'camp_dates': 'March 26th-27th',
+    'camp_days': 2,
+    'camp_name': 'Camp Power-Up 2026',
+    'camp_subtitle': 'Nintendo Switch Gaming Camp Registration',
+    'daily_hours': '10:00am-3:00pm',
     'deposit_due': 'Upon Registration',
     'early_bird_deadline': None,
-    'final_payment_due': 'November 24th',
+    'final_payment_due': 'March 26th',
     'max_campers': 24,
-    'pricing': {   'new_camper': {   'deposit': 50,
-                                     'final_payment': 50,
-                                     'total': 100},
-                   'returning_camper': {   'deposit': 50,
-                                           'final_payment': 30,
-                                           'total': 80}},
+    'location': 'Youth Loft at Shades Valley Community Church',
+    'pricing': {
+        'new_camper': {
+            'deposit': 50,
+            'final_payment': 50,
+            'total': 100
+        },
+        'returning_camper': {
+            'deposit': 50,
+            'final_payment': 30,
+            'total': 80
+        }
+    },
     'registration_open': True,
-    'session_type': 'Summer Intensive',
-    'special_features': [   'Nintendo Switch Gaming',
-                            'Board Game Library',
-                            'Team Building Activities',
-                            'Daily Tournaments'],
-    'total_hours': 25,
-    'waitlist_available': True}
+    'session_type': '2-Day Camp',
+    'special_features': [
+        'Nintendo Switch Gaming',
+        'Multiplayer Game Focus',
+        'Daily Park Time at Patriot Park',
+        'Prizes & Trophies'
+    ],
+    'total_hours': 10,
+    'waitlist_available': True,
+    # Lunch info
+    'lunch_provided': False,
+    'lunch_note': 'Please pack lunch, snacks, and a water bottle for your camper.'
+}
 
 # Dynamic text generation functions
 def get_camp_title():

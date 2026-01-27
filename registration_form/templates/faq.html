@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Power-Up - Frequently Asked Questions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .intro {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .intro p {
+            font-size: 1.1em;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .faq-section {
+            margin-bottom: 30px;
+        }
+
+        .faq-item {
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+            padding-left: 20px;
+        }
+
+        .faq-question {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .faq-answer {
+            color: #555;
+            line-height: 1.7;
+            font-size: 1em;
+        }
+
+        .faq-answer ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .faq-answer li {
+            margin-bottom: 5px;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .highlight-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .pricing-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .pricing-card .price {
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .pricing-card .price-type {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .rules-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .rules-box h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .rules-box ul {
+            padding-left: 20px;
+        }
+
+        .rules-box li {
+            margin-bottom: 8px;
+            color: #856404;
+        }
+
+        .location-info {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .location-info h3 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+
+        .location-info p {
+            color: #155724;
+        }
+
+        .schedule-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .schedule-box h3 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+
+        .schedule-box p {
+            color: #0c5460;
+            font-size: 1.1em;
+        }
+
+        .cta-section {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+
+        .cta-section h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .cta-section p {
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 20px;
+        }
+
+        .register-btn {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .extras-section {
+            background: #e8f4f8;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .extras-section h3 {
+            color: #2c5282;
+            margin-bottom: 15px;
+        }
+
+        .extras-section ul {
+            padding-left: 20px;
+        }
+
+        .extras-section li {
+            color: #2c5282;
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Camp Power-Up</h1>
+            <p>Frequently Asked Questions</p>
+        </div>
+
+        <div class="content">
+            <div class="intro">
+                <p>Got questions about Camp Power-Up? We've got answers! Browse our FAQ below to learn everything you need to know about our Nintendo Switch gaming camp experience.</p>
+            </div>
+
+            <!-- What is Camp Power-Up? -->
+            <div class="faq-item">
+                <div class="faq-question">🎮 What is Camp Power-Up?</div>
+                <div class="faq-answer">
+                    Camp Power-Up is a Nintendo Switch gaming camp where kids come together to play multiplayer games in a fun, social environment. We focus on cooperative and competitive multiplayer experiences that help kids make friends, develop teamwork skills, and have a blast gaming together. We offer both 5-day and 2-day camp sessions throughout the year.
+                </div>
+            </div>
+
+            <!-- Ages -->
+            <div class="faq-item">
+                <div class="faq-question">👧 What ages can attend?</div>
+                <div class="faq-answer">
+                    Camp Power-Up is open to children in <strong>Kindergarten through 8th grade</strong>. We group activities appropriately to ensure all campers have fun with peers at their level.
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div class="location-info">
+                <h3>📍 Where is camp held?</h3>
+                <p><strong>{{ config.location if config.location else 'Youth Loft at Shades Valley Community Church' }}</strong></p>
+                <p style="margin-top: 10px;">Our space is set up with multiple TVs and Nintendo Switch consoles for an amazing multiplayer gaming experience!</p>
+            </div>
+
+            <!-- Schedule -->
+            <div class="schedule-box">
+                <h3>⏰ What's the daily schedule?</h3>
+                <p><strong>Drop-off:</strong> 10:00 AM</p>
+                <p><strong>Pick-up:</strong> 3:00 PM</p>
+                <p style="margin-top: 10px;"><em>Camp runs {{ config.daily_hours if config.daily_hours else '10:00am-3:00pm' }} each day.</em></p>
+            </div>
+
+            <!-- Pricing -->
+            <div class="highlight-box">
+                <h3>💰 How much does it cost?</h3>
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <h4>5-Day Camps</h4>
+                        <div class="price">$200</div>
+                        <div class="price-type">New Campers</div>
+                        <div style="margin-top: 10px; color: #28a745; font-weight: 500;">$180 Returning Campers</div>
+                    </div>
+                    <div class="pricing-card">
+                        <h4>2-Day Camps</h4>
+                        <div class="price">$100</div>
+                        <div class="price-type">New Campers</div>
+                        <div style="margin-top: 10px; color: #28a745; font-weight: 500;">$80 Returning Campers</div>
+                    </div>
+                </div>
+                <p style="margin-top: 20px; text-align: center; color: #666;">
+                    <em>Returning camper discounts are automatically applied when you register!</em>
+                </p>
+            </div>
+
+            <!-- Nintendo Switch -->
+            <div class="faq-item">
+                <div class="faq-question">🕹️ Does my child need to bring a Nintendo Switch?</div>
+                <div class="faq-answer">
+                    <strong>Nope!</strong> We have multiple TVs and Nintendo Switch consoles already set up for group play. We also have extra Switch consoles available for handheld play. Your child is welcome to bring their own Switch if they prefer, but it's absolutely not required.
+                </div>
+            </div>
+
+            <!-- Lunch -->
+            <div class="faq-item">
+                <div class="faq-question">🍎 Do you provide lunch?</div>
+                <div class="faq-answer">
+                    <strong>No, lunch is not provided.</strong> Please make sure your camper brings:
+                    <ul>
+                        <li>Their own packed lunch</li>
+                        <li>Snacks for throughout the day</li>
+                        <li>A water bottle</li>
+                    </ul>
+                    <p style="margin-top: 10px;">We take a break each day to enjoy lunch and spend about an hour at <strong>Patriot Park</strong> across the street for some outdoor playtime!</p>
+                </div>
+            </div>
+
+            <!-- Rules -->
+            <div class="rules-box">
+                <h3>📋 What are the camp rules?</h3>
+                <ul>
+                    <li><strong>LABEL EVERYTHING!</strong> - Please put your child's name on all belongings</li>
+                    <li><strong>Be a good winner</strong> - Celebrate your victories graciously</li>
+                    <li><strong>Be a good loser</strong> - Accept defeat with a positive attitude</li>
+                    <li><strong>Game ratings matter</strong> - No overly violent, scary, or mature (M-rated) games</li>
+                </ul>
+            </div>
+
+            <!-- Extra Info -->
+            <div class="extras-section">
+                <h3>✨ Anything else I should know?</h3>
+                <ul>
+                    <li><strong>Prizes & Trophies:</strong> We sometimes have prizes and trophies for tournaments and special achievements!</li>
+                    <li><strong>Park Time:</strong> Kids can bring a few outside toys to play with during our daily visit to Patriot Park</li>
+                    <li><strong>Stay Connected:</strong> Join our Facebook group to stay updated on camp news and connect with other camp families</li>
+                    <li><strong>Payment Confirmation:</strong> We will confirm your registration through whichever payment app you use (Venmo, PayPal, etc.)</li>
+                </ul>
+            </div>
+
+            <!-- CTA Section -->
+            <div class="cta-section">
+                <h3>Ready to Register?</h3>
+                <p>Spots fill up fast! Secure your child's place at Camp Power-Up today.</p>
+                <a href="{{ url_for('registration_form') }}" class="register-btn">Register Now →</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Questions? <a href="mailto:info@camppowerup.com">Contact us</a> | <a href="{{ url_for('registration_form') }}">Back to Registration</a></p>
+        </div>
+    </div>
+</body>
+</html>

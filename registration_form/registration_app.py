@@ -60,6 +60,7 @@ def init_registration_db():
             
             -- Camp Information
             is_returning_camper BOOLEAN DEFAULT FALSE,
+            camp_session TEXT,  -- Which camp session this registration is for
             camp_weeks TEXT,  -- JSON array of selected weeks
             
             -- Gaming Information
@@ -148,6 +149,11 @@ def registration_form():
     except ValueError as e:
         return f"Configuration Error: {e}", 500
 
+@app.route('/faq')
+def faq():
+    """Display the FAQ page."""
+    return render_template('faq.html', config=CAMP_CONFIG)
+
 @app.route('/submit', methods=['POST'])
 def submit_registration():
     """Handle form submission."""
@@ -167,17 +173,20 @@ def submit_registration():
         conn = sqlite3.connect(REGISTRATION_DB)
         cursor = conn.cursor()
         
+        # Get current camp session from config
+        current_session = f"{CAMP_CONFIG['camp_name']} - {CAMP_CONFIG['camp_dates']}"
+        
         cursor.execute('''
             INSERT INTO registrations (
                 submission_id, parent_email, parent_phone, emergency_contact_name,
                 emergency_contact_phone, child_first_name, child_last_name,
                 child_age, child_grade, child_gender, is_returning_camper,
-                camp_weeks, gaming_behavior, game_restrictions, bringing_own_switch,
+                camp_session, camp_weeks, gaming_behavior, game_restrictions, bringing_own_switch,
                 favorite_games, games_owned, console_experience, has_allergies, allergy_details,
                 has_sensory_issues, sensory_details, medical_conditions,
                 photo_permission, marketing_permission, tshirt_size,
                 how_heard_about_camp, additional_notes, raw_form_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             submission_id,
             form_data.get('parent_email'),
@@ -190,6 +199,7 @@ def submit_registration():
             form_data.get('child_grade'),
             form_data.get('child_gender'),
             form_data.get('is_returning_camper') == 'true',
+            current_session,
             json.dumps(form_data.get('camp_weeks', [])),
             form_data.get('gaming_behavior'),
             form_data.get('game_restrictions'),
@@ -444,18 +454,49 @@ def extract_games_from_text(text, high_confidence=True):
 @app.route('/admin')
 def admin_dashboard():
     """Admin dashboard for viewing registrations."""
+    # Get session filter from query string
+    session_filter = request.args.get('session', 'all')
+    
     conn = sqlite3.connect(REGISTRATION_DB)
     conn.row_factory = sqlite3.Row
     
-    cursor = conn.execute('''
-        SELECT * FROM registrations 
-        ORDER BY timestamp DESC
+    # Get list of all unique sessions for the filter dropdown
+    sessions_cursor = conn.execute('''
+        SELECT DISTINCT camp_session FROM registrations 
+        WHERE camp_session IS NOT NULL AND camp_session != ''
+        ORDER BY camp_session DESC
     ''')
+    available_sessions = [row['camp_session'] for row in sessions_cursor.fetchall()]
+    
+    # Current session from config
+    current_session = f"{CAMP_CONFIG['camp_name']} - {CAMP_CONFIG['camp_dates']}"
+    
+    # Add current session if not in list
+    if current_session not in available_sessions:
+        available_sessions.insert(0, current_session)
+    
+    # Filter registrations by session if specified
+    if session_filter and session_filter != 'all':
+        cursor = conn.execute('''
+            SELECT * FROM registrations 
+            WHERE camp_session = ?
+            ORDER BY timestamp DESC
+        ''', (session_filter,))
+    else:
+        cursor = conn.execute('''
+            SELECT * FROM registrations 
+            ORDER BY timestamp DESC
+        ''')
     
     registrations = [dict(row) for row in cursor.fetchall()]
     conn.close()
     
-    return render_template('admin_dashboard.html', registrations=registrations)
+    return render_template('admin_dashboard.html', 
+                          registrations=registrations,
+                          available_sessions=available_sessions,
+                          current_session=current_session,
+                          selected_session=session_filter,
+                          config=CAMP_CONFIG)
 
 @app.route('/admin/config')
 def admin_config():
@@ -633,7 +674,7 @@ def confirmation(submission_id):
         
         registration_dict = dict(zip(columns, registration))
         
-        return render_template('confirmation.html', registration=registration_dict)
+        return render_template('confirmation.html', registration=registration_dict, config=CAMP_CONFIG)
         
     except Exception as e:
         return f"Error retrieving registration: {str(e)}", 500

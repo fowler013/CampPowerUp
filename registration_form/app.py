@@ -14,11 +14,35 @@ from functools import wraps
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 
+# Import camp configuration
+try:
+    from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text
+except ImportError:
+    # Fallback config if camp_config.py is not available
+    CAMP_CONFIG = {
+        'camp_name': 'Camp Power-Up 2026',
+        'camp_dates': 'March 26th-27th',
+        'camp_days': 2,
+        'daily_hours': '10:00am-3:00pm',
+        'pricing': {
+            'new_camper': {'total': 100, 'deposit': 50, 'final_payment': 50},
+            'returning_camper': {'total': 80, 'deposit': 50, 'final_payment': 30}
+        }
+    }
+    def get_camp_title(): return CAMP_CONFIG['camp_name']
+    def get_camp_subtitle(): return 'Nintendo Switch Gaming Camp Registration'
+    def get_pricing_text():
+        return {
+            'returning_text': f"Returning Campers: ${CAMP_CONFIG['pricing']['returning_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['returning_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['returning_camper']['total']} total",
+            'new_text': f"New Campers: ${CAMP_CONFIG['pricing']['new_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['new_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['new_camper']['total']} total",
+            'payment_deadline': f"Camp runs {CAMP_CONFIG['camp_dates']}, {CAMP_CONFIG['daily_hours']} daily."
+        }
+
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Configure pricing in Flask config for templates
-app.config['pricing'] = {
+# Configure pricing in Flask config for templates (from camp_config)
+app.config['pricing'] = CAMP_CONFIG.get('pricing', {
     'returning_camper': {
         'total': 80,
         'deposit': 50,
@@ -211,6 +235,14 @@ def init_db_with_logging():
             print("🔧 Migrating database: Adding payment_status column...")
             cursor.execute("ALTER TABLE registrations ADD COLUMN payment_status TEXT DEFAULT 'pending'")
             print("✅ Migration complete: payment_status column added")
+        
+        # Add camp_session column for tracking which camp session each registration belongs to
+        if 'camp_session' not in columns:
+            print("🔧 Migrating database: Adding camp_session column...")
+            cursor.execute("ALTER TABLE registrations ADD COLUMN camp_session TEXT")
+            # Update existing records with a default session
+            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2025 - November 24th-26th' WHERE camp_session IS NULL")
+            print("✅ Migration complete: camp_session column added")
         
         conn.commit()
         
@@ -648,24 +680,22 @@ def debug_all_registrations():
 def home():
     """Main registration form."""
     try:
-        # Create pricing object that template expects
-        pricing = {
-            'returning_text': 'Returning Campers: $50 deposit + $30 final payment = $80 total',
-            'new_text': 'New Campers: $50 deposit + $50 final payment = $100 total', 
-            'payment_deadline': 'Final payment due before November 24th. Camp runs November 24th-25th, 10am-3pm daily.'
-        }
+        # Use dynamic pricing from camp_config
+        pricing = get_pricing_text()
         
-        # Mock camp config
+        # Use dynamic camp config
         camp_config = {
-            'camp_name': 'Camp Power-Up 2025',
-            'camp_dates': 'November 24-25, 2025',
-            'camp_times': '10am-3pm daily'
+            'camp_name': get_camp_title(),
+            'camp_dates': CAMP_CONFIG.get('camp_dates', 'March 26th-27th'),
+            'camp_times': CAMP_CONFIG.get('daily_hours', '10:00am-3:00pm'),
+            'pricing': CAMP_CONFIG.get('pricing', {})
         }
         
         return render_template('registration_form.html', 
                              camp_config=camp_config,
-                             camp_title='Camp Power-Up 2025 Registration',
-                             camp_subtitle='Nintendo Switch Gaming Camp - November 24-25, 2025',
+                             config=CAMP_CONFIG,
+                             camp_title=get_camp_title() + ' Registration',
+                             camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', 'March 26th-27th')}",
                              pricing_text='Registration fees listed below',
                              pricing=pricing)
     except Exception as e:
@@ -679,6 +709,11 @@ def home():
         <p><a href="/test-db">Test Database</a></p>
         </body></html>
         '''
+
+@app.route('/faq')
+def faq():
+    """Display the FAQ page."""
+    return render_template('faq.html', config=CAMP_CONFIG)
 
 @app.route('/test-template')
 def test_template():
@@ -1178,6 +1213,10 @@ def submit():
         # Connect to database
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
+        
+        # Get current camp session
+        current_session = f"{CAMP_CONFIG.get('camp_name', 'Camp Power-Up')} - {CAMP_CONFIG.get('camp_dates', 'Unknown')}"
+        
         cursor.execute("""
             INSERT INTO registrations (
                 submission_id, child_first_name, child_last_name, child_age, child_grade,
@@ -1185,8 +1224,8 @@ def submit():
                 emergency_contact_name, emergency_contact_phone,
                 has_allergies, allergies_description, has_medical_conditions, 
                 medical_conditions_description, is_returning_camper, returning_years,
-                bringing_own_switch, how_heard_about_camp, additional_comments
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                bringing_own_switch, how_heard_about_camp, additional_comments, camp_session
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             submission_id, data['child_first_name'], data['child_last_name'], 
             data['child_age'], data['child_grade'], data['parent_first_name'], data['parent_last_name'],
@@ -1195,7 +1234,7 @@ def submit():
             data['has_allergies'], data['allergies_description'],
             data['has_medical_conditions'], data['medical_conditions_description'],
             data['is_returning_camper'], data['returning_years'], data['bringing_own_switch'],
-            data['how_heard_about_camp'], data['additional_comments']
+            data['how_heard_about_camp'], data['additional_comments'], current_session
         ))
         conn.commit()
         conn.close()
@@ -1497,12 +1536,15 @@ def admin_logout():
 @app.route('/admin')
 @require_admin_auth
 def admin_dashboard():
-    """Professional admin dashboard with statistics."""
+    """Professional admin dashboard with statistics and session filtering."""
     try:
         # Check for Railway storage issue
         is_railway_without_volume = os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data')
         if is_railway_without_volume:
             flash('⚠️ STORAGE WARNING: Railway production has no persistent volume configured. Registration data will be lost on deployment. Configure persistent volume at /data to fix this issue.', 'warning')
+        
+        # Get session filter from query string
+        session_filter = request.args.get('session', 'all')
         
         # Use fresh database path for Railway compatibility
         db_file = get_database_path()
@@ -1510,8 +1552,32 @@ def admin_dashboard():
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        # Only show current registrations (exclude HIST_ historical records)
-        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
+        
+        # Get list of all unique sessions for the filter dropdown
+        cursor.execute('''
+            SELECT DISTINCT camp_session FROM registrations 
+            WHERE camp_session IS NOT NULL AND camp_session != '' AND submission_id NOT LIKE 'HIST_%'
+            ORDER BY camp_session DESC
+        ''')
+        available_sessions = [row['camp_session'] for row in cursor.fetchall()]
+        
+        # Current session from config
+        current_session = f"{CAMP_CONFIG.get('camp_name', 'Camp Power-Up')} - {CAMP_CONFIG.get('camp_dates', 'Unknown')}"
+        
+        # Add current session if not in list
+        if current_session not in available_sessions:
+            available_sessions.insert(0, current_session)
+        
+        # Filter registrations by session if specified (exclude HIST_ historical records)
+        if session_filter and session_filter != 'all':
+            cursor.execute('''
+                SELECT * FROM registrations 
+                WHERE camp_session = ? AND submission_id NOT LIKE 'HIST_%'
+                ORDER BY timestamp DESC
+            ''', (session_filter,))
+        else:
+            cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
+        
         registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
@@ -1569,11 +1635,11 @@ def admin_dashboard():
             except (ValueError, TypeError):
                 age_groups["Unknown"] = age_groups.get("Unknown", 0) + 1
         
-        # Mock camp config for template
+        # Mock camp config for template - use dynamic config
         camp_config = {
-            'camp_name': 'Camp Power-Up 2025',
-            'camp_dates': 'November 24-25, 2025',
-            'camp_times': '10am-3pm daily'
+            'camp_name': get_camp_title(),
+            'camp_dates': CAMP_CONFIG.get('camp_dates', 'March 26th-27th'),
+            'camp_times': CAMP_CONFIG.get('daily_hours', '10:00am-3:00pm')
         }
         
         session_stats = {
@@ -1595,7 +1661,11 @@ def admin_dashboard():
         return render_template('admin_dashboard.html', 
                              registrations=registrations,
                              session_stats=session_stats,
-                             camp_config=camp_config)
+                             camp_config=camp_config,
+                             config=CAMP_CONFIG,
+                             available_sessions=available_sessions,
+                             current_session=current_session,
+                             selected_session=session_filter)
                              
     except Exception as e:
         flash(f'Error loading dashboard: {str(e)}', 'error')
