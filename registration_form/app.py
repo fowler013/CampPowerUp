@@ -53,7 +53,7 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
         'deposit': 50,
         'final_payment': 50
     }
-}
+})
 
 # Railway-aware database setup for persistent data  
 def get_database_path():
