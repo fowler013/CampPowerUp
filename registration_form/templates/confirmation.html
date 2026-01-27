@@ -209,7 +209,7 @@
         <div class="header">
             <div class="success-icon">✅</div>
             <h1>Registration Confirmed!</h1>
-            <p>Thank you for registering for Camp Power-Up 2025</p>
+            <p>Thank you for registering for {{ config.camp_name if config else 'Camp Power-Up' }}</p>
         </div>
 
         <div class="confirmation-content">
@@ -256,9 +256,9 @@
                     <span class="summary-label">Camper Type:</span>
                     <span class="summary-value">
                         {% if registration.is_returning_camper %}
-                            Returning Camper ($80 total)
+                            Returning Camper (${{ config.pricing.returning_camper.total if config else 80 }} total)
                         {% else %}
-                            New Camper ($100 total)
+                            New Camper (${{ config.pricing.new_camper.total if config else 100 }} total)
                         {% endif %}
                     </span>
                 </div>

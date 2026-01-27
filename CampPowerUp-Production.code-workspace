@@ -1,0 +1,51 @@
+{
+	"folders": [
+		{
+			"path": ".",
+			"name": "CampPowerUp [PROD]"
+		}
+	],
+	"settings": {
+		// Production-focused settings
+		"python.analysis.extraPaths": [
+			"./src"
+		],
+		"terminal.integrated.env.osx": {
+			"FLASK_ENV": "production"
+		},
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+			"**/.DS_Store": true,
+			"**/tests": true,  // Hide tests in production view
+			"**/.venv": true
+		},
+		// Read-only mode for main branch (safety)
+		"files.readonlyInclude": {
+			"**/app.py": true,
+			"**/requirements.txt": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"eamodio.gitlens"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "🚀 Production Server (Local)",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/app.py",
+				"console": "integratedTerminal",
+				"justMyCode": true,
+				"env": {
+					"FLASK_ENV": "production"
+				}
+			}
+		]
+	}
+}

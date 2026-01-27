@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration Admin - Camp Power-Up 2025</title>
+    <title>Registration Admin - {{ config.camp_name if config else 'Camp Power-Up' }}</title>
     <style>
         * {
             margin: 0;
@@ -574,6 +574,21 @@
                 <button class="btn btn-primary" onclick="clearSearch()" 
                         aria-label="Clear search results">Clear</button>
             </div>
+            
+            <!-- Session Filter -->
+            <div class="session-filter" style="display: flex; align-items: center; gap: 10px;">
+                <label for="sessionFilter" style="font-weight: 500; white-space: nowrap;">📅 Camp Session:</label>
+                <select id="sessionFilter" onchange="filterBySession(this.value)" 
+                        style="padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                    <option value="all" {% if selected_session == 'all' %}selected{% endif %}>All Sessions</option>
+                    {% for session in available_sessions %}
+                    <option value="{{ session }}" {% if selected_session == session %}selected{% endif %}>
+                        {{ session }}{% if session == current_session %} (Current){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
             <div>
                 <a href="/" class="btn btn-success">➕ New Registration</a>
                 <button class="btn btn-primary" onclick="exportData()">📊 Export Data</button>
@@ -598,7 +613,13 @@
 
         <div class="registrations-table">
             <div class="table-header">
-                <h3>Recent Registrations ({{ registrations|length }} total)</h3>
+                <h3>
+                    {% if selected_session and selected_session != 'all' %}
+                        {{ selected_session }} Registrations ({{ registrations|length }} total)
+                    {% else %}
+                        All Registrations ({{ registrations|length }} total)
+                    {% endif %}
+                </h3>
             </div>
 
             <div id="registrationsList">
@@ -612,6 +633,10 @@
                             <div class="submission-id">{{ registration.submission_id }}</div>
                         </div>
                         <div class="status-badges">
+                            {% if registration.camp_session %}
+                                <span class="badge" style="background: #6f42c1; color: white;">{{ registration.camp_session }}</span>
+                            {% endif %}
+                            
                             {% if registration.is_returning_camper %}
                                 <span class="badge badge-returning">Returning Camper</span>
                             {% else %}
@@ -652,9 +677,9 @@
                                 <strong>Payment Status:</strong> {{ registration.payment_status|title }}<br>
                                 <strong>Total Fee:</strong> 
                                 {% if registration.is_returning_camper %}
-                                    $80 (Returning)
+                                    ${{ config.pricing.returning_camper.total if config else 80 }} (Returning)
                                 {% else %}
-                                    $100 (New)
+                                    ${{ config.pricing.new_camper.total if config else 100 }} (New)
                                 {% endif %}
                             </div>
                         </div>
@@ -784,6 +809,17 @@
             cards.forEach(card => {
                 card.style.display = 'block';
             });
+        }
+
+        function filterBySession(session) {
+            // Redirect to the admin page with session filter
+            const url = new URL(window.location.href);
+            if (session === 'all') {
+                url.searchParams.delete('session');
+            } else {
+                url.searchParams.set('session', session);
+            }
+            window.location.href = url.toString();
         }
 
         function markPaid(submissionId) {
