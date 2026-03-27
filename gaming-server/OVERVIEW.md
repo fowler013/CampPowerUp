@@ -1,8 +1,8 @@
 # 🎮 CampPowerUp Retro Gaming Server
 
-## For Brandon - Project Overview
+## Project Overview
 
-Hey Brandon! Here's what we're building for the camp's gaming program.
+ Here's what we're building for the camp's gaming program.
 
 ---
 
