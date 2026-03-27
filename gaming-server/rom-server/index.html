@@ -105,10 +105,18 @@
         <div class="card">
             <h2>🔗 Quick Links</h2>
             <p>
-                <a href="http://localhost:3000" class="btn" style="margin-right: 0.5rem;">Play Games (EmulatorJS)</a>
-                <a href="http://localhost:8384" class="btn">Save Sync (Syncthing)</a>
+                <a id="emulatorjs-link" href="//:3000" class="btn" style="margin-right: 0.5rem;">Play Games (EmulatorJS)</a>
+                <a id="syncthing-link" href="//:8384" class="btn">Save Sync (Syncthing)</a>
             </p>
         </div>
+        <script>
+            // Update quick links to use the current host instead of localhost
+            (function() {
+                const host = window.location.hostname;
+                document.getElementById('emulatorjs-link').href = 'http://' + host + ':3000';
+                document.getElementById('syncthing-link').href = 'http://' + host + ':8384';
+            })();
+        </script>
     </div>
 </body>
 </html>
