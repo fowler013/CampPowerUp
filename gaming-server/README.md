@@ -187,7 +187,15 @@ gaming-server/
 - Public domain games
 - Games with appropriate licensing
 
-Consider exploring homebrew and open-source games:
+### 📚 Documentation
+
+| Guide | Description |
+|-------|-------------|
+| **[HOMEBREW_GAMES.md](HOMEBREW_GAMES.md)** | Curated list of free, legal homebrew games + recommended commercial games to purchase |
+| **[CARTRIDGE_DUMPING.md](CARTRIDGE_DUMPING.md)** | How to legally dump cartridges you own using devices like Epilogue or Retrode |
+| **[OVERVIEW.md](OVERVIEW.md)** | Non-technical overview for stakeholders |
+
+### Resources
 - [Homebrew Hub](https://hh.gbdev.io/) - Game Boy homebrew
 - [PDRoms](https://pdroms.de/) - Public domain ROMs
 - [itch.io](https://itch.io/games/tag-retro) - Indie retro games

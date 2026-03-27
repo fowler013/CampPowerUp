@@ -98,7 +98,9 @@ When campers visit the gaming server, they see:
 - [x] Server infrastructure
 - [x] Browser-based game player
 - [x] ROM organization system
-- [ ] Add initial game library
+- [x] ROM organization script (`scripts/organize_roms.py`)
+- [x] Curated homebrew games list (`HOMEBREW_GAMES.md`)
+- [ ] Download and add initial games from list
 
 ### Phase 2: Client Stations
 - [ ] Set up Raspberry Pi gaming stations
