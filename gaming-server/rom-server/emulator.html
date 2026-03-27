@@ -38,6 +38,28 @@
             background: rgba(0,212,255,0.1);
         }
         .upload-zone input { display: none; }
+        .quick-play {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .quick-play button {
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            color: #fff;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .quick-play button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,212,255,0.4);
+        }
         .info {
             background: rgba(255,255,255,0.05);
             border-radius: 8px;
@@ -69,6 +91,10 @@
 </head>
 <body>
     <h1>🎮 CampPowerUp Emulator Test</h1>
+    
+    <div class="quick-play">
+        <button onclick="playDriar()">🕹️ Play Driar (NES Puzzle Game)</button>
+    </div>
     
     <div class="info">
         <strong>Test your retro gaming setup!</strong><br>
@@ -130,6 +156,20 @@
                 document.body.appendChild(script);
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function playDriar() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = '<div style="color:#888;padding:2rem;text-align:center;">Loading Driar...</div>';
+            
+            window.EJS_player = '#game-container';
+            window.EJS_core = 'nes';
+            window.EJS_gameUrl = '/roms/nes/driar.nes';
+            window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+            document.body.appendChild(script);
         }
 
         // File input handler
