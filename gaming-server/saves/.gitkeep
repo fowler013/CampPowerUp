@@ -1,0 +1,4 @@
+# Placeholder for save files
+# This directory is synced across devices via Syncthing
+# 
+# Structure: saves/[username]/[system]/[game].srm

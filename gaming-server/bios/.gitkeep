@@ -1,0 +1,9 @@
+# Placeholder for BIOS files
+# 
+# PlayStation BIOS (required for PS1 emulation):
+# - scph1001.bin (US)
+# - scph5500.bin (JP)
+# - scph5501.bin (US)
+# - scph5502.bin (EU)
+# 
+# Place BIOS files you've dumped from your own console here.

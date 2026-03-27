@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampPowerUp ROM Server</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: #888; margin-bottom: 2rem; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card h2 { font-size: 1.25rem; margin-bottom: 0.5rem; color: #00d4ff; }
+        .card p { color: #aaa; margin-bottom: 1rem; }
+        a.btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        a.btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,212,255,0.3);
+        }
+        .systems {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .system {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .system:hover { background: rgba(255,255,255,0.1); }
+        .system-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .status { 
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            background: #22c55e;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 CampPowerUp</h1>
+        <p class="subtitle">Retro Gaming Server <span class="status">Online</span></p>
+        
+        <div class="card">
+            <h2>📁 ROM Library</h2>
+            <p>Browse available games for all supported systems.</p>
+            <a href="/roms/" class="btn">Browse ROMs</a>
+        </div>
+        
+        <div class="card">
+            <h2>💾 BIOS Files</h2>
+            <p>System BIOS files for emulators that require them (PS1, etc).</p>
+            <a href="/bios/" class="btn">Browse BIOS</a>
+        </div>
+        
+        <div class="card">
+            <h2>🕹️ Supported Systems</h2>
+            <p>Add ROMs to the appropriate folder to make them available:</p>
+            <div class="systems">
+                <div class="system"><div class="system-icon">🎮</div>NES</div>
+                <div class="system"><div class="system-icon">🎮</div>SNES</div>
+                <div class="system"><div class="system-icon">🎮</div>Genesis</div>
+                <div class="system"><div class="system-icon">🎮</div>N64</div>
+                <div class="system"><div class="system-icon">💿</div>PS1</div>
+                <div class="system"><div class="system-icon">🎮</div>GBA</div>
+                <div class="system"><div class="system-icon">🎮</div>GB/GBC</div>
+                <div class="system"><div class="system-icon">⚙️</div>Arcade</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>🔗 Quick Links</h2>
+            <p>
+                <a href="http://localhost:3000" class="btn" style="margin-right: 0.5rem;">Play Games (EmulatorJS)</a>
+                <a href="http://localhost:8384" class="btn">Save Sync (Syncthing)</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,76 @@
+version: '3.8'
+
+# CampPowerUp Retro Gaming Server
+# Provides retro game emulation, netplay, and web-based gaming
+
+services:
+  # ===========================================
+  # EmulatorJS - Browser-based Retro Gaming
+  # Play NES, SNES, Genesis, N64, PS1 in browser
+  # ===========================================
+  emulatorjs:
+    image: lscr.io/linuxserver/emulatorjs:latest
+    container_name: camp-emulatorjs
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - SUBFOLDER=/  # Change if behind reverse proxy
+    ports:
+      - "3000:3000"   # Web frontend (game player)
+      - "8080:80"     # ROM manager backend
+    volumes:
+      - ./emulatorjs/config:/config
+      - ./roms:/data/roms
+      - ./bios:/data/bios
+    networks:
+      - gaming-net
+
+  # ===========================================
+  # ROM File Server (for Pi clients / network)
+  # Serves ROMs and BIOS over HTTP
+  # ===========================================
+  rom-server:
+    image: nginx:alpine
+    container_name: camp-rom-server
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+    volumes:
+      - ./roms:/usr/share/nginx/html/roms:ro
+      - ./bios:/usr/share/nginx/html/bios:ro
+      - ./rom-server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./rom-server/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - gaming-net
+
+  # ===========================================
+  # Save File Sync Server (Syncthing)
+  # Syncs save files across devices per user
+  # ===========================================
+  save-sync:
+    image: lscr.io/linuxserver/syncthing:latest
+    container_name: camp-save-sync
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    ports:
+      - "8384:8384"       # Web UI
+      - "22000:22000"     # Sync protocol TCP
+      - "22000:22000/udp" # Sync protocol UDP
+      - "21027:21027/udp" # Discovery
+    volumes:
+      - ./save-sync/config:/config
+      - ./saves:/saves
+    networks:
+      - gaming-net
+
+networks:
+  gaming-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
