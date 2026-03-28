@@ -23,6 +23,8 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 | **MacBook Pro 2012** | Intel i5/i7 | 16GB DDR4 | 1TB SSD | macOS Ventura (OCLP) | 🔥🔥🔥 |
 | **MacBook Air 2013** | Intel i5 | 4GB DDR4 | 500GB SSD | macOS Ventura (OCLP) | 🔥 |
 | **Apple TV Gen 2** | Apple A4 | 256MB | 8GB | iOS 6.2.1 (tvOS) | 📺 |
+| **Xbox One #1** | AMD Jaguar (8C) | 8GB DDR3 | 500GB/1TB HDD | Xbox OS | 🎮🎮🎮 |
+| **Xbox One #2** | AMD Jaguar (8C) | 8GB DDR3 | 500GB/1TB HDD | Xbox OS | 🎮🎮🎮 |
 
 ### Detailed Specs
 
@@ -58,6 +60,15 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 - **Output:** 720p HDMI
 - **Network:** Ethernet + WiFi 802.11n
 - **Best For:** AirPlay display hub, status dashboard
+
+#### Xbox One Consoles (x2)
+- **CPU:** AMD Jaguar 8-core @ 1.75GHz
+- **GPU:** AMD Radeon (853 MHz)
+- **RAM:** 8GB DDR3
+- **Storage:** 500GB or 1TB HDD
+- **Output:** 1080p HDMI
+- **Network:** Ethernet + WiFi 802.11n
+- **Best For:** RetroArch emulation stations, local multiplayer
 
 ---
 
@@ -106,6 +117,13 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 │  │              │         │ • AirPlay Display Hub           │         │   │
 │  │              │         │ • Mirror gameplay to big TV     │         │   │
 │  │              │         │ • Spectator mode for groups     │         │   │
+│  │              │         └─────────────────────────────────┘         │   │
+│  │              │                                                      │   │
+│  │              │         ┌─────────────────────────────────┐         │   │
+│  │              │         │ 🎮 XBOX ONE STATIONS (x2)       │         │   │
+│  │              │         │ • RetroArch emulation           │         │   │
+│  │              │         │ • Couch co-op gaming            │         │   │
+│  │              │         │ • Controller-based play         │         │   │
 │  │              │         └─────────────────────────────────┘         │   │
 │  │              ▼                                                      │   │
 │  │   ┌─────────────────────────────────────────────────────────────┐  │   │
@@ -176,6 +194,55 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 - Use Seas0nPass to jailbreak Apple TV 2
 - Install nitoTV + lightweight browser
 - Display server status dashboard or QR codes
+
+#### 🎮 Xbox One Consoles — RetroArch Emulation Stations
+
+| Task | Description |
+|------|-------------|
+| RetroArch Emulation | Play NES, SNES, Genesis, N64, PS1, PSP, more |
+| Couch Co-op | Local multiplayer on big screen |
+| Controller Gaming | Native Xbox controller support |
+| Game Pass (Optional) | Cloud gaming with subscription |
+
+**Setup Instructions (RetroArch via Dev Mode):**
+
+1. **Enable Developer Mode on Xbox:**
+   - Go to Xbox Settings → System → Console info
+   - Note your console's IP address
+   - On PC, go to: https://developer.microsoft.com/en-us/microsoft-store/register/
+   - Create a Microsoft Developer account ($20 one-time fee)
+   - In Xbox Settings → System → Updates → Change to "Developer Mode"
+   - Restart Xbox into Dev Mode
+
+2. **Install RetroArch:**
+   - On Xbox in Dev Mode, open "Dev Home"
+   - Note the IP address shown
+   - On PC browser, go to: `https://<xbox-ip>:11443`
+   - Click "Add" under Apps
+   - Download RetroArch Xbox: https://www.retroarch.com/?page=platforms (Xbox One)
+   - Upload the .appx file via the browser
+   - Install and launch RetroArch
+
+3. **Add ROMs:**
+   - In RetroArch, set up directories on USB drive or network share
+   - Connect USB with ROMs, or access via SMB from Mac server
+   - Scan directories to add games
+
+4. **Configure Controllers:**
+   - Xbox controllers work automatically
+   - Map buttons in RetroArch → Settings → Input
+
+**Recommended Emulator Cores:**
+| System | Core | Performance |
+|--------|------|-------------|
+| NES | FCEUmm | ⭐⭐⭐⭐⭐ |
+| SNES | Snes9x | ⭐⭐⭐⭐⭐ |
+| Genesis | Genesis Plus GX | ⭐⭐⭐⭐⭐ |
+| N64 | Mupen64Plus | ⭐⭐⭐⭐ |
+| PS1 | Beetle PSX | ⭐⭐⭐⭐⭐ |
+| PSP | PPSSPP | ⭐⭐⭐⭐ |
+| GBA | mGBA | ⭐⭐⭐⭐⭐ |
+| Arcade | FinalBurn Neo | ⭐⭐⭐⭐ |
 
 ---
 
@@ -298,8 +365,11 @@ Allow inbound on main server:
 | MacBook Pro 2012 | Already owned |
 | MacBook Air 2013 | Already owned |
 | Apple TV Gen 2 | Already owned |
+| Xbox One #1 | Already owned |
+| Xbox One #2 | Already owned |
+| Microsoft Dev Account (RetroArch) | **$20** (one-time) |
 | Additional hardware | **$0** |
-| **Total** | **$0** |
+| **Total** | **$20** |
 
 ---
 
@@ -312,6 +382,9 @@ Allow inbound on main server:
 - [ ] Verify Syncthing is syncing
 - [ ] Backup ROM library to Desktop PC
 - [ ] Charge all devices
+- [ ] Set up Xbox Dev Mode and RetroArch
+- [ ] Load ROMs on Xbox USB drives
+- [ ] Test Apple TV AirPlay
 
 ### During Camp
 - [ ] Monitor server health daily
