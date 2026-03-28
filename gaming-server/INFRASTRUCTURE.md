@@ -22,6 +22,7 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 | **MacBook Pro 2019** | Intel i9-9880H (8C/16T) | 16GB DDR4 | 1TB NVMe SSD | macOS Sonoma | 🔥🔥🔥🔥🔥 |
 | **MacBook Pro 2012** | Intel i5/i7 | 16GB DDR4 | 1TB SSD | macOS Ventura (OCLP) | 🔥🔥🔥 |
 | **MacBook Air 2013** | Intel i5 | 4GB DDR4 | 500GB SSD | macOS Ventura (OCLP) | 🔥 |
+| **Apple TV Gen 2** | Apple A4 | 256MB | 8GB | iOS 6.2.1 (tvOS) | 📺 |
 
 ### Detailed Specs
 
@@ -49,6 +50,14 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 - **Limitation:** 4GB RAM (soldered, non-upgradeable)
 - **Running:** macOS Ventura via OpenCore Legacy Patcher
 - **Best For:** Light support tasks, kiosk display
+
+#### Apple TV Gen 2 (2010)
+- **Chip:** Apple A4 (single-core ARM, 1GHz)
+- **RAM:** 256MB (severely limited)
+- **Storage:** 8GB internal
+- **Output:** 720p HDMI
+- **Network:** Ethernet + WiFi 802.11n
+- **Best For:** AirPlay display hub, status dashboard
 
 ---
 
@@ -87,9 +96,17 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 │  │   │ • ROM Server        │  Sync  │ • Syncthing Node    │           │   │
 │  │   │ • Syncthing Hub     │        │ • Monitoring UI     │           │   │
 │  │   │ • Save Management   │        │ • Backup Server     │           │   │
-│  │   │ • User Auth         │        │                     │           │   │
+│  │   │ • User Auth         │        │ • Emergency Backup  │           │   │
 │  │   └─────────────────────┘        └─────────────────────┘           │   │
-│  │              │                                                      │   │
+│  │              │                              │                       │   │
+│  │              │                              │ AirPlay               │   │
+│  │              │                              ▼                       │   │
+│  │              │         ┌─────────────────────────────────┐         │   │
+│  │              │         │ 📺 APPLE TV GEN 2               │         │   │
+│  │              │         │ • AirPlay Display Hub           │         │   │
+│  │              │         │ • Mirror gameplay to big TV     │         │   │
+│  │              │         │ • Spectator mode for groups     │         │   │
+│  │              │         └─────────────────────────────────┘         │   │
 │  │              ▼                                                      │   │
 │  │   ┌─────────────────────────────────────────────────────────────┐  │   │
 │  │   │                    📱 CAMPER DEVICES                        │  │   │
@@ -139,6 +156,26 @@ CampPowerUp uses a multi-device infrastructure to provide reliable retro gaming 
 | Syncthing Node | Redundant save file backup |
 | Monitoring UI | Display server health dashboard |
 | Failover Server | Emergency backup if main server fails |
+
+#### 📺 Apple TV Gen 2 — AirPlay Display Hub
+
+| Task | Description |
+|------|-------------|
+| AirPlay Receiver | Mirror iOS/Mac screens to big TV |
+| Spectator Mode | Let groups watch gameplay together |
+| Game Demos | Show off games on large display |
+| Status Display | (Future) Show server status/QR codes |
+
+**Setup Instructions:**
+1. Connect Apple TV to HDMI TV/monitor
+2. Connect to camp WiFi network
+3. Enable AirPlay in Settings → AirPlay
+4. Campers use AirPlay from their devices to share screen
+
+**Future Enhancement (Jailbreak):**
+- Use Seas0nPass to jailbreak Apple TV 2
+- Install nitoTV + lightweight browser
+- Display server status dashboard or QR codes
 
 ---
 
@@ -260,6 +297,7 @@ Allow inbound on main server:
 | MacBook Pro 2019 | Already owned |
 | MacBook Pro 2012 | Already owned |
 | MacBook Air 2013 | Already owned |
+| Apple TV Gen 2 | Already owned |
 | Additional hardware | **$0** |
 | **Total** | **$0** |
 
