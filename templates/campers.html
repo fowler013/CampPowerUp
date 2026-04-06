@@ -281,14 +281,6 @@
                 <div class="stat-label">New</div>
             </div>
             <div class="stat-item">
-                <span class="stat-number" id="withAllergies">-</span>
-                <div class="stat-label">Allergies</div>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number" id="withSensory">-</span>
-                <div class="stat-label">Sensory</div>
-            </div>
-            <div class="stat-item">
                 <span class="stat-number" id="bringingSwitch">-</span>
                 <div class="stat-label">Own Switch</div>
             </div>
@@ -315,16 +307,6 @@
                     <option value="new">New</option>
                 </select>
             </div>
-            
-            <div class="filter-group">
-                <label for="specialNeedsFilter">Special Needs</label>
-                <select id="specialNeedsFilter">
-                    <option value="">All</option>
-                    <option value="allergies">Allergies</option>
-                    <option value="sensory">Sensory Issues</option>
-                    <option value="both">Both</option>
-                </select>
-            </div>
         </div>
 
         <div class="table-container">
@@ -340,7 +322,6 @@
                         <th>Age</th>
                         <th>Grade</th>
                         <th>Status</th>
-                        <th>Special Needs</th>
                         <th>Switch</th>
                         <th>Source</th>
                     </tr>
@@ -375,8 +356,6 @@
                 document.getElementById('totalCampers').textContent = stats.total_campers;
                 document.getElementById('returningCampers').textContent = stats.returning_campers;
                 document.getElementById('newRegistrations').textContent = stats.new_registrations;
-                document.getElementById('withAllergies').textContent = stats.with_allergies;
-                document.getElementById('withSensory').textContent = stats.with_sensory_issues;
                 document.getElementById('bringingSwitch').textContent = stats.bringing_switch;
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -437,21 +416,12 @@
                     badges.push('<span class="badge badge-new">New</span>');
                 }
                 
-                const specialNeeds = [];
-                if (camper.has_allergies === 'Yes') {
-                    specialNeeds.push('<span class="badge badge-allergies">Allergies</span>');
-                }
-                if (camper.has_sensory_issues === 'Yes') {
-                    specialNeeds.push('<span class="badge badge-sensory">Sensory</span>');
-                }
-                
                 return `
                     <tr>
                         <td><strong>${camper.first_name} ${camper.last_name}</strong></td>
                         <td>${camper.age || 'N/A'}</td>
                         <td>${camper.grade || 'N/A'}</td>
                         <td>${badges.join('')}</td>
-                        <td>${specialNeeds.length ? specialNeeds.join('') : '<em>None</em>'}</td>
                         <td>${camper.bringing_switch === 'Yes' ? 
                             '<span class="badge badge-switch">Own Switch</span>' : 
                             '<em>No</em>'}</td>
@@ -468,14 +438,12 @@
             // Filter dropdowns
             document.getElementById('ageFilter').addEventListener('change', applyFilters);
             document.getElementById('statusFilter').addEventListener('change', applyFilters);
-            document.getElementById('specialNeedsFilter').addEventListener('change', applyFilters);
         }
 
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const ageFilter = document.getElementById('ageFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
-            const specialNeedsFilter = document.getElementById('specialNeedsFilter').value;
             
             filteredCampers = allCampers.filter(camper => {
                 // Search filter
@@ -492,13 +460,7 @@
                     (statusFilter === 'returning' && camper.is_returning === 'Yes') ||
                     (statusFilter === 'new' && camper.is_returning !== 'Yes');
                 
-                // Special needs filter
-                const matchesSpecialNeeds = !specialNeedsFilter ||
-                    (specialNeedsFilter === 'allergies' && camper.has_allergies === 'Yes') ||
-                    (specialNeedsFilter === 'sensory' && camper.has_sensory_issues === 'Yes') ||
-                    (specialNeedsFilter === 'both' && camper.has_allergies === 'Yes' && camper.has_sensory_issues === 'Yes');
-                
-                return matchesSearch && matchesAge && matchesStatus && matchesSpecialNeeds;
+                return matchesSearch && matchesAge && matchesStatus;
             });
             
             displayCampers();

@@ -7,7 +7,7 @@ This file contains the dynamic camp session information that changes
 between different camp offerings throughout the year.
 
 Update this file for each new camp session rather than modifying templates.
-LAST UPDATED: 2026-01-26
+LAST UPDATED: 2026-04-06
 """
 
 from datetime import datetime
@@ -15,42 +15,42 @@ from datetime import datetime
 # Current Camp Session Configuration
 CAMP_CONFIG = {
     'age_range': 'K-8th Grade',
-    'camp_dates': 'March 26th-27th',
-    'camp_days': 2,
-    'camp_name': 'Camp Power-Up 2026',
+    'camp_dates': 'June 15th-19th',
+    'camp_days': 5,
+    'camp_name': 'Camp Power-Up Summer 2026',
     'camp_subtitle': 'Nintendo Switch Gaming Camp Registration',
-    'daily_hours': '10:00am-3:00pm',
+    'daily_hours': '9:00am-3:00pm',
     'deposit_due': 'Upon Registration',
-    'early_bird_deadline': None,
-    'final_payment_due': 'March 26th',
+    'early_bird_deadline': 'May 15th',
+    'final_payment_due': 'June 1st',
     'max_campers': 24,
     'location': 'Youth Loft at Shades Valley Community Church',
     'pricing': {
         'new_camper': {
-            'deposit': 50,
-            'final_payment': 50,
-            'total': 100
+            'deposit': 55,
+            'final_payment': 145,
+            'total': 200
         },
         'returning_camper': {
-            'deposit': 50,
-            'final_payment': 30,
-            'total': 80
+            'deposit': 45,
+            'final_payment': 125,
+            'total': 170
         }
     },
     'registration_open': True,
-    'session_type': '2-Day Camp',
+    'session_type': 'Summer Camp',
     'special_features': [
         'Nintendo Switch Gaming',
-        'Multiplayer Game Focus',
+        'Retro Gaming Station',
+        'Multiplayer Tournaments',
         'Daily Park Time at Patriot Park',
         'Prizes & Trophies'
     ],
-    'total_hours': 10,
+    'total_hours': 30,
     'waitlist_available': True,
     # Lunch info
     'lunch_provided': False,
     'lunch_note': 'Please pack lunch, snacks, and a water bottle for your camper.'
-}
 
 # Dynamic text generation functions
 def get_camp_title():
