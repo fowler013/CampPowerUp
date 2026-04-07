@@ -1733,6 +1733,207 @@ def admin_historical():
         flash(f'Error loading historical data: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/metrics')
+@require_admin_auth
+def admin_metrics():
+    """View metrics dashboard with session comparisons."""
+    import csv
+    import json
+    from collections import Counter
+    
+    try:
+        sessions = []
+        all_ages = []
+        all_grades = []
+        total_new = 0
+        total_returning = 0
+        
+        # --- Load 2025 Historical Data from CSV ---
+        csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        historical_2025 = []
+        
+        if os.path.exists(csv_path):
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    historical_2025.append(row)
+            
+            # Parse 2025 data
+            ages_2025 = []
+            grades_2025 = []
+            returning_2025 = 0
+            new_2025 = 0
+            
+            for row in historical_2025:
+                # Get age
+                age_str = row.get('Age?', '').strip()
+                if age_str and age_str.isdigit():
+                    ages_2025.append(int(age_str))
+                    all_ages.append(int(age_str))
+                
+                # Get grade
+                grade = row.get('Grade?', '').strip()
+                if grade:
+                    grades_2025.append(grade)
+                    all_grades.append(grade)
+                
+                # Check returning status
+                is_returning = row.get('Has your Child attended Camp Power-Up before?', '').lower() == 'yes'
+                if is_returning:
+                    returning_2025 += 1
+                    total_returning += 1
+                else:
+                    new_2025 += 1
+                    total_new += 1
+            
+            # Calculate revenue for 2025 (old pricing: $80 returning, $100 new)
+            revenue_2025 = (returning_2025 * 80) + (new_2025 * 100)
+            
+            sessions.append({
+                'name': '2025 Sessions (Historical)',
+                'total': len(historical_2025),
+                'new_campers': new_2025,
+                'returning_campers': returning_2025,
+                'avg_age': round(sum(ages_2025) / len(ages_2025), 1) if ages_2025 else 0,
+                'revenue': revenue_2025
+            })
+        
+        # --- Load 2026 Data from Database ---
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get all 2026 registrations (non-historical)
+        cursor.execute("""
+            SELECT * FROM registrations 
+            WHERE submission_id NOT LIKE 'HIST_%'
+            ORDER BY timestamp DESC
+        """)
+        registrations_2026 = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        # Parse 2026 data
+        ages_2026 = []
+        grades_2026 = []
+        returning_2026 = 0
+        new_2026 = 0
+        
+        for reg in registrations_2026:
+            # Get age
+            age = reg.get('child_age')
+            if age:
+                ages_2026.append(int(age))
+                all_ages.append(int(age))
+            
+            # Get grade
+            grade = reg.get('child_grade', '')
+            if grade:
+                grades_2026.append(grade)
+                all_grades.append(grade)
+            
+            # Check returning status
+            is_returning = reg.get('is_returning_camper')
+            if isinstance(is_returning, str):
+                is_returning = is_returning.lower() in ['true', '1', 'yes']
+            else:
+                is_returning = bool(is_returning)
+            
+            if is_returning:
+                returning_2026 += 1
+                total_returning += 1
+            else:
+                new_2026 += 1
+                total_new += 1
+        
+        # Calculate revenue for 2026 ($180 returning, $200 new)
+        revenue_2026 = (returning_2026 * 180) + (new_2026 * 200)
+        
+        sessions.append({
+            'name': 'Summer 2026',
+            'total': len(registrations_2026),
+            'new_campers': new_2026,
+            'returning_campers': returning_2026,
+            'avg_age': round(sum(ages_2026) / len(ages_2026), 1) if ages_2026 else 0,
+            'revenue': revenue_2026
+        })
+        
+        # --- Calculate Aggregated Stats ---
+        total_campers = len(historical_2025) + len(registrations_2026)
+        total_revenue = sum(s['revenue'] for s in sessions)
+        returning_rate = round((total_returning / total_campers * 100), 1) if total_campers > 0 else 0
+        
+        # Age distribution
+        age_counter = Counter(all_ages)
+        age_groups = {
+            '5-7 years': sum(age_counter.get(a, 0) for a in range(5, 8)),
+            '8-10 years': sum(age_counter.get(a, 0) for a in range(8, 11)),
+            '11-13 years': sum(age_counter.get(a, 0) for a in range(11, 14)),
+            '14+ years': sum(age_counter.get(a, 0) for a in range(14, 20))
+        }
+        age_labels = list(age_groups.keys())
+        age_counts = list(age_groups.values())
+        
+        # Grade distribution
+        grade_counter = Counter(all_grades)
+        # Normalize grades
+        normalized_grades = Counter()
+        for grade, count in grade_counter.items():
+            grade_lower = grade.lower().strip()
+            if 'k' in grade_lower or 'kindergarten' in grade_lower:
+                normalized_grades['Kindergarten'] += count
+            elif '1' in grade_lower and 'rising' not in grade_lower:
+                normalized_grades['1st Grade'] += count
+            elif '2' in grade_lower:
+                normalized_grades['2nd Grade'] += count
+            elif '3' in grade_lower:
+                normalized_grades['3rd Grade'] += count
+            elif '4' in grade_lower:
+                normalized_grades['4th Grade'] += count
+            elif '5' in grade_lower:
+                normalized_grades['5th Grade'] += count
+            elif '6' in grade_lower:
+                normalized_grades['6th Grade'] += count
+            elif '7' in grade_lower:
+                normalized_grades['7th Grade'] += count
+            elif '8' in grade_lower:
+                normalized_grades['8th Grade'] += count
+            else:
+                normalized_grades['Other'] += count
+        
+        # Sort grades
+        grade_order = ['Kindergarten', '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', 
+                      '5th Grade', '6th Grade', '7th Grade', '8th Grade', 'Other']
+        grade_labels = [g for g in grade_order if normalized_grades.get(g, 0) > 0]
+        grade_counts = [normalized_grades.get(g, 0) for g in grade_labels]
+        
+        # Session labels and counts for chart
+        session_labels = [s['name'] for s in sessions]
+        session_counts = [s['total'] for s in sessions]
+        
+        return render_template('metrics_dashboard.html',
+            total_campers=total_campers,
+            returning_rate=returning_rate,
+            total_sessions=len(sessions),
+            total_revenue=total_revenue,
+            sessions=sessions,
+            current_registrations=registrations_2026,
+            session_labels=json.dumps(session_labels),
+            session_counts=json.dumps(session_counts),
+            age_labels=json.dumps(age_labels),
+            age_counts=json.dumps(age_counts),
+            grade_labels=json.dumps(grade_labels),
+            grade_counts=json.dumps(grade_counts),
+            total_new=total_new,
+            total_returning=total_returning
+        )
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Error loading metrics: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/verify-returning-campers')
 @require_admin_auth
 def verify_returning_campers():
