@@ -71,7 +71,13 @@ camp_power_up.db
 camper_data.db
 
 # IDE
-.vscode/
+# VS Code - Allow workspace settings but ignore user-specific settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/*.code-snippets
 .idea/
 *.swp
 *.swo

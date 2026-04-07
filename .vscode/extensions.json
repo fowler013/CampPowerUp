@@ -1,0 +1,112 @@
+{
+  "recommendations": [
+    // ============================================================================
+    // Essential Extensions (JetBrains-style Development)
+    // ============================================================================
+
+    // Python Development (Core)
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "ms-python.pylint",
+    "ms-python.mypy-type-checker",
+
+    // Testing
+    "littlefoxteam.vscode-python-test-adapter",
+    "hbenl.vscode-test-explorer",
+
+    // Git & GitHub (Version Control)
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "github.copilot",
+    "github.copilot-chat",
+    "eamodio.gitlens",
+    "donjayamanne.githistory",
+    "mhutchie.git-graph",
+
+    // Database (APCV 360)
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-sqlite",
+    "qwtel.sqlite-viewer",
+
+    // Code Quality & Formatting
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "streetsidesoftware.code-spell-checker",
+
+    // IntelliSense & Productivity
+    "visualstudioexptteam.vscodeintellicode",
+    "visualstudioexptteam.intellicode-api-usage-examples",
+    "usernamehw.errorlens",
+    "oderwat.indent-rainbow",
+    "mechatroner.rainbow-csv",
+
+    // TODO & Task Management (like JetBrains TODO view)
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight",
+
+    // Markdown & Documentation
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "bierner.markdown-mermaid",
+    "bierner.markdown-preview-github-styles",
+
+    // Docker & Infrastructure
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+
+    // YAML & Configuration
+    "redhat.vscode-yaml",
+    "dotenv.dotenv-vscode",
+
+    // REST Client (API Testing)
+    "humao.rest-client",
+
+    // File Icons (Better than default)
+    "pkief.material-icon-theme",
+
+    // Bracket Pair Colorization
+    "coenraads.bracket-pair-colorizer-2",
+
+    // Path IntelliSense
+    "christian-kohler.path-intellisense",
+
+    // HTML/CSS/JavaScript (for templates)
+    "ecmel.vscode-html-css",
+    "formulahendry.auto-rename-tag",
+    "formulahendry.auto-close-tag",
+
+    // Jupyter Notebooks
+    "ms-toolsai.jupyter",
+    "ms-toolsai.jupyter-keymap",
+    "ms-toolsai.jupyter-renderers",
+
+    // Live Server (for testing frontend)
+    "ritwickdey.liveserver",
+
+    // Better Comments (highlight TODO, FIXME, etc.)
+    "aaron-bond.better-comments",
+
+    // Project Manager (like JetBrains Recent Projects)
+    "alefragnani.project-manager",
+
+    // Bookmarks (like JetBrains Bookmarks)
+    "alefragnani.bookmarks",
+
+    // Code Snapshot (for documentation)
+    "adpyke.codesnap",
+
+    // Thunder Client (REST API testing)
+    "rangav.vscode-thunder-client",
+
+    // SQLite
+    "alexcvzz.vscode-sqlite"
+  ],
+
+  "unwantedRecommendations": [
+    // Extensions that conflict or are redundant
+    "ms-python.autopep8",
+    "ms-python.flake8"
+  ]
+}
