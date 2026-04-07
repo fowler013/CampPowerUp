@@ -51,6 +51,7 @@ CAMP_CONFIG = {
     # Lunch info
     'lunch_provided': False,
     'lunch_note': 'Please pack lunch, snacks, and a water bottle for your camper.'
+}
 
 # Dynamic text generation functions
 def get_camp_title():

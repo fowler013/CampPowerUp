@@ -623,19 +623,9 @@ def send_admin_notification_email(registration_data):
         print(f"❌ Admin email error: {str(e)}")
         return False
 
-# Helper functions for templates
-def get_camp_title():
-    return "Camp Power-Up 2025 Registration"
-
-def get_camp_subtitle():
-    return "Nintendo Switch Gaming Camp - November 24-25, 2025"
-
-def get_pricing_text():
-    return "Registration fees listed below"
-
 # Admin credentials
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2026!')
 
 def require_admin_auth(f):
     """Decorator to require admin authentication."""
