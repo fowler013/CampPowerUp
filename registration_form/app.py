@@ -2368,6 +2368,137 @@ def import_historical_data():
         flash(f'Import error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/upload-historical', methods=['POST'])
+@require_admin_auth
+def upload_historical_data():
+    """Upload and import historical camper data from CSV file upload."""
+    try:
+        import csv
+        import io
+        
+        # Check if file was uploaded
+        if 'csv_file' not in request.files:
+            flash('No file uploaded', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        file = request.files['csv_file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        if not file.filename.endswith('.csv'):
+            flash('Please upload a CSV file', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        # Read the CSV content
+        content = file.read().decode('utf-8')
+        reader = csv.DictReader(io.StringIO(content))
+        
+        db_file = get_database_path()
+        print(f"📥 Uploading historical data to database: {db_file}")
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        imported_count = 0
+        skipped_count = 0
+        error_count = 0
+        
+        for row in reader:
+            try:
+                # Extract data from CSV columns
+                child_first_name = row.get('Childs First Name?', '').strip()
+                child_last_name = row.get('Childs Last Name?', '').strip()
+                parent_email = row.get('Email Address', '').strip()
+                
+                # Skip rows without basic info
+                if not child_first_name or not child_last_name:
+                    skipped_count += 1
+                    continue
+                
+                # Check if already imported (by email + child name)
+                cursor.execute("""
+                    SELECT id FROM registrations 
+                    WHERE child_first_name = ? AND child_last_name = ? AND parent_email = ?
+                """, (child_first_name, child_last_name, parent_email))
+                
+                if cursor.fetchone():
+                    skipped_count += 1
+                    continue
+                
+                # Parse and map CSV fields to database schema
+                age = row.get('Age?', '').strip()
+                grade = row.get('Grade?', '').strip()
+                is_returning = row.get('Has your Child attended Camp Power-Up before?', '').strip().lower() == 'yes'
+                bringing_switch = row.get('Will your child be bringing their own personal Switch?', '').strip().lower() == 'yes'
+                
+                # Medical info
+                has_allergies_text = row.get('allergies?', '').strip().lower()
+                has_allergies = has_allergies_text in ['yes', 'y']
+                allergies_desc = row.get('If yes, please list any medical conditions or allergies', '').strip()
+                
+                has_sensory = row.get('any sensory issues?', '').strip().lower() in ['yes', 'y']
+                sensory_desc = row.get('If yes please describe?  ', '').strip()
+                
+                # Combine medical info
+                medical_desc = []
+                if sensory_desc:
+                    medical_desc.append(f"Sensory: {sensory_desc}")
+                medical_conditions_text = ' | '.join(medical_desc) if medical_desc else ''
+                
+                # Additional info
+                gaming_behavior = row.get('Can you describe what your child is like playing video games around others? Are they good at taking turns? Are they a good sport?', '').strip()
+                game_restrictions = row.get('Is there a rating of games your child is not allowed to play?', '').strip()
+                favorite_games = row.get('What games do they enjoy playing?', '').strip()
+                
+                # Combine into additional comments
+                comments = []
+                if gaming_behavior:
+                    comments.append(f"Gaming Behavior: {gaming_behavior}")
+                if game_restrictions:
+                    comments.append(f"Game Restrictions: {game_restrictions}")
+                if favorite_games:
+                    comments.append(f"Favorite Games: {favorite_games}")
+                additional_comments = ' | '.join(comments)
+                
+                # Generate submission ID with HIST_ prefix for historical data
+                timestamp = row.get('Timestamp', datetime.now().strftime('%m/%d/%Y %H:%M:%S'))
+                submission_id = f"HIST_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
+                
+                # Insert into database
+                cursor.execute("""
+                    INSERT INTO registrations (
+                        submission_id, timestamp, child_first_name, child_last_name, 
+                        child_age, child_grade, parent_email,
+                        has_allergies, allergies_description, 
+                        has_medical_conditions, medical_conditions_description,
+                        is_returning_camper, bringing_own_switch, additional_comments
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    submission_id, timestamp, child_first_name, child_last_name,
+                    age, grade, parent_email,
+                    has_allergies, allergies_desc,
+                    has_sensory, medical_conditions_text,
+                    is_returning, bringing_switch, additional_comments
+                ))
+                
+                imported_count += 1
+                
+            except Exception as e:
+                print(f"Error importing row: {e}")
+                error_count += 1
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"📊 Upload results - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
+        flash(f'✅ Import complete! Imported: {imported_count}, Skipped (duplicates): {skipped_count}, Errors: {error_count}', 'success')
+        return redirect(url_for('admin_historical'))
+        
+    except Exception as e:
+        flash(f'Upload error: {str(e)}', 'error')
+        return redirect(url_for('admin_historical'))
+
 @app.route('/admin/fix-historical-records', methods=['POST'])
 @require_admin_auth
 def fix_historical_records():
