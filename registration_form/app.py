@@ -373,8 +373,8 @@ def send_parent_confirmation_email(registration_data):
         print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
         
         deposit = "$50"
-        final_payment = "$30" if is_returning else "$50"
-        total = "$80" if is_returning else "$100"
+        final_payment = "$130" if is_returning else "$150"
+        total = "$180" if is_returning else "$200"
         
         print(f"💰 Calculated prices - Deposit: {deposit}, Final: {final_payment}, Total: {total}")
         
@@ -402,7 +402,7 @@ def send_parent_confirmation_email(registration_data):
                 <div class="header">
                     <div class="success-icon">✅</div>
                     <h1>Registration Confirmed!</h1>
-                    <p>Welcome to Camp Power-Up 2025</p>
+                    <p>Welcome to Camp Power-Up Summer 2026</p>
                 </div>
                 
                 <div class="content">
@@ -416,7 +416,7 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
+                        <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
                         <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
                     </div>
                     
@@ -424,12 +424,12 @@ def send_parent_confirmation_email(registration_data):
                         <h2>💳 Payment Information</h2>
                         <p><strong>Total Fee:</strong> {total}</p>
                         <p><strong>Deposit Required Now:</strong> {deposit}</p>
-                        <p><strong>Final Payment:</strong> {final_payment} (due before November 24th)</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before June 1st)</p>
                         
                         <p><strong>Payment Methods:</strong></p>
                         <ul>
-                            <li><strong>CashApp:</strong> camppowerup2025@gmail.com</li>
-                            <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
+                            <li><strong>CashApp:</strong> $TevinFowler</li>
+                            <li><strong>Venmo:</strong> @Tevin-Fowler or @Brandon-Ballard</li>
                         </ul>
                         
                         <p>⚠️ <strong>Important:</strong> Include "{child_name}" or "{submission_id}" in the payment memo</p>
@@ -440,13 +440,13 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: November 24-25, 2025</li>
-                            <li>Pay final {final_payment} before camp starts</li>
+                            <li>Mark your calendar: June 15-19, 2026</li>
+                            <li>Pay final {final_payment} before June 1st</li>
                         </ol>
                     </div>
                     
                     <h3>❓ Questions or Need to Make Changes?</h3>
-                    <p>Email us at: <a href="mailto:camppowerup2025@gmail.com">camppowerup2025@gmail.com</a></p>
+                    <p>Email us at: <a href="mailto:camppowerup2026@gmail.com">camppowerup2026@gmail.com</a></p>
                     <p>Include your confirmation ID: <code>{submission_id}</code></p>
                     
                     <p style="margin-top: 30px;">We can't wait to see {child_name.split()[0]} at camp!</p>
@@ -456,7 +456,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up 2025 | November 24-25, 2025</p>
+                    <p>Camp Power-Up Summer 2026 | June 15-19, 2026</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -465,7 +465,7 @@ def send_parent_confirmation_email(registration_data):
         """
         
         text_content = f"""
-        Camp Power-Up 2025 - Registration Confirmed
+        Camp Power-Up Summer 2026 - Registration Confirmed
         
         Dear {parent_name},
         
@@ -476,27 +476,27 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: November 24-25, 2025
+        Camp Dates: June 15-19, 2026
         Camp Times: 10:00 AM - 3:00 PM daily
         
         PAYMENT INFORMATION:
         Total Fee: {total}
         Deposit Required Now: {deposit}
-        Final Payment: {final_payment} (due before November 24th)
+        Final Payment: {final_payment} (due before June 1st)
         
         Payment Methods:
-        - CashApp: camppowerup2025@gmail.com
-        - Venmo: camppowerup2025@gmail.com
+        - CashApp: $TevinFowler
+        - Venmo: @Tevin-Fowler or @Brandon-Ballard
         
         IMPORTANT: Include "{child_name}" in the payment memo
         
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: November 24-25, 2025
-        4. Pay final {final_payment} before camp starts
+        3. Mark your calendar: June 15-19, 2026
+        4. Pay final {final_payment} before June 1st
         
-        Questions? Email: camppowerup2025@gmail.com
+        Questions? Email: camppowerup2026@gmail.com
         Include your confirmation ID: {submission_id}
         
         View online: https://camppowerup-registration.up.railway.app/confirmation/{submission_id}
