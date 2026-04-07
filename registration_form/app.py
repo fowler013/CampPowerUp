@@ -2499,6 +2499,32 @@ def upload_historical_data():
         flash(f'Upload error: {str(e)}', 'error')
         return redirect(url_for('admin_historical'))
 
+@app.route('/admin/clear-historical', methods=['POST'])
+@require_admin_auth
+def clear_historical_data():
+    """Clear all historical (HIST_) records from the database."""
+    try:
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        # Count records to delete
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        count = cursor.fetchone()[0]
+        
+        # Delete historical records
+        cursor.execute("DELETE FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        conn.commit()
+        conn.close()
+        
+        print(f"🗑️ Cleared {count} historical records")
+        flash(f'✅ Cleared {count} historical records. You can now reimport.', 'success')
+        return redirect(url_for('admin_historical'))
+        
+    except Exception as e:
+        flash(f'Clear error: {str(e)}', 'error')
+        return redirect(url_for('admin_historical'))
+
 @app.route('/admin/fix-historical-records', methods=['POST'])
 @require_admin_auth
 def fix_historical_records():
