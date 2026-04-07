@@ -31,9 +31,9 @@ CAMP_CONFIG = {
             'total': 200
         },
         'returning_camper': {
-            'deposit': 45,
-            'final_payment': 125,
-            'total': 170
+            'deposit': 50,
+            'final_payment': 130,
+            'total': 180
         }
     },
     'registration_open': True,
