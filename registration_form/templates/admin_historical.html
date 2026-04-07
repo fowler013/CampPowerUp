@@ -270,9 +270,9 @@
                             📥 Import CSV
                         </button>
                     </form>
-                    <form action="/admin/clear-historical" method="POST" onsubmit="return confirm('⚠️ This will delete all historical (HIST_) records. Are you sure?');">
-                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            🗑️ Clear Historical
+                    <form action="/admin/clear-historical" method="POST" onsubmit="return confirm('⚠️ This will delete {{ hist_count }} historical (HIST_) records. Your 2026 registrations will NOT be affected. Are you sure?');">
+                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;" {% if hist_count == 0 %}disabled{% endif %}>
+                            🗑️ Clear Historical ({{ hist_count }})
                         </button>
                     </form>
                 </div>

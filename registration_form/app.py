@@ -1727,7 +1727,9 @@ def admin_historical():
         return render_template('admin_historical.html', 
                              historical_data=historical_data,
                              registrations=historical_registrations,
-                             stats=stats)
+                             stats=stats,
+                             hist_count=total_hist,
+                             csv_data=[])
                              
     except Exception as e:
         flash(f'Error loading historical data: {str(e)}', 'error')
