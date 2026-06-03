@@ -241,7 +241,7 @@ def init_db_with_logging():
             print("🔧 Migrating database: Adding camp_session column...")
             cursor.execute("ALTER TABLE registrations ADD COLUMN camp_session TEXT")
             # Update existing records with a default session
-            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2025 - November 24th-26th' WHERE camp_session IS NULL")
+            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2026 - June 15th-19th' WHERE camp_session IS NULL")
             print("✅ Migration complete: camp_session column added")
         
         conn.commit()
@@ -402,7 +402,7 @@ def send_parent_confirmation_email(registration_data):
                 <div class="header">
                     <div class="success-icon">✅</div>
                     <h1>Registration Confirmed!</h1>
-                    <p>Welcome to Camp Power-Up 2025</p>
+                    <p>Welcome to Camp Power-Up 2026</p>
                 </div>
                 
                 <div class="content">
@@ -416,7 +416,7 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
+                        <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
                         <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
                     </div>
                     
@@ -424,7 +424,7 @@ def send_parent_confirmation_email(registration_data):
                         <h2>💳 Payment Information</h2>
                         <p><strong>Total Fee:</strong> {total}</p>
                         <p><strong>Deposit Required Now:</strong> {deposit}</p>
-                        <p><strong>Final Payment:</strong> {final_payment} (due before November 24th)</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before June 1st)</p>
                         
                         <p><strong>Payment Methods:</strong></p>
                         <ul>
@@ -440,7 +440,7 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: November 24-25, 2025</li>
+                            <li>Mark your calendar: June 15-19, 2026</li>
                             <li>Pay final {final_payment} before camp starts</li>
                         </ol>
                     </div>
@@ -456,7 +456,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up 2025 | November 24-25, 2025</p>
+                    <p>Camp Power-Up 2026 | June 15-19, 2026</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -465,7 +465,7 @@ def send_parent_confirmation_email(registration_data):
         """
         
         text_content = f"""
-        Camp Power-Up 2025 - Registration Confirmed
+        Camp Power-Up 2026 - Registration Confirmed
         
         Dear {parent_name},
         
@@ -476,13 +476,13 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: November 24-25, 2025
+        Camp Dates: June 15-19, 2026
         Camp Times: 10:00 AM - 3:00 PM daily
         
         PAYMENT INFORMATION:
         Total Fee: {total}
         Deposit Required Now: {deposit}
-        Final Payment: {final_payment} (due before November 24th)
+        Final Payment: {final_payment} (due before June 1st)
         
         Payment Methods:
         - CashApp: camppowerup2025@gmail.com
@@ -493,7 +493,7 @@ def send_parent_confirmation_email(registration_data):
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: November 24-25, 2025
+        3. Mark your calendar: June 15-19, 2026
         4. Pay final {final_payment} before camp starts
         
         Questions? Email: camppowerup2025@gmail.com
@@ -625,10 +625,10 @@ def send_admin_notification_email(registration_data):
 
 # Helper functions for templates
 def get_camp_title():
-    return "Camp Power-Up 2025 Registration"
+    return "Camp Power-Up 2026 Registration"
 
 def get_camp_subtitle():
-    return "Nintendo Switch Gaming Camp - November 24-25, 2025"
+    return "Nintendo Switch Gaming Camp - June 15-19, 2026"
 
 def get_pricing_text():
     return "Registration fees listed below"
@@ -1383,7 +1383,7 @@ def confirmation(submission_id):
                 return f'''
                 <html>
                 <head>
-                    <title>Registration Confirmed - Camp Power-Up 2025</title>
+                    <title>Registration Confirmed - Camp Power-Up 2026</title>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
@@ -1440,12 +1440,12 @@ def confirmation(submission_id):
                                 <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
                             </ul>
                             <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
-                            <p><strong>Final Payment:</strong> Due before November 24th</p>
+                            <p><strong>Final Payment:</strong> Due before June 1st</p>
                         </div>
 
                         <div class="contact-info">
                             <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
+                            <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
                             <p><strong>Camp Times:</strong> 10am-3pm daily</p>
                             <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
                             <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
@@ -1457,7 +1457,7 @@ def confirmation(submission_id):
                         </div>
                         
                         <p style="text-align: center; color: #6c757d; margin-top: 30px;">
-                            <small>Camp Power-Up 2025 • Nintendo Switch Gaming Camp</small>
+                            <small>Camp Power-Up 2026 • Nintendo Switch Gaming Camp</small>
                         </p>
                     </div>
                 </body>
@@ -2337,7 +2337,7 @@ def attendance():
         return render_template('attendance.html', 
                              registrations=registrations,
                              today=today,
-                             camp_dates=['2025-11-24', '2025-11-25'])
+                             camp_dates=['2026-06-15', '2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19'])
     except Exception as e:
         flash(f'Error loading attendance: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
