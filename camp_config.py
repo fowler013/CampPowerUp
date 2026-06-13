@@ -19,7 +19,7 @@ CAMP_CONFIG = {
     'camp_days': 5,
     'camp_name': 'Camp Power-Up Summer 2026',
     'camp_subtitle': 'A week of gaming fun this summer!',
-    'daily_hours': '9:00 AM - 3:00 PM',
+    'daily_hours': '10:00 AM - 3:00 PM',
     'deposit_due': 'Upon Registration',
     'early_bird_deadline': 'May 15, 2026',
     'final_payment_due': 'June 1, 2026',

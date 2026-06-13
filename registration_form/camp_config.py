@@ -19,7 +19,7 @@ CAMP_CONFIG = {
     'camp_days': 5,
     'camp_name': 'Camp Power-Up Summer 2026',
     'camp_subtitle': 'Nintendo Switch Gaming Camp Registration',
-    'daily_hours': '9:00am-3:00pm',
+    'daily_hours': '10:00am-3:00pm',
     'deposit_due': 'Upon Registration',
     'early_bird_deadline': 'May 15th',
     'final_payment_due': 'June 1st',
