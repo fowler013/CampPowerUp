@@ -16,7 +16,17 @@ from sendgrid.helpers.mail import Mail, Email, To, Content
 
 # Import camp configuration
 try:
-    from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text
+    from camp_config import (
+        CAMP_CONFIG,
+        SESSIONS,
+        DEFAULT_SESSION_ID,
+        get_camp_title,
+        get_camp_subtitle,
+        get_pricing_text,
+        get_session_config,
+        get_session_label,
+        get_pricing_text_for,
+    )
 except ImportError:
     # Fallback config if camp_config.py is not available
     CAMP_CONFIG = {
@@ -29,6 +39,8 @@ except ImportError:
             'returning_camper': {'total': 80, 'deposit': 50, 'final_payment': 30}
         }
     }
+    SESSIONS = {'june-2026': CAMP_CONFIG}
+    DEFAULT_SESSION_ID = 'june-2026'
     def get_camp_title(): return CAMP_CONFIG['camp_name']
     def get_camp_subtitle(): return 'Nintendo Switch Gaming Camp Registration'
     def get_pricing_text():
@@ -37,6 +49,9 @@ except ImportError:
             'new_text': f"New Campers: ${CAMP_CONFIG['pricing']['new_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['new_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['new_camper']['total']} total",
             'payment_deadline': f"Camp runs {CAMP_CONFIG['camp_dates']}, {CAMP_CONFIG['daily_hours']} daily."
         }
+    def get_session_config(session_id): return SESSIONS.get(session_id)
+    def get_session_label(cfg): return f"{cfg.get('camp_name', 'Camp Power-Up')} - {cfg.get('camp_dates', 'Unknown')}"
+    def get_pricing_text_for(cfg): return get_pricing_text()
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -372,9 +387,29 @@ def send_parent_confirmation_email(registration_data):
         print(f"💰 Email pricing debug - raw value: {is_returning_raw} (type: {type(is_returning_raw)})")
         print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
         
-        deposit = "$50"
-        final_payment = "$130" if is_returning else "$150"
-        total = "$180" if is_returning else "$200"
+        # Resolve session-specific display + pricing. For backward compatibility
+        # we keep the prior hardcoded values when the session is the default
+        # (June) or unknown, so live June emails are unaffected.
+        session_id = registration_data.get('camp_session_id') or DEFAULT_SESSION_ID
+        session_cfg = get_session_config(session_id)
+        if session_cfg and session_id != DEFAULT_SESSION_ID:
+            tier_key = 'returning_camper' if is_returning else 'new_camper'
+            tier = session_cfg['pricing'][tier_key]
+            deposit = f"${tier['deposit']}"
+            final_payment = f"${tier['final_payment']}"
+            total = f"${tier['total']}"
+            camp_name_display = session_cfg.get('camp_name', 'Camp Power-Up')
+            camp_dates_display = session_cfg.get('camp_dates', '')
+            daily_hours_display = session_cfg.get('daily_hours', '10:00 AM - 3:00 PM')
+            final_due_display = session_cfg.get('final_payment_due', '')
+        else:
+            deposit = "$50"
+            final_payment = "$130" if is_returning else "$150"
+            total = "$180" if is_returning else "$200"
+            camp_name_display = "Camp Power-Up Summer 2026"
+            camp_dates_display = "June 15-19, 2026"
+            daily_hours_display = "10:00 AM - 3:00 PM"
+            final_due_display = "June 1st"
         
         print(f"💰 Calculated prices - Deposit: {deposit}, Final: {final_payment}, Total: {total}")
         
@@ -402,7 +437,7 @@ def send_parent_confirmation_email(registration_data):
                 <div class="header">
                     <div class="success-icon">✅</div>
                     <h1>Registration Confirmed!</h1>
-                    <p>Welcome to Camp Power-Up Summer 2026</p>
+                    <p>Welcome to {camp_name_display}</p>
                 </div>
                 
                 <div class="content">
@@ -416,15 +451,15 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
-                        <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
+                        <p><strong>Camp Dates:</strong> {camp_dates_display}</p>
+                        <p><strong>Camp Times:</strong> {daily_hours_display} daily</p>
                     </div>
                     
                     <div class="payment-box">
                         <h2>💳 Payment Information</h2>
                         <p><strong>Total Fee:</strong> {total}</p>
                         <p><strong>Deposit Required Now:</strong> {deposit}</p>
-                        <p><strong>Final Payment:</strong> {final_payment} (due before June 1st)</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before {final_due_display})</p>
                         
                         <p><strong>Payment Methods:</strong></p>
                         <ul>
@@ -440,8 +475,8 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: June 15-19, 2026</li>
-                            <li>Pay final {final_payment} before June 1st</li>
+                            <li>Mark your calendar: {camp_dates_display}</li>
+                            <li>Pay final {final_payment} before {final_due_display}</li>
                         </ol>
                     </div>
                     
@@ -456,7 +491,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up Summer 2026 | June 15-19, 2026</p>
+                    <p>{camp_name_display} | {camp_dates_display}</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -465,7 +500,7 @@ def send_parent_confirmation_email(registration_data):
         """
         
         text_content = f"""
-        Camp Power-Up Summer 2026 - Registration Confirmed
+        {camp_name_display} - Registration Confirmed
         
         Dear {parent_name},
         
@@ -476,13 +511,13 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: June 15-19, 2026
-        Camp Times: 10:00 AM - 3:00 PM daily
+        Camp Dates: {camp_dates_display}
+        Camp Times: {daily_hours_display} daily
         
         PAYMENT INFORMATION:
         Total Fee: {total}
         Deposit Required Now: {deposit}
-        Final Payment: {final_payment} (due before June 1st)
+        Final Payment: {final_payment} (due before {final_due_display})
         
         Payment Methods:
         - CashApp: $TevinFowler
@@ -493,8 +528,8 @@ def send_parent_confirmation_email(registration_data):
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: June 15-19, 2026
-        4. Pay final {final_payment} before June 1st
+        3. Mark your calendar: {camp_dates_display}
+        4. Pay final {final_payment} before {final_due_display}
         
         Questions? Email: camppowerup2026@gmail.com
         Include your confirmation ID: {submission_id}
@@ -687,7 +722,10 @@ def home():
                              camp_title=get_camp_title() + ' Registration',
                              camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', 'March 26th-27th')}",
                              pricing_text='Registration fees listed below',
-                             pricing=pricing)
+                             pricing=pricing,
+                             camp_session_id='june-2026',
+                             deposit_amount=CAMP_CONFIG.get('pricing', {}).get('new_camper', {}).get('deposit', 50),
+                             other_session_link={'url': '/session/july-2026', 'label': 'Registering for our 2-day July 20-21 mini camp? Click here.'})
     except Exception as e:
         # Fallback if template fails
         return f'''
@@ -699,6 +737,31 @@ def home():
         <p><a href="/test-db">Test Database</a></p>
         </body></html>
         '''
+
+
+@app.route('/session/july-2026')
+def july_2026_registration():
+    """Registration form for the July 20-21, 2026 2-day session."""
+    cfg = get_session_config('july-2026') or CAMP_CONFIG
+    pricing = get_pricing_text_for(cfg)
+    camp_config = {
+        'camp_name': cfg.get('camp_name'),
+        'camp_dates': cfg.get('camp_dates'),
+        'camp_times': cfg.get('daily_hours'),
+        'pricing': cfg.get('pricing', {})
+    }
+    return render_template(
+        'registration_form.html',
+        camp_config=camp_config,
+        config=cfg,
+        camp_title=cfg.get('camp_name', 'Camp Power-Up') + ' Registration',
+        camp_subtitle=f"Nintendo Switch Gaming Mini Camp - {cfg.get('camp_dates')}",
+        pricing_text='Registration fees listed below',
+        pricing=pricing,
+        camp_session_id='july-2026',
+        deposit_amount=cfg.get('pricing', {}).get('new_camper', {}).get('deposit', 25),
+        other_session_link={'url': '/', 'label': 'Looking for the June 15-19 camp? Click here.'}
+    )
 
 @app.route('/faq')
 def faq():
@@ -1204,8 +1267,13 @@ def submit():
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
-        # Get current camp session
-        current_session = f"{CAMP_CONFIG.get('camp_name', 'Camp Power-Up')} - {CAMP_CONFIG.get('camp_dates', 'Unknown')}"
+        # Determine which camp session this registration is for. The form
+        # posts a hidden `camp_session_id` field; fall back to the current
+        # default (June 2026) for backward compatibility.
+        session_id = json_data.get('camp_session_id') or json_data.get('campSessionId') or DEFAULT_SESSION_ID
+        session_cfg = get_session_config(session_id) or CAMP_CONFIG
+        current_session = get_session_label(session_cfg)
+        print(f"📅 Registration session: {session_id} -> {current_session}")
         
         cursor.execute("""
             INSERT INTO registrations (
@@ -1280,7 +1348,9 @@ def submit():
             'returning_years': data['returning_years'],
             'bringing_own_switch': data['bringing_own_switch'],
             'how_heard_about_camp': data['how_heard_about_camp'],
-            'additional_comments': data['additional_comments']
+            'additional_comments': data['additional_comments'],
+            'camp_session_id': session_id,
+            'camp_session': current_session,
         }
         
         # Send parent confirmation email
@@ -1727,7 +1797,9 @@ def admin_historical():
         return render_template('admin_historical.html', 
                              historical_data=historical_data,
                              registrations=historical_registrations,
-                             stats=stats)
+                             stats=stats,
+                             hist_count=total_hist,
+                             csv_data=[])
                              
     except Exception as e:
         flash(f'Error loading historical data: {str(e)}', 'error')

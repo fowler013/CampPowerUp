@@ -107,3 +107,80 @@ def validate_config():
             raise ValueError(f"Pricing calculation error for {camper_type}: {total} != {pricing['total']}")
     
     return True
+
+
+# ---------------------------------------------------------------------------
+# Additional camp sessions
+# ---------------------------------------------------------------------------
+# CAMP_CONFIG above remains the "default/current" session that powers the
+# existing routes (`/`, `/faq`, etc). Add additional offerings here and they
+# will be exposed via dedicated routes (e.g. `/session/july-2026`).
+
+JULY_2026_CONFIG = {
+    'age_range': 'K-8th Grade',
+    'camp_dates': 'July 20th-21st',
+    'camp_days': 2,
+    'camp_name': 'Camp Power-Up July 2026',
+    'camp_subtitle': 'Nintendo Switch Gaming Mini-Camp Registration',
+    'daily_hours': '10:00am-3:00pm',
+    'deposit_due': 'Upon Registration',
+    'early_bird_deadline': None,
+    'final_payment_due': 'July 19th',
+    'max_campers': 24,
+    'location': 'Youth Loft at Shades Valley Community Church',
+    'pricing': {
+        'new_camper': {
+            'deposit': 25,
+            'final_payment': 75,
+            'total': 100
+        },
+        'returning_camper': {
+            'deposit': 25,
+            'final_payment': 55,
+            'total': 80
+        }
+    },
+    'registration_open': True,
+    'session_type': '2-Day Mini Camp',
+    'special_features': [
+        'Nintendo Switch Gaming',
+        'Retro Gaming Station',
+        'Multiplayer Tournaments',
+        'Prizes & Trophies'
+    ],
+    'total_hours': 10,
+    'waitlist_available': True,
+    'lunch_provided': False,
+    'lunch_note': 'Please pack lunch, snacks, and a water bottle for your camper.'
+}
+
+# Registry of currently offered sessions, keyed by URL slug.
+# `/submit` uses this to attach the correct camp_session label to a
+# registration and to look up pricing for confirmation emails.
+SESSIONS = {
+    'june-2026': CAMP_CONFIG,
+    'july-2026': JULY_2026_CONFIG,
+}
+
+DEFAULT_SESSION_ID = 'june-2026'
+
+
+def get_session_config(session_id):
+    """Return the config dict for a session id, or None if unknown."""
+    return SESSIONS.get(session_id)
+
+
+def get_session_label(config):
+    """Build the canonical camp_session label stored in the database."""
+    return f"{config.get('camp_name', 'Camp Power-Up')} - {config.get('camp_dates', 'Unknown')}"
+
+
+def get_pricing_text_for(config):
+    """Generate pricing text for a specific session config."""
+    returning = config["pricing"]["returning_camper"]
+    new = config["pricing"]["new_camper"]
+    return {
+        "returning_text": f"Returning Campers: ${returning['deposit']} deposit + ${returning['final_payment']} final payment = ${returning['total']} total",
+        "new_text": f"New Campers: ${new['deposit']} deposit + ${new['final_payment']} final payment = ${new['total']} total",
+        "payment_deadline": f"Final payment due before {config['final_payment_due']}. Camp runs {config['camp_dates']}, {config['daily_hours']} daily."
+    }
