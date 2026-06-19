@@ -2836,7 +2836,7 @@ def get_attendance_status(date):
 
 LEADERBOARD_CHALLENGES = {
     'dk_bannooza': {
-        'label': 'DK Bannooza (Switch 2)',
+        'label': 'Donkey Kong Bananaza',
         'metric': 'Bananas in 10 minutes',
         'score_unit': 'bananas',
         'score_direction': 'desc',
@@ -3232,21 +3232,6 @@ def submit_leaderboard_score():
         'message': 'Score submitted successfully.',
         'leaderboard': fetch_leaderboard_data()
     })
-
-
-@app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
-def delete_leaderboard_score(entry_id):
-    """Remove a leaderboard entry by id (admin use)."""
-    ensure_leaderboard_table()
-    db_file = get_database_path()
-    conn = sqlite3.connect(db_file)
-    try:
-        conn.execute('DELETE FROM challenge_leaderboard WHERE id = ?', (entry_id,))
-        conn.commit()
-    finally:
-        conn.close()
-
-    return jsonify({'success': True, 'leaderboard': fetch_leaderboard_data()})
 
 
 # ─────────────────────────────────────────────────────────

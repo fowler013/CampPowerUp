@@ -361,7 +361,7 @@
     <main class="page">
         <header class="header">
             <h1>🏆 Camp Power-Up Challenges</h1>
-            <p>DK Bannooza &bull; Mario Kart World &bull; Hollow Knight Boss Rush</p>
+            <p>Donkey Kong Bananaza &bull; Mario Kart World &bull; Hollow Knight Boss Rush</p>
             <div class="announce">📣 Winners announced at 2:00pm</div>
             <nav class="nav-links">
                 <a href="/" class="nav-link">📝 Registration</a>
@@ -422,7 +422,7 @@
                         </div>
 
                         <div id="startingZoneWrap" style="display:none;">
-                            <label for="starting_zone">Starting Zone <span style="font-weight:400;">(DK Bannooza)</span></label>
+                            <label for="starting_zone">Starting Zone <span style="font-weight:400;">(Donkey Kong Bananaza)</span></label>
                             <input id="starting_zone" name="starting_zone" type="text" placeholder="e.g. Jungle Entrance">
                         </div>
 
@@ -531,12 +531,10 @@
                 : ['<th>Rank</th>', '<th>Camper</th>', '<th>Score</th>', '<th>Time</th>'];
             if (showRaceRound) {
                 headers.push('<th>Breakdown</th>');
-                headers.push('<th></th>');
             } else {
                 if (showStartingZone) headers.push('<th>Zone</th>');
                 if (showLevelDetail) headers.push('<th>Level</th>');
                 if (showRaceRound) headers.push('<th>Race</th>');
-                headers.push('<th></th>');
             }
 
             const rows = showRaceRound
@@ -550,7 +548,6 @@
                             <td>${e.race_count}/3</td>
                             <td>Race ${esc(e.race_round ?? '—')}</td>
                             <td>${e.race_breakdown.map(r => `Race ${esc(r.race_round)}: ${esc(r.score)}`).join(' • ')}</td>
-                            <td></td>
                         </tr>`).join('')
                     : `<tr><td colspan="8" class="empty">No scores yet.</td></tr>`)
                 : (entries.length
@@ -563,7 +560,6 @@
                             ${showStartingZone ? `<td>${esc(e.starting_zone || '—')}</td>` : ''}
                             ${showLevelDetail ? `<td>${esc(e.level_detail || '—')}</td>` : ''}
                             ${showRaceRound ? `<td>${esc(e.race_round ?? '—')}</td>` : ''}
-                            <td><button class="delete-btn" onclick="deleteEntry(${e.id})" title="Remove">✕</button></td>
                         </tr>`).join('')
                     : `<tr><td colspan="${columnCount}" class="empty">No scores yet.</td></tr>`);
 
@@ -588,12 +584,6 @@
             const data = await res.json();
             document.getElementById('leaderboards').innerHTML =
                 Object.entries(data).map(([k, b]) => renderBoard(k, b)).join('');
-        }
-
-        async function deleteEntry(id) {
-            if (!confirm('Remove this score?')) return;
-            const res = await fetch(`/api/leaderboard/delete/${id}`, { method: 'DELETE' });
-            if (res.ok) await loadLeaderboard();
         }
 
         function setScoreStatus(msg, type) {

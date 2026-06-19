@@ -22,7 +22,7 @@ def get_challenge_db_path():
 
 LEADERBOARD_CHALLENGES = {
     'dk_bannooza': {
-        'label': 'DK Bannooza (Switch 2)',
+        'label': 'Donkey Kong Bananaza',
         'metric': 'Bananas in 10 minutes',
         'score_unit': 'bananas',
         'score_direction': 'desc',
