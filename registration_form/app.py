@@ -6,6 +6,7 @@ Ultra-minimal version to get registration working immediately
 """
 
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime
@@ -2418,28 +2419,31 @@ LEADERBOARD_CHALLENGES = {
         'label': 'DK Bannooza (Switch 2)',
         'metric': 'Bananas in 10 minutes',
         'score_unit': 'bananas',
+        'score_direction': 'desc',
         'show_starting_zone': True,
         'show_level_detail': False,
         'time_window': '10:00am – 11:30am',
-        'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins the trophy.'
+        'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
     },
     'mario_kart_world': {
         'label': 'Mario Kart World - Knockout Tour',
         'metric': 'Final placement / points',
         'score_unit': 'points',
+        'score_direction': 'asc',
         'show_starting_zone': False,
         'show_level_detail': False,
         'time_window': '11:30am – 1:30pm',
-        'rules': 'Each kid gets ONE turn with up to 3 races. Score = cumulative placement points (lower is better). Example: If you place 3rd, 2nd, then 1st, your score = 3+2+1 = 6 points. Tournament runs 10am–3pm.'
+        'rules': 'Each kid gets ONE turn with up to 3 races. Score is cumulative placement points (lower is better). Example: 3rd + 2nd + 1st = 6 points. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
     },
     'hollow_knight_boss_rush': {
         'label': 'Hollow Knight Boss Rush',
         'metric': 'Bosses defeated',
         'score_unit': 'bosses',
+        'score_direction': 'desc',
         'show_starting_zone': False,
         'show_level_detail': True,
         'time_window': '1:30pm – 3:00pm',
-        'rules': 'Enter Pantheon mode at your chosen difficulty. Score = number of bosses defeated before losing all health. Higher difficulty = bragging rights. Record the level/difficulty you played.'
+        'rules': 'Enter Pantheon mode at your chosen difficulty. Score = bosses defeated before losing all health. Tie-break: fastest completion time wins. Record level/difficulty. Winners announced at 2:00pm.'
     }
 }
 
@@ -2457,13 +2461,49 @@ def ensure_leaderboard_table():
                 score INTEGER NOT NULL,
                 starting_zone TEXT,
                 level_detail TEXT,
+                completion_time_seconds INTEGER,
                 run_notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        existing_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(challenge_leaderboard)").fetchall()
+        }
+        if 'completion_time_seconds' not in existing_cols:
+            conn.execute(
+                'ALTER TABLE challenge_leaderboard ADD COLUMN completion_time_seconds INTEGER'
+            )
+
         conn.commit()
     finally:
         conn.close()
+
+
+def parse_completion_time_to_seconds(raw_value):
+    """Parse completion time as seconds. Accepts '', integer seconds, or mm:ss."""
+    if raw_value is None:
+        return None
+
+    value = str(raw_value).strip()
+    if not value:
+        return None
+
+    if re.fullmatch(r'\d+', value):
+        seconds = int(value)
+        if seconds < 0:
+            raise ValueError('Completion time must be 0 or greater.')
+        return seconds
+
+    match = re.fullmatch(r'(\d{1,2}):(\d{2})', value)
+    if match:
+        minutes = int(match.group(1))
+        secs = int(match.group(2))
+        if secs >= 60:
+            raise ValueError('Use mm:ss format with seconds from 00 to 59.')
+        return (minutes * 60) + secs
+
+    raise ValueError('Completion time must be seconds (e.g. 95) or mm:ss (e.g. 1:35).')
 
 
 def fetch_leaderboard_data():
@@ -2477,13 +2517,34 @@ def fetch_leaderboard_data():
         for challenge_key, challenge_info in LEADERBOARD_CHALLENGES.items():
             rows = conn.execute(
                 '''
-                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, run_notes, created_at
+                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes, created_at
                 FROM challenge_leaderboard
                 WHERE challenge_key = ?
-                ORDER BY score DESC, created_at ASC
                 ''',
                 (challenge_key,)
             ).fetchall()
+
+            reverse_scores = challenge_info.get('score_direction', 'desc') != 'asc'
+            sorted_rows = sorted(
+                rows,
+                key=lambda row: (
+                    row['score'],
+                    row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9,
+                    row['created_at']
+                ),
+                reverse=reverse_scores
+            )
+
+            if reverse_scores:
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9
+                )
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['score'],
+                    reverse=True
+                )
 
             entries = [
                 {
@@ -2494,10 +2555,11 @@ def fetch_leaderboard_data():
                     'score': row['score'],
                     'starting_zone': row['starting_zone'] or '',
                     'level_detail': row['level_detail'] or '',
+                    'completion_time_seconds': row['completion_time_seconds'],
                     'run_notes': row['run_notes'] or '',
                     'created_at': row['created_at']
                 }
-                for idx, row in enumerate(rows, start=1)
+                for idx, row in enumerate(sorted_rows, start=1)
             ]
 
             leaderboard[challenge_key] = {
@@ -2538,6 +2600,7 @@ def submit_leaderboard_score():
     challenge_key = str(data.get('challenge_key', '')).strip()
     starting_zone = str(data.get('starting_zone', '')).strip()
     level_detail = str(data.get('level_detail', '')).strip()
+    completion_time = data.get('completion_time', '')
     run_notes = str(data.get('run_notes', '')).strip()
 
     if not camper_name:
@@ -2554,16 +2617,29 @@ def submit_leaderboard_score():
     if score < 0:
         return jsonify({'error': 'Score must be 0 or greater.'}), 400
 
+    try:
+        completion_time_seconds = parse_completion_time_to_seconds(completion_time)
+    except ValueError as err:
+        return jsonify({'error': str(err)}), 400
+
     ensure_leaderboard_table()
     db_file = get_database_path()
     conn = sqlite3.connect(db_file)
     try:
         conn.execute(
             '''
-            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, run_notes)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ''',
-            (camper_name, challenge_key, score, starting_zone or None, level_detail or None, run_notes or None)
+            (
+                camper_name,
+                challenge_key,
+                score,
+                starting_zone or None,
+                level_detail or None,
+                completion_time_seconds,
+                run_notes or None
+            )
         )
         conn.commit()
     finally:

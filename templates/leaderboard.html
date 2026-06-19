@@ -45,6 +45,18 @@
         .header h1 { margin: 0; font-size: 2.1rem; }
         .header p { margin: 10px 0 0; color: var(--text-muted); }
 
+        .announce {
+            margin-top: 12px;
+            display: inline-block;
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
         .nav-links {
             margin-top: 16px;
             display: flex;
@@ -321,6 +333,7 @@
         <header class="header">
             <h1>🏆 Camp Power-Up Challenges</h1>
             <p>DK Bannooza &bull; Mario Kart World &bull; Hollow Knight Boss Rush</p>
+            <div class="announce">📣 Winners announced at 2:00pm</div>
             <nav class="nav-links">
                 <a href="/" class="nav-link">📝 Registration</a>
                 <a href="/admin" class="nav-link">⚙️ Admin</a>
@@ -361,7 +374,13 @@
                         <div>
                             <label for="score">Score</label>
                             <input id="score" name="score" type="number" min="0" required>
-                            <div class="helper">Whole number &mdash; higher ranks higher.</div>
+                            <div class="helper" id="scoreDirectionHelper">Whole number score.</div>
+                        </div>
+
+                        <div>
+                            <label for="completion_time">Completion Time <span style="font-weight:400;">(Tie-break)</span></label>
+                            <input id="completion_time" name="completion_time" type="text" placeholder="mm:ss or seconds (e.g. 1:35 or 95)">
+                            <div class="helper">Used only when score is tied. Faster time wins tie-break.</div>
                         </div>
 
                         <div id="startingZoneWrap" style="display:none;">
@@ -427,8 +446,20 @@
             const ch = challenges[key];
             if (!ch) return;
             document.getElementById('challengeMetric').textContent = `Metric: ${ch.metric}`;
+            document.getElementById('scoreDirectionHelper').textContent =
+                ch.score_direction === 'asc'
+                    ? 'Whole number score — lower ranks higher for this challenge.'
+                    : 'Whole number score — higher ranks higher for this challenge.';
             document.getElementById('startingZoneWrap').style.display = ch.show_starting_zone ? 'block' : 'none';
             document.getElementById('levelDetailWrap').style.display = ch.show_level_detail ? 'block' : 'none';
+        }
+
+        function formatSeconds(seconds) {
+            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '—';
+            const total = Number(seconds);
+            const mins = Math.floor(total / 60);
+            const secs = total % 60;
+            return `${mins}:${String(secs).padStart(2, '0')}`;
         }
 
         // Leaderboard
@@ -451,11 +482,12 @@
                         <td>#${e.rank}</td>
                         <td>${esc(e.camper_name)}</td>
                         <td>${e.score}</td>
+                        <td>${formatSeconds(e.completion_time_seconds)}</td>
                         <td>${esc(e.starting_zone || '—')}</td>
                         <td>${esc(e.level_detail || '—')}</td>
                         <td><button class="delete-btn" onclick="deleteEntry(${e.id})" title="Remove">✕</button></td>
                     </tr>`).join('')
-                : `<tr><td colspan="6" class="empty">No scores yet.</td></tr>`;
+                : `<tr><td colspan="7" class="empty">No scores yet.</td></tr>`;
 
             return `
                 <section class="challenge-card">
@@ -466,7 +498,7 @@
                     ${rulesHtml}
                     ${winnerHtml}
                     <table>
-                        <thead><tr><th>Rank</th><th>Camper</th><th>Score</th><th>Zone</th><th>Level</th><th></th></tr></thead>
+                        <thead><tr><th>Rank</th><th>Camper</th><th>Score</th><th>Time</th><th>Zone</th><th>Level</th><th></th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </section>`;
@@ -498,6 +530,7 @@
                 camper_name:   form.camper_name.value.trim(),
                 challenge_key: form.challenge_key.value,
                 score:         Number(form.score.value),
+                completion_time: form.completion_time.value.trim(),
                 starting_zone: form.starting_zone.value.trim(),
                 level_detail:  form.level_detail.value.trim(),
                 run_notes:     form.run_notes.value.trim()
@@ -512,6 +545,7 @@
                 if (!res.ok) { setScoreStatus(result.error || 'Could not save score.', 'error'); return; }
                 setScoreStatus('Score saved!', 'success');
                 form.score.value = '';
+                form.completion_time.value = '';
                 form.run_notes.value = '';
                 await loadLeaderboard();
             } catch {
