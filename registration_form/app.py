@@ -2852,6 +2852,7 @@ LEADERBOARD_CHALLENGES = {
         'score_direction': 'asc',
         'show_starting_zone': False,
         'show_level_detail': False,
+        'show_race_round': True,
         'time_window': '11:30am – 1:30pm',
         'rules': 'Each kid gets ONE turn with up to 3 races. Score is cumulative placement points (lower is better). Example: 3rd + 2nd + 1st = 6 points. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
     },
@@ -2881,6 +2882,7 @@ def ensure_leaderboard_table():
                 score INTEGER NOT NULL,
                 starting_zone TEXT,
                 level_detail TEXT,
+                race_round INTEGER,
                 completion_time_seconds INTEGER,
                 run_notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -2893,6 +2895,10 @@ def ensure_leaderboard_table():
         if 'completion_time_seconds' not in existing_cols:
             conn.execute(
                 'ALTER TABLE challenge_leaderboard ADD COLUMN completion_time_seconds INTEGER'
+            )
+        if 'race_round' not in existing_cols:
+            conn.execute(
+                'ALTER TABLE challenge_leaderboard ADD COLUMN race_round INTEGER'
             )
 
         conn.commit()
@@ -2968,56 +2974,144 @@ def fetch_leaderboard_data():
         for challenge_key, challenge_info in LEADERBOARD_CHALLENGES.items():
             rows = conn.execute(
                 '''
-                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes, created_at
+                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, race_round, completion_time_seconds, run_notes, created_at
                 FROM challenge_leaderboard
                 WHERE challenge_key = ?
                 ''',
                 (challenge_key,)
             ).fetchall()
 
-            reverse_scores = challenge_info.get('score_direction', 'desc') != 'asc'
-            sorted_rows = sorted(
-                rows,
-                key=lambda row: (
-                    row['score'],
-                    row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9,
-                    row['created_at']
-                ),
-                reverse=reverse_scores
-            )
+            if challenge_info.get('show_race_round'):
+                summary_map = {}
+                for row in rows:
+                    camper_key = row['camper_name'].strip().lower()
+                    group = summary_map.setdefault(camper_key, {
+                        'camper_name': row['camper_name'],
+                        'total_score': 0,
+                        'best_time_seconds': None,
+                        'race_count': 0,
+                        'race_breakdown': [],
+                        'created_at': row['created_at']
+                    })
+                    group['total_score'] += int(row['score'])
+                    if row['completion_time_seconds'] is not None:
+                        current_time = row['completion_time_seconds']
+                        if group['best_time_seconds'] is None or current_time < group['best_time_seconds']:
+                            group['best_time_seconds'] = current_time
+                    group['race_count'] += 1
+                    group['race_breakdown'].append({
+                        'race_round': row['race_round'],
+                        'score': int(row['score']),
+                        'completion_time_seconds': row['completion_time_seconds'],
+                        'run_notes': row['run_notes'] or '',
+                        'created_at': row['created_at']
+                    })
 
-            if reverse_scores:
-                sorted_rows = sorted(
-                    sorted_rows,
-                    key=lambda row: row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9
+                summary_entries = []
+                grouped_rows = sorted(
+                    summary_map.values(),
+                    key=lambda item: (
+                        item['total_score'],
+                        item['best_time_seconds'] if item['best_time_seconds'] is not None else 10**9,
+                        item['created_at']
+                    )
                 )
-                sorted_rows = sorted(
-                    sorted_rows,
-                    key=lambda row: row['score'],
-                    reverse=True
-                )
+                for idx, group in enumerate(grouped_rows, start=1):
+                    breakdown = sorted(group['race_breakdown'], key=lambda item: item['race_round'] or 0)
+                    summary_entries.append({
+                        'rank': idx,
+                        'id': breakdown[-1]['created_at'] if breakdown else idx,
+                        'camper_name': group['camper_name'],
+                        'challenge_key': challenge_key,
+                        'score': group['total_score'],
+                        'total_score': group['total_score'],
+                        'best_time_seconds': group['best_time_seconds'],
+                        'race_count': group['race_count'],
+                        'race_breakdown': breakdown,
+                        'race_round': breakdown[-1]['race_round'] if breakdown else None,
+                        'starting_zone': '',
+                        'level_detail': '',
+                        'completion_time_seconds': group['best_time_seconds'],
+                        'run_notes': '',
+                        'created_at': group['created_at']
+                    })
 
-            entries = [
-                {
-                    'rank': idx,
-                    'id': row['id'],
-                    'camper_name': row['camper_name'],
-                    'challenge_key': row['challenge_key'],
-                    'score': row['score'],
-                    'starting_zone': row['starting_zone'] or '',
-                    'level_detail': row['level_detail'] or '',
-                    'completion_time_seconds': row['completion_time_seconds'],
-                    'run_notes': row['run_notes'] or '',
-                    'created_at': row['created_at']
+                detail_rows = sorted(
+                    rows,
+                    key=lambda row: (
+                        row['camper_name'].lower(),
+                        row['race_round'] if row['race_round'] is not None else 99,
+                        row['created_at']
+                    )
+                )
+                entries = [
+                    {
+                        'rank': idx,
+                        'id': row['id'],
+                        'camper_name': row['camper_name'],
+                        'challenge_key': row['challenge_key'],
+                        'score': row['score'],
+                        'starting_zone': row['starting_zone'] or '',
+                        'level_detail': row['level_detail'] or '',
+                        'race_round': row['race_round'],
+                        'completion_time_seconds': row['completion_time_seconds'],
+                        'run_notes': row['run_notes'] or '',
+                        'created_at': row['created_at']
+                    }
+                    for idx, row in enumerate(detail_rows, start=1)
+                ]
+
+                leaderboard[challenge_key] = {
+                    'challenge': challenge_info,
+                    'entries': entries,
+                    'summary_entries': summary_entries,
+                    'trophy_winner': summary_entries[0] if summary_entries else None
                 }
-                for idx, row in enumerate(sorted_rows, start=1)
-            ]
+            else:
+                reverse_scores = challenge_info.get('score_direction', 'desc') != 'asc'
+                sorted_rows = sorted(
+                    rows,
+                    key=lambda row: (
+                        row['score'],
+                        row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9,
+                        row['created_at']
+                    ),
+                    reverse=reverse_scores
+                )
 
-            leaderboard[challenge_key] = {
-                'challenge': challenge_info,
-                'entries': entries,
-                'trophy_winner': entries[0] if entries else None
-            }
+                if reverse_scores:
+                    sorted_rows = sorted(
+                        sorted_rows,
+                        key=lambda row: row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9
+                    )
+                    sorted_rows = sorted(
+                        sorted_rows,
+                        key=lambda row: row['score'],
+                        reverse=True
+                    )
+
+                entries = [
+                    {
+                        'rank': idx,
+                        'id': row['id'],
+                        'camper_name': row['camper_name'],
+                        'challenge_key': row['challenge_key'],
+                        'score': row['score'],
+                        'starting_zone': row['starting_zone'] or '',
+                        'level_detail': row['level_detail'] or '',
+                        'race_round': row['race_round'],
+                        'completion_time_seconds': row['completion_time_seconds'],
+                        'run_notes': row['run_notes'] or '',
+                        'created_at': row['created_at']
+                    }
+                    for idx, row in enumerate(sorted_rows, start=1)
+                ]
+
+                leaderboard[challenge_key] = {
+                    'challenge': challenge_info,
+                    'entries': entries,
+                    'trophy_winner': entries[0] if entries else None
+                }
 
         return leaderboard
     finally:
@@ -3051,6 +3145,7 @@ def submit_leaderboard_score():
     challenge_key = str(data.get('challenge_key', '')).strip()
     starting_zone = str(data.get('starting_zone', '')).strip()
     level_detail = str(data.get('level_detail', '')).strip()
+    race_round_raw = data.get('race_round', '')
     completion_time = data.get('completion_time', '')
     completion_hours = data.get('completion_hours', '')
     completion_minutes = data.get('completion_minutes', '')
@@ -3063,6 +3158,16 @@ def submit_leaderboard_score():
 
     if challenge_key not in LEADERBOARD_CHALLENGES:
         return jsonify({'error': 'Invalid challenge selected.'}), 400
+
+    challenge_info = LEADERBOARD_CHALLENGES[challenge_key]
+    race_round = None
+    if challenge_info.get('show_race_round'):
+        try:
+            race_round = int(race_round_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Race / Heat is required for Mario Kart.'}), 400
+        if race_round < 1 or race_round > 3:
+            return jsonify({'error': 'Race / Heat must be 1, 2, or 3.'}), 400
 
     if is_submission_locked_after_2pm() and not allow_after_deadline:
         return jsonify({'error': 'Score entry is locked after 2:00pm. Enable staff override to submit.'}), 400
@@ -3090,10 +3195,22 @@ def submit_leaderboard_score():
     db_file = get_database_path()
     conn = sqlite3.connect(db_file)
     try:
+        if race_round is not None:
+            existing = conn.execute(
+                '''
+                SELECT COUNT(*)
+                FROM challenge_leaderboard
+                WHERE challenge_key = ? AND camper_name = ? AND race_round = ?
+                ''',
+                (challenge_key, camper_name, race_round)
+            ).fetchone()[0]
+            if existing:
+                return jsonify({'error': 'That camper already has a score for this race number.'}), 400
+
         conn.execute(
             '''
-            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, race_round, completion_time_seconds, run_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 camper_name,
@@ -3101,6 +3218,7 @@ def submit_leaderboard_score():
                 score,
                 starting_zone or None,
                 level_detail or None,
+                race_round,
                 completion_time_seconds,
                 run_notes or None
             )
