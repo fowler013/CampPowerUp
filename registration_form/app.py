@@ -2420,6 +2420,7 @@ LEADERBOARD_CHALLENGES = {
         'score_unit': 'bananas',
         'show_starting_zone': True,
         'show_level_detail': False,
+        'time_window': '10:00am – 11:30am',
         'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins the trophy.'
     },
     'mario_kart_world': {
@@ -2428,6 +2429,7 @@ LEADERBOARD_CHALLENGES = {
         'score_unit': 'points',
         'show_starting_zone': False,
         'show_level_detail': False,
+        'time_window': '11:30am – 1:30pm',
         'rules': 'Each kid gets ONE turn with up to 3 races. Score = cumulative placement points (lower is better). Example: If you place 3rd, 2nd, then 1st, your score = 3+2+1 = 6 points. Tournament runs 10am–3pm.'
     },
     'hollow_knight_boss_rush': {
@@ -2436,6 +2438,7 @@ LEADERBOARD_CHALLENGES = {
         'score_unit': 'bosses',
         'show_starting_zone': False,
         'show_level_detail': True,
+        'time_window': '1:30pm – 3:00pm',
         'rules': 'Enter Pantheon mode at your chosen difficulty. Score = number of bosses defeated before losing all health. Higher difficulty = bragging rights. Record the level/difficulty you played.'
     }
 }
@@ -2586,6 +2589,119 @@ def delete_leaderboard_score(entry_id):
         conn.close()
 
     return jsonify({'success': True, 'leaderboard': fetch_leaderboard_data()})
+
+
+# ─────────────────────────────────────────────────────────
+# Challenge Sign-Up Queue
+# ─────────────────────────────────────────────────────────
+
+def ensure_signups_table():
+    """Create challenge_signups table if it does not already exist."""
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_signups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                status TEXT DEFAULT 'waiting',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_signup_queues():
+    """Return all sign-up queues grouped by challenge, ordered by sign-up time."""
+    ensure_signups_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    conn.row_factory = sqlite3.Row
+    try:
+        queues = {}
+        for key, info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                'SELECT id, camper_name, challenge_key, status, created_at FROM challenge_signups WHERE challenge_key = ? ORDER BY created_at ASC',
+                (key,)
+            ).fetchall()
+            queues[key] = {
+                'challenge': info,
+                'entries': [dict(r) for r in rows]
+            }
+        return queues
+    finally:
+        conn.close()
+
+
+@app.route('/api/signups')
+def get_signups():
+    """Return all sign-up queues."""
+    return jsonify(fetch_signup_queues())
+
+
+@app.route('/api/signups/add', methods=['POST'])
+def add_signup():
+    """Add a camper to a challenge sign-up queue."""
+    ensure_signups_table()
+    data = request.get_json() or {}
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge.'}), 400
+
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            'INSERT INTO challenge_signups (camper_name, challenge_key, status) VALUES (?, ?, ?)',
+            (camper_name, challenge_key, 'waiting')
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/status', methods=['POST'])
+def update_signup_status(signup_id):
+    """Update a sign-up entry status (waiting → playing → done)."""
+    ensure_signups_table()
+    data = request.get_json() or {}
+    new_status = str(data.get('status', '')).strip()
+    if new_status not in ('waiting', 'playing', 'done', 'skipped'):
+        return jsonify({'error': 'Invalid status.'}), 400
+
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('UPDATE challenge_signups SET status = ? WHERE id = ?', (new_status, signup_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/remove', methods=['DELETE'])
+def remove_signup(signup_id):
+    """Remove a sign-up entry."""
+    ensure_signups_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('DELETE FROM challenge_signups WHERE id = ?', (signup_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
 
 
 # Initialize database on module load (Railway compatibility)
