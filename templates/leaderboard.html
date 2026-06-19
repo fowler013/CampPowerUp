@@ -227,6 +227,31 @@
             font-weight: 500;
         }
 
+        .edit-btn,
+        .cancel-edit-btn {
+            width: auto;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            background: #e0e7ff;
+            color: #1e3a8a;
+        }
+
+        .edit-btn:hover { background: #c7d2fe; }
+
+        .cancel-edit-btn {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .cancel-edit-btn:hover { background: #d1d5db; }
+
         table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 
         th, td {
@@ -389,6 +414,7 @@
                 <article class="panel">
                     <h2>Add Score</h2>
                     <form id="scoreForm" class="form-grid">
+                        <input id="entry_id" name="entry_id" type="hidden">
                         <div>
                             <label for="camper_name">Camper Name</label>
                             <input id="camper_name" name="camper_name" type="text" required placeholder="First name or nickname">
@@ -418,7 +444,7 @@
 
                         <div class="override-row">
                             <input id="allow_after_deadline" name="allow_after_deadline" type="checkbox">
-                            <label for="allow_after_deadline" style="margin:0; font-weight:600;">Staff override: allow score entry after 2:00pm</label>
+                            <label for="allow_after_deadline" style="margin:0; font-weight:600;">Staff override: allow score entry outside 10:00am-2:00pm CST</label>
                         </div>
 
                         <div id="startingZoneWrap" style="display:none;">
@@ -442,7 +468,10 @@
                             <textarea id="run_notes" name="run_notes" placeholder="Race notes, tie-break details, highlights, etc."></textarea>
                         </div>
 
-                        <button class="btn" type="submit">Save Score</button>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <button class="btn" id="submitBtn" type="submit" style="width:auto;">Save Score</button>
+                            <button class="cancel-edit-btn" id="cancelEditBtn" type="button" style="display:none;">Cancel Edit</button>
+                        </div>
                     </form>
                     <div id="statusMessage" class="status"></div>
                 </article>
@@ -459,6 +488,7 @@
 
     <script>
         let challenges = {};
+        let editingEntry = null;
 
         function esc(v) {
             return String(v || '')
@@ -527,7 +557,7 @@
                 : '';
 
             const headers = showRaceRound
-                ? ['<th>Rank</th>', '<th>Camper</th>', '<th>Total Points</th>', '<th>Best Time</th>', '<th>Races</th>', '<th>Last Race</th>', '<th>Breakdown</th>', '<th></th>']
+                ? ['<th>Rank</th>', '<th>Camper</th>', '<th>Total Points</th>', '<th>Total Time</th>', '<th>Races</th>', '<th>Last Race</th>', '<th>Breakdown</th>', '<th></th>']
                 : ['<th>Rank</th>', '<th>Camper</th>', '<th>Score</th>', '<th>Time</th>', '<th></th>'];
 
             const rows = showRaceRound
@@ -537,11 +567,23 @@
                             <td>#${e.rank}</td>
                             <td>${esc(e.camper_name)}</td>
                             <td>${e.total_score}</td>
-                            <td>${formatSeconds(e.best_time_seconds)}</td>
+                            <td>${formatSeconds(e.total_time_seconds)}</td>
                             <td>${e.race_count}/3</td>
                             <td>Race ${esc(e.race_round ?? '—')}</td>
                             <td>${e.race_breakdown.map(r => `Race ${esc(r.race_round)}: ${esc(r.score)}`).join(' • ')}</td>
-                            <td></td>
+                            <td>
+                                <button class="edit-btn" onclick='editEntry(${JSON.stringify(encodeURIComponent(JSON.stringify({
+                                    id: e.race_breakdown[e.race_breakdown.length - 1]?.id,
+                                    camper_name: e.camper_name,
+                                    challenge_key: key,
+                                    score: e.race_breakdown[e.race_breakdown.length - 1]?.score,
+                                    race_round: e.race_breakdown[e.race_breakdown.length - 1]?.race_round,
+                                    completion_time_seconds: e.race_breakdown[e.race_breakdown.length - 1]?.completion_time_seconds,
+                                    run_notes: e.race_breakdown[e.race_breakdown.length - 1]?.run_notes || '',
+                                    starting_zone: '',
+                                    level_detail: ''
+                                })))})'>Edit</button>
+                            </td>
                         </tr>`).join('')
                     : `<tr><td colspan="8" class="empty">No scores yet.</td></tr>`)
                 : (entries.length
@@ -551,9 +593,9 @@
                             <td>${esc(e.camper_name)}</td>
                             <td>${e.score}${showRaceRound && e.race_round ? `<span class="entry-note">Race ${esc(e.race_round)} of 3</span>` : ''}${e.run_notes ? `<span class="entry-note">${esc(e.run_notes)}</span>` : ''}</td>
                             <td>${formatSeconds(e.completion_time_seconds)}</td>
-                            ${showStartingZone ? `<td>${esc(e.starting_zone || '—')}</td>` : ''}
-                            ${showLevelDetail ? `<td>${esc(e.level_detail || '—')}</td>` : ''}
-                            ${showRaceRound ? `<td>${esc(e.race_round ?? '—')}</td>` : ''}
+                            <td>
+                                <button class="edit-btn" onclick='editEntry(${JSON.stringify(encodeURIComponent(JSON.stringify(e)))})'>Edit</button>
+                            </td>
                         </tr>`).join('')
                     : `<tr><td colspan="${columnCount}" class="empty">No scores yet.</td></tr>`);
 
@@ -565,7 +607,7 @@
                     </div>
                     ${rulesHtml}
                     ${winnerHtml}
-                    ${showRaceRound ? '<div class="entry-note" style="margin:6px 0 10px;">Overall standings are ranked by total points across all 3 races.</div>' : ''}
+                    ${showRaceRound ? '<div class="entry-note" style="margin:6px 0 10px;">Overall standings are ranked by total points, then total completion time (lower is better) across all 3 races.</div>' : ''}
                     <table>
                         <thead><tr>${headers.join('')}</tr></thead>
                         <tbody>${rows}</tbody>
@@ -586,10 +628,56 @@
             el.className = `status ${type}`;
         }
 
+        function toHms(totalSeconds) {
+            const sec = Number(totalSeconds);
+            if (!Number.isFinite(sec) || sec < 0) {
+                return { h: '', m: '', s: '' };
+            }
+            return {
+                h: String(Math.floor(sec / 3600)),
+                m: String(Math.floor((sec % 3600) / 60)),
+                s: String(sec % 60)
+            };
+        }
+
+        function resetEditMode(form) {
+            editingEntry = null;
+            form.entry_id.value = '';
+            document.getElementById('submitBtn').textContent = 'Save Score';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+        }
+
+        function editEntry(encoded) {
+            const entry = JSON.parse(decodeURIComponent(encoded));
+            editingEntry = entry;
+
+            const form = document.getElementById('scoreForm');
+            form.entry_id.value = entry.id || '';
+            form.camper_name.value = entry.camper_name || '';
+            form.challenge_key.value = entry.challenge_key || '';
+            form.score.value = entry.score ?? '';
+            form.starting_zone.value = entry.starting_zone || '';
+            form.level_detail.value = entry.level_detail || '';
+            form.race_round.value = entry.race_round ?? '';
+            form.run_notes.value = entry.run_notes || '';
+
+            const hms = toHms(entry.completion_time_seconds);
+            form.completion_hours.value = hms.h;
+            form.completion_minutes.value = hms.m;
+            form.completion_seconds.value = hms.s;
+
+            updateChallengeFields();
+            document.getElementById('submitBtn').textContent = 'Update Score';
+            document.getElementById('cancelEditBtn').style.display = 'inline-block';
+            setScoreStatus(`Editing score for ${entry.camper_name}`, 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         async function handleSubmit(e) {
             e.preventDefault();
             const form = e.target;
             const payload = {
+                entry_id:      form.entry_id.value.trim(),
                 camper_name:   form.camper_name.value.trim(),
                 challenge_key: form.challenge_key.value,
                 score:         Number(form.score.value),
@@ -610,13 +698,14 @@
                 });
                 const result = await res.json();
                 if (!res.ok) { setScoreStatus(result.error || 'Could not save score.', 'error'); return; }
-                setScoreStatus('Score saved!', 'success');
+                setScoreStatus(payload.entry_id ? 'Score updated!' : 'Score saved!', 'success');
                 form.score.value = '';
                 form.completion_hours.value = '';
                 form.completion_minutes.value = '';
                 form.completion_seconds.value = '';
                 form.race_round.value = '';
                 form.run_notes.value = '';
+                resetEditMode(form);
                 await loadLeaderboard();
             } catch {
                 setScoreStatus('Network error — please try again.', 'error');
@@ -711,6 +800,7 @@
             if (!shouldEnterNow) return;
 
             const form = document.getElementById('scoreForm');
+            resetEditMode(form);
             const scoreTabBtn = document.getElementById('tab-btn-scores');
             switchTab('scores', scoreTabBtn);
 
@@ -761,6 +851,14 @@
             await Promise.all([loadChallenges(), loadQueues(), loadLeaderboard()]);
             document.getElementById('challenge_key').addEventListener('change', updateChallengeFields);
             document.getElementById('scoreForm').addEventListener('submit', handleSubmit);
+            document.getElementById('cancelEditBtn').addEventListener('click', () => {
+                const form = document.getElementById('scoreForm');
+                form.reset();
+                form.allow_after_deadline.checked = false;
+                resetEditMode(form);
+                updateChallengeFields();
+                setScoreStatus('Edit canceled.', 'success');
+            });
             startLiveRefresh();
         });
     </script>

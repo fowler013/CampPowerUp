@@ -9,7 +9,8 @@ import os
 import re
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
 from functools import wraps
 from sendgrid import SendGridAPIClient
@@ -2959,8 +2960,9 @@ def parse_completion_hms_to_seconds(hours_raw, minutes_raw, seconds_raw):
 
 
 def is_submission_locked_after_2pm():
-    """Return True after 2:00pm local server time."""
-    return datetime.now().time() >= datetime.strptime('14:00', '%H:%M').time()
+    """Allow score entry only between 10:00am and 2:00pm America/Chicago."""
+    now_cst = datetime.now(ZoneInfo('America/Chicago')).time()
+    return not (time(10, 0) <= now_cst < time(14, 0))
 
 
 def fetch_leaderboard_data():
@@ -2988,18 +2990,19 @@ def fetch_leaderboard_data():
                     group = summary_map.setdefault(camper_key, {
                         'camper_name': row['camper_name'],
                         'total_score': 0,
-                        'best_time_seconds': None,
+                        'total_time_seconds': 0,
+                        'time_record_count': 0,
                         'race_count': 0,
                         'race_breakdown': [],
                         'created_at': row['created_at']
                     })
                     group['total_score'] += int(row['score'])
                     if row['completion_time_seconds'] is not None:
-                        current_time = row['completion_time_seconds']
-                        if group['best_time_seconds'] is None or current_time < group['best_time_seconds']:
-                            group['best_time_seconds'] = current_time
+                        group['total_time_seconds'] += int(row['completion_time_seconds'])
+                        group['time_record_count'] += 1
                     group['race_count'] += 1
                     group['race_breakdown'].append({
+                        'id': row['id'],
                         'race_round': row['race_round'],
                         'score': int(row['score']),
                         'completion_time_seconds': row['completion_time_seconds'],
@@ -3012,12 +3015,13 @@ def fetch_leaderboard_data():
                     summary_map.values(),
                     key=lambda item: (
                         item['total_score'],
-                        item['best_time_seconds'] if item['best_time_seconds'] is not None else 10**9,
+                        item['total_time_seconds'] if item['time_record_count'] > 0 else 10**9,
                         item['created_at']
                     )
                 )
                 for idx, group in enumerate(grouped_rows, start=1):
                     breakdown = sorted(group['race_breakdown'], key=lambda item: item['race_round'] or 0)
+                    total_time_seconds = group['total_time_seconds'] if group['time_record_count'] > 0 else None
                     summary_entries.append({
                         'rank': idx,
                         'id': breakdown[-1]['created_at'] if breakdown else idx,
@@ -3025,13 +3029,13 @@ def fetch_leaderboard_data():
                         'challenge_key': challenge_key,
                         'score': group['total_score'],
                         'total_score': group['total_score'],
-                        'best_time_seconds': group['best_time_seconds'],
+                        'total_time_seconds': total_time_seconds,
                         'race_count': group['race_count'],
                         'race_breakdown': breakdown,
                         'race_round': breakdown[-1]['race_round'] if breakdown else None,
                         'starting_zone': '',
                         'level_detail': '',
-                        'completion_time_seconds': group['best_time_seconds'],
+                        'completion_time_seconds': total_time_seconds,
                         'run_notes': '',
                         'created_at': group['created_at']
                     })
@@ -3145,6 +3149,7 @@ def submit_leaderboard_score():
     challenge_key = str(data.get('challenge_key', '')).strip()
     starting_zone = str(data.get('starting_zone', '')).strip()
     level_detail = str(data.get('level_detail', '')).strip()
+    entry_id_raw = data.get('entry_id', '')
     race_round_raw = data.get('race_round', '')
     completion_time = data.get('completion_time', '')
     completion_hours = data.get('completion_hours', '')
@@ -3152,6 +3157,12 @@ def submit_leaderboard_score():
     completion_seconds_raw = data.get('completion_seconds', '')
     allow_after_deadline = bool(data.get('allow_after_deadline', False))
     run_notes = str(data.get('run_notes', '')).strip()
+    entry_id = None
+    if str(entry_id_raw).strip():
+        try:
+            entry_id = int(entry_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid entry id.'}), 400
 
     if not camper_name:
         return jsonify({'error': 'Camper name is required.'}), 400
@@ -3170,7 +3181,7 @@ def submit_leaderboard_score():
             return jsonify({'error': 'Race / Heat must be 1, 2, or 3.'}), 400
 
     if is_submission_locked_after_2pm() and not allow_after_deadline:
-        return jsonify({'error': 'Score entry is locked after 2:00pm. Enable staff override to submit.'}), 400
+        return jsonify({'error': 'Score entry is allowed from 10:00am to 2:00pm CST. Enable staff override to submit outside this window.'}), 400
 
     try:
         score = int(data.get('score'))
@@ -3195,34 +3206,79 @@ def submit_leaderboard_score():
     db_file = get_database_path()
     conn = sqlite3.connect(db_file)
     try:
+        if entry_id is not None:
+            exists = conn.execute(
+                'SELECT id FROM challenge_leaderboard WHERE id = ?',
+                (entry_id,)
+            ).fetchone()
+            if not exists:
+                return jsonify({'error': 'Entry not found for editing.'}), 404
+
         if race_round is not None:
-            existing = conn.execute(
-                '''
-                SELECT COUNT(*)
-                FROM challenge_leaderboard
-                WHERE challenge_key = ? AND camper_name = ? AND race_round = ?
-                ''',
-                (challenge_key, camper_name, race_round)
-            ).fetchone()[0]
+            if entry_id is not None:
+                existing = conn.execute(
+                    '''
+                    SELECT COUNT(*)
+                    FROM challenge_leaderboard
+                    WHERE challenge_key = ? AND camper_name = ? AND race_round = ? AND id != ?
+                    ''',
+                    (challenge_key, camper_name, race_round, entry_id)
+                ).fetchone()[0]
+            else:
+                existing = conn.execute(
+                    '''
+                    SELECT COUNT(*)
+                    FROM challenge_leaderboard
+                    WHERE challenge_key = ? AND camper_name = ? AND race_round = ?
+                    ''',
+                    (challenge_key, camper_name, race_round)
+                ).fetchone()[0]
             if existing:
                 return jsonify({'error': 'That camper already has a score for this race number.'}), 400
 
-        conn.execute(
-            '''
-            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, race_round, completion_time_seconds, run_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''',
-            (
-                camper_name,
-                challenge_key,
-                score,
-                starting_zone or None,
-                level_detail or None,
-                race_round,
-                completion_time_seconds,
-                run_notes or None
+        if entry_id is None:
+            conn.execute(
+                '''
+                INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, race_round, completion_time_seconds, run_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    camper_name,
+                    challenge_key,
+                    score,
+                    starting_zone or None,
+                    level_detail or None,
+                    race_round,
+                    completion_time_seconds,
+                    run_notes or None
+                )
             )
-        )
+        else:
+            conn.execute(
+                '''
+                UPDATE challenge_leaderboard
+                SET camper_name = ?,
+                    challenge_key = ?,
+                    score = ?,
+                    starting_zone = ?,
+                    level_detail = ?,
+                    race_round = ?,
+                    completion_time_seconds = ?,
+                    run_notes = ?
+                WHERE id = ?
+                ''',
+                (
+                    camper_name,
+                    challenge_key,
+                    score,
+                    starting_zone or None,
+                    level_detail or None,
+                    race_round,
+                    completion_time_seconds,
+                    run_notes or None,
+                    entry_id
+                )
+            )
         conn.commit()
     finally:
         conn.close()
