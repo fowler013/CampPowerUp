@@ -670,6 +670,29 @@ def submit_leaderboard_score():
     })
 
 
+@app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
+def delete_leaderboard_entry(entry_id):
+    """Delete one leaderboard score entry by id."""
+    ensure_leaderboard_table()
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        cursor = conn.execute(
+            'DELETE FROM challenge_leaderboard WHERE id = ?',
+            (entry_id,)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Entry not found.'}), 404
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': 'Entry deleted.',
+        'leaderboard': fetch_leaderboard_data()
+    })
+
+
 # ─────────────────────────────────────────────────────────
 # Challenge Sign-Up Queue
 # ─────────────────────────────────────────────────────────
@@ -1199,5 +1222,7 @@ if __name__ == '__main__':
     print("=" * 50)
     clean_and_combine_data()
     print("\n🚀 Starting web server...")
-    print("📱 Dashboard available at: http://127.0.0.1:5000")
-    app.run(debug=False, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"📱 Dashboard available at: http://127.0.0.1:{port}")
+    print(f"🌐 LAN access: http://<your-local-ip>:{port}")
+    app.run(host='0.0.0.0', debug=False, port=port)

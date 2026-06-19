@@ -3290,6 +3290,30 @@ def submit_leaderboard_score():
     })
 
 
+@app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
+def delete_leaderboard_entry(entry_id):
+    """Delete one leaderboard score entry by id."""
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        cursor = conn.execute(
+            'DELETE FROM challenge_leaderboard WHERE id = ?',
+            (entry_id,)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Entry not found.'}), 404
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': 'Entry deleted.',
+        'leaderboard': fetch_leaderboard_data()
+    })
+
+
 # ─────────────────────────────────────────────────────────
 # Challenge Sign-Up Queue
 # ─────────────────────────────────────────────────────────
