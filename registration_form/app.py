@@ -6,6 +6,7 @@ Ultra-minimal version to get registration working immediately
 """
 
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime
@@ -241,7 +242,7 @@ def init_db_with_logging():
             print("🔧 Migrating database: Adding camp_session column...")
             cursor.execute("ALTER TABLE registrations ADD COLUMN camp_session TEXT")
             # Update existing records with a default session
-            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2025 - November 24th-26th' WHERE camp_session IS NULL")
+            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2026 - June 15th-19th' WHERE camp_session IS NULL")
             print("✅ Migration complete: camp_session column added")
         
         conn.commit()
@@ -402,7 +403,7 @@ def send_parent_confirmation_email(registration_data):
                 <div class="header">
                     <div class="success-icon">✅</div>
                     <h1>Registration Confirmed!</h1>
-                    <p>Welcome to Camp Power-Up 2025</p>
+                    <p>Welcome to Camp Power-Up 2026</p>
                 </div>
                 
                 <div class="content">
@@ -416,7 +417,7 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
+                        <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
                         <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
                     </div>
                     
@@ -424,7 +425,7 @@ def send_parent_confirmation_email(registration_data):
                         <h2>💳 Payment Information</h2>
                         <p><strong>Total Fee:</strong> {total}</p>
                         <p><strong>Deposit Required Now:</strong> {deposit}</p>
-                        <p><strong>Final Payment:</strong> {final_payment} (due before November 24th)</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before June 1st)</p>
                         
                         <p><strong>Payment Methods:</strong></p>
                         <ul>
@@ -440,7 +441,7 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: November 24-25, 2025</li>
+                            <li>Mark your calendar: June 15-19, 2026</li>
                             <li>Pay final {final_payment} before camp starts</li>
                         </ol>
                     </div>
@@ -456,7 +457,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up 2025 | November 24-25, 2025</p>
+                    <p>Camp Power-Up 2026 | June 15-19, 2026</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -465,7 +466,7 @@ def send_parent_confirmation_email(registration_data):
         """
         
         text_content = f"""
-        Camp Power-Up 2025 - Registration Confirmed
+        Camp Power-Up 2026 - Registration Confirmed
         
         Dear {parent_name},
         
@@ -476,13 +477,13 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: November 24-25, 2025
+        Camp Dates: June 15-19, 2026
         Camp Times: 10:00 AM - 3:00 PM daily
         
         PAYMENT INFORMATION:
         Total Fee: {total}
         Deposit Required Now: {deposit}
-        Final Payment: {final_payment} (due before November 24th)
+        Final Payment: {final_payment} (due before June 1st)
         
         Payment Methods:
         - CashApp: camppowerup2025@gmail.com
@@ -493,7 +494,7 @@ def send_parent_confirmation_email(registration_data):
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: November 24-25, 2025
+        3. Mark your calendar: June 15-19, 2026
         4. Pay final {final_payment} before camp starts
         
         Questions? Email: camppowerup2025@gmail.com
@@ -625,10 +626,10 @@ def send_admin_notification_email(registration_data):
 
 # Helper functions for templates
 def get_camp_title():
-    return "Camp Power-Up 2025 Registration"
+    return "Camp Power-Up 2026 Registration"
 
 def get_camp_subtitle():
-    return "Nintendo Switch Gaming Camp - November 24-25, 2025"
+    return "Nintendo Switch Gaming Camp - June 15-19, 2026"
 
 def get_pricing_text():
     return "Registration fees listed below"
@@ -1383,7 +1384,7 @@ def confirmation(submission_id):
                 return f'''
                 <html>
                 <head>
-                    <title>Registration Confirmed - Camp Power-Up 2025</title>
+                    <title>Registration Confirmed - Camp Power-Up 2026</title>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
@@ -1440,12 +1441,12 @@ def confirmation(submission_id):
                                 <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
                             </ul>
                             <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
-                            <p><strong>Final Payment:</strong> Due before November 24th</p>
+                            <p><strong>Final Payment:</strong> Due before June 1st</p>
                         </div>
 
                         <div class="contact-info">
                             <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
+                            <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
                             <p><strong>Camp Times:</strong> 10am-3pm daily</p>
                             <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
                             <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
@@ -1457,7 +1458,7 @@ def confirmation(submission_id):
                         </div>
                         
                         <p style="text-align: center; color: #6c757d; margin-top: 30px;">
-                            <small>Camp Power-Up 2025 • Nintendo Switch Gaming Camp</small>
+                            <small>Camp Power-Up 2026 • Nintendo Switch Gaming Camp</small>
                         </p>
                     </div>
                 </body>
@@ -2337,7 +2338,7 @@ def attendance():
         return render_template('attendance.html', 
                              registrations=registrations,
                              today=today,
-                             camp_dates=['2025-11-24', '2025-11-25'])
+                             camp_dates=['2026-06-15', '2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19'])
     except Exception as e:
         flash(f'Error loading attendance: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
@@ -2408,6 +2409,420 @@ def get_attendance_status(date):
         return jsonify(attendance)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ─────────────────────────────────────────────────────────
+# Challenge Leaderboard
+# ─────────────────────────────────────────────────────────
+
+LEADERBOARD_CHALLENGES = {
+    'dk_bannooza': {
+        'label': 'DK Bannooza (Switch 2)',
+        'metric': 'Bananas in 10 minutes',
+        'score_unit': 'bananas',
+        'score_direction': 'desc',
+        'show_starting_zone': True,
+        'show_level_detail': False,
+        'time_window': '10:00am – 11:30am',
+        'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
+    },
+    'mario_kart_world': {
+        'label': 'Mario Kart World - Knockout Tour',
+        'metric': 'Final placement / points',
+        'score_unit': 'points',
+        'score_direction': 'asc',
+        'show_starting_zone': False,
+        'show_level_detail': False,
+        'time_window': '11:30am – 1:30pm',
+        'rules': 'Each kid gets ONE turn with up to 3 races. Score is cumulative placement points (lower is better). Example: 3rd + 2nd + 1st = 6 points. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
+    },
+    'hollow_knight_boss_rush': {
+        'label': 'Hollow Knight Boss Rush',
+        'metric': 'Bosses defeated',
+        'score_unit': 'bosses',
+        'score_direction': 'desc',
+        'show_starting_zone': False,
+        'show_level_detail': True,
+        'time_window': '1:30pm – 3:00pm',
+        'rules': 'Enter Pantheon mode at your chosen difficulty. Score = bosses defeated before losing all health. Tie-break: fastest completion time wins. Record level/difficulty. Winners announced at 2:00pm.'
+    }
+}
+
+
+def ensure_leaderboard_table():
+    """Create leaderboard table in the registration DB if it does not already exist."""
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_leaderboard (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                starting_zone TEXT,
+                level_detail TEXT,
+                completion_time_seconds INTEGER,
+                run_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        existing_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(challenge_leaderboard)").fetchall()
+        }
+        if 'completion_time_seconds' not in existing_cols:
+            conn.execute(
+                'ALTER TABLE challenge_leaderboard ADD COLUMN completion_time_seconds INTEGER'
+            )
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def parse_completion_time_to_seconds(raw_value):
+    """Parse completion time as seconds. Accepts '', integer seconds, or mm:ss."""
+    if raw_value is None:
+        return None
+
+    value = str(raw_value).strip()
+    if not value:
+        return None
+
+    if re.fullmatch(r'\d+', value):
+        seconds = int(value)
+        if seconds < 0:
+            raise ValueError('Completion time must be 0 or greater.')
+        return seconds
+
+    match = re.fullmatch(r'(\d{1,2}):(\d{2})', value)
+    if match:
+        minutes = int(match.group(1))
+        secs = int(match.group(2))
+        if secs >= 60:
+            raise ValueError('Use mm:ss format with seconds from 00 to 59.')
+        return (minutes * 60) + secs
+
+    raise ValueError('Completion time must be seconds (e.g. 95) or mm:ss (e.g. 1:35).')
+
+
+def parse_completion_hms_to_seconds(hours_raw, minutes_raw, seconds_raw):
+    """Parse completion time from hour/minute/second fields."""
+    h_val = str(hours_raw or '').strip()
+    m_val = str(minutes_raw or '').strip()
+    s_val = str(seconds_raw or '').strip()
+
+    if not h_val and not m_val and not s_val:
+        return None
+
+    if h_val and not re.fullmatch(r'\d+', h_val):
+        raise ValueError('Hours must be a whole number.')
+    if m_val and not re.fullmatch(r'\d+', m_val):
+        raise ValueError('Minutes must be a whole number.')
+    if s_val and not re.fullmatch(r'\d+', s_val):
+        raise ValueError('Seconds must be a whole number.')
+
+    hours = int(h_val) if h_val else 0
+    minutes = int(m_val) if m_val else 0
+    seconds = int(s_val) if s_val else 0
+
+    if minutes >= 60 or seconds >= 60:
+        raise ValueError('Minutes and seconds must be between 0 and 59.')
+
+    return (hours * 3600) + (minutes * 60) + seconds
+
+
+def is_submission_locked_after_2pm():
+    """Return True after 2:00pm local server time."""
+    return datetime.now().time() >= datetime.strptime('14:00', '%H:%M').time()
+
+
+def fetch_leaderboard_data():
+    """Return ranked leaderboard entries grouped by challenge."""
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    conn.row_factory = sqlite3.Row
+    try:
+        leaderboard = {}
+        for challenge_key, challenge_info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                '''
+                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes, created_at
+                FROM challenge_leaderboard
+                WHERE challenge_key = ?
+                ''',
+                (challenge_key,)
+            ).fetchall()
+
+            reverse_scores = challenge_info.get('score_direction', 'desc') != 'asc'
+            sorted_rows = sorted(
+                rows,
+                key=lambda row: (
+                    row['score'],
+                    row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9,
+                    row['created_at']
+                ),
+                reverse=reverse_scores
+            )
+
+            if reverse_scores:
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9
+                )
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['score'],
+                    reverse=True
+                )
+
+            entries = [
+                {
+                    'rank': idx,
+                    'id': row['id'],
+                    'camper_name': row['camper_name'],
+                    'challenge_key': row['challenge_key'],
+                    'score': row['score'],
+                    'starting_zone': row['starting_zone'] or '',
+                    'level_detail': row['level_detail'] or '',
+                    'completion_time_seconds': row['completion_time_seconds'],
+                    'run_notes': row['run_notes'] or '',
+                    'created_at': row['created_at']
+                }
+                for idx, row in enumerate(sorted_rows, start=1)
+            ]
+
+            leaderboard[challenge_key] = {
+                'challenge': challenge_info,
+                'entries': entries,
+                'trophy_winner': entries[0] if entries else None
+            }
+
+        return leaderboard
+    finally:
+        conn.close()
+
+
+@app.route('/leaderboard')
+def leaderboard_page():
+    """Render the challenge leaderboard page."""
+    return render_template('leaderboard.html')
+
+
+@app.route('/api/leaderboard/challenges')
+def get_leaderboard_challenges():
+    """Return configured challenge metadata."""
+    return jsonify(LEADERBOARD_CHALLENGES)
+
+
+@app.route('/api/leaderboard')
+def get_leaderboard():
+    """Return all leaderboard entries grouped by challenge."""
+    return jsonify(fetch_leaderboard_data())
+
+
+@app.route('/api/leaderboard/submit', methods=['POST'])
+def submit_leaderboard_score():
+    """Accept one camper score submission."""
+    data = request.get_json(silent=True) or {}
+
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+    starting_zone = str(data.get('starting_zone', '')).strip()
+    level_detail = str(data.get('level_detail', '')).strip()
+    completion_time = data.get('completion_time', '')
+    completion_hours = data.get('completion_hours', '')
+    completion_minutes = data.get('completion_minutes', '')
+    completion_seconds_raw = data.get('completion_seconds', '')
+    allow_after_deadline = bool(data.get('allow_after_deadline', False))
+    run_notes = str(data.get('run_notes', '')).strip()
+
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge selected.'}), 400
+
+    if is_submission_locked_after_2pm() and not allow_after_deadline:
+        return jsonify({'error': 'Score entry is locked after 2:00pm. Enable staff override to submit.'}), 400
+
+    try:
+        score = int(data.get('score'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Score must be a whole number.'}), 400
+
+    if score < 0:
+        return jsonify({'error': 'Score must be 0 or greater.'}), 400
+
+    try:
+        completion_time_seconds = parse_completion_hms_to_seconds(
+            completion_hours,
+            completion_minutes,
+            completion_seconds_raw
+        )
+        if completion_time_seconds is None:
+            completion_time_seconds = parse_completion_time_to_seconds(completion_time)
+    except ValueError as err:
+        return jsonify({'error': str(err)}), 400
+
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            '''
+            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                camper_name,
+                challenge_key,
+                score,
+                starting_zone or None,
+                level_detail or None,
+                completion_time_seconds,
+                run_notes or None
+            )
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': 'Score submitted successfully.',
+        'leaderboard': fetch_leaderboard_data()
+    })
+
+
+@app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
+def delete_leaderboard_score(entry_id):
+    """Remove a leaderboard entry by id (admin use)."""
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('DELETE FROM challenge_leaderboard WHERE id = ?', (entry_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'leaderboard': fetch_leaderboard_data()})
+
+
+# ─────────────────────────────────────────────────────────
+# Challenge Sign-Up Queue
+# ─────────────────────────────────────────────────────────
+
+def ensure_signups_table():
+    """Create challenge_signups table if it does not already exist."""
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_signups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                status TEXT DEFAULT 'waiting',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_signup_queues():
+    """Return all sign-up queues grouped by challenge, ordered by sign-up time."""
+    ensure_signups_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    conn.row_factory = sqlite3.Row
+    try:
+        queues = {}
+        for key, info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                'SELECT id, camper_name, challenge_key, status, created_at FROM challenge_signups WHERE challenge_key = ? ORDER BY created_at ASC',
+                (key,)
+            ).fetchall()
+            queues[key] = {
+                'challenge': info,
+                'entries': [dict(r) for r in rows]
+            }
+        return queues
+    finally:
+        conn.close()
+
+
+@app.route('/api/signups')
+def get_signups():
+    """Return all sign-up queues."""
+    return jsonify(fetch_signup_queues())
+
+
+@app.route('/api/signups/add', methods=['POST'])
+def add_signup():
+    """Add a camper to a challenge sign-up queue."""
+    ensure_signups_table()
+    data = request.get_json() or {}
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge.'}), 400
+
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            'INSERT INTO challenge_signups (camper_name, challenge_key, status) VALUES (?, ?, ?)',
+            (camper_name, challenge_key, 'waiting')
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/status', methods=['POST'])
+def update_signup_status(signup_id):
+    """Update a sign-up entry status (waiting → playing → done)."""
+    ensure_signups_table()
+    data = request.get_json() or {}
+    new_status = str(data.get('status', '')).strip()
+    if new_status not in ('waiting', 'playing', 'done', 'skipped'):
+        return jsonify({'error': 'Invalid status.'}), 400
+
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('UPDATE challenge_signups SET status = ? WHERE id = ?', (new_status, signup_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/remove', methods=['DELETE'])
+def remove_signup(signup_id):
+    """Remove a sign-up entry."""
+    ensure_signups_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('DELETE FROM challenge_signups WHERE id = ?', (signup_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
 
 # Initialize database on module load (Railway compatibility)
 print("🔧 Initializing database on startup...")

@@ -2,6 +2,7 @@ import pandas as pd
 import sqlite3
 import re
 import json
+from datetime import datetime, time
 from flask import Flask, jsonify, render_template, request
 import os
 import math
@@ -13,6 +14,199 @@ app = Flask(__name__)
 CSV_FILE_PATH = 'data/Camp_Power_Up_past_forms - Sheet1.csv'
 DB_FILE = 'camp_power_up.db'
 REGISTRATION_DB = 'registration_form/registration_submissions.db'
+
+
+def get_challenge_db_path():
+    """Use the shared registration DB for challenge leaderboard and signups."""
+    return REGISTRATION_DB
+
+LEADERBOARD_CHALLENGES = {
+    'dk_bannooza': {
+        'label': 'DK Bannooza (Switch 2)',
+        'metric': 'Bananas in 10 minutes',
+        'score_unit': 'bananas',
+        'score_direction': 'desc',
+        'show_starting_zone': True,
+        'show_level_detail': False,
+        'time_window': '10:00am – 11:30am',
+        'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
+    },
+    'mario_kart_world': {
+        'label': 'Mario Kart World - Knockout Tour',
+        'metric': 'Final placement / points',
+        'score_unit': 'points',
+        'score_direction': 'asc',
+        'show_starting_zone': False,
+        'show_level_detail': False,
+        'time_window': '11:30am – 1:30pm',
+        'rules': 'Each kid gets ONE turn with up to 3 races. Score is cumulative placement points (lower is better). Example: 3rd + 2nd + 1st = 6 points. Tie-break: fastest completion time wins. Winners announced at 2:00pm.'
+    },
+    'hollow_knight_boss_rush': {
+        'label': 'Hollow Knight Boss Rush',
+        'metric': 'Bosses defeated',
+        'score_unit': 'bosses',
+        'score_direction': 'desc',
+        'show_starting_zone': False,
+        'show_level_detail': True,
+        'time_window': '1:30pm – 3:00pm',
+        'rules': 'Enter Pantheon mode at your chosen difficulty. Score = bosses defeated before losing all health. Tie-break: fastest completion time wins. Record level/difficulty. Winners announced at 2:00pm.'
+    }
+}
+
+
+def ensure_leaderboard_table():
+    """Create leaderboard table if it does not already exist."""
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_leaderboard (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                starting_zone TEXT,
+                level_detail TEXT,
+                completion_time_seconds INTEGER,
+                run_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Backward-compatible migration for existing DBs.
+        existing_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(challenge_leaderboard)").fetchall()
+        }
+        if 'completion_time_seconds' not in existing_cols:
+            conn.execute(
+                'ALTER TABLE challenge_leaderboard ADD COLUMN completion_time_seconds INTEGER'
+            )
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def parse_completion_time_to_seconds(raw_value):
+    """Parse completion time as seconds. Accepts '', integer seconds, or mm:ss."""
+    if raw_value is None:
+        return None
+
+    value = str(raw_value).strip()
+    if not value:
+        return None
+
+    if re.fullmatch(r'\d+', value):
+        seconds = int(value)
+        if seconds < 0:
+            raise ValueError('Completion time must be 0 or greater.')
+        return seconds
+
+    match = re.fullmatch(r'(\d{1,2}):(\d{2})', value)
+    if match:
+        minutes = int(match.group(1))
+        secs = int(match.group(2))
+        if secs >= 60:
+            raise ValueError('Use mm:ss format with seconds from 00 to 59.')
+        return (minutes * 60) + secs
+
+    raise ValueError('Completion time must be seconds (e.g. 95) or mm:ss (e.g. 1:35).')
+
+
+def parse_completion_hms_to_seconds(hours_raw, minutes_raw, seconds_raw):
+    """Parse completion time from hour/minute/second fields."""
+    h_val = str(hours_raw or '').strip()
+    m_val = str(minutes_raw or '').strip()
+    s_val = str(seconds_raw or '').strip()
+
+    if not h_val and not m_val and not s_val:
+        return None
+
+    if h_val and not re.fullmatch(r'\d+', h_val):
+        raise ValueError('Hours must be a whole number.')
+    if m_val and not re.fullmatch(r'\d+', m_val):
+        raise ValueError('Minutes must be a whole number.')
+    if s_val and not re.fullmatch(r'\d+', s_val):
+        raise ValueError('Seconds must be a whole number.')
+
+    hours = int(h_val) if h_val else 0
+    minutes = int(m_val) if m_val else 0
+    seconds = int(s_val) if s_val else 0
+
+    if minutes >= 60 or seconds >= 60:
+        raise ValueError('Minutes and seconds must be between 0 and 59.')
+
+    return (hours * 3600) + (minutes * 60) + seconds
+
+
+def is_submission_locked_after_2pm():
+    """Return True after 2:00pm local server time."""
+    return datetime.now().time() >= time(14, 0)
+
+
+def fetch_leaderboard_data():
+    """Fetch ranked leaderboard entries for all configured challenges."""
+    ensure_leaderboard_table()
+    conn = sqlite3.connect(get_challenge_db_path())
+    conn.row_factory = sqlite3.Row
+    try:
+        leaderboard = {}
+        for challenge_key, challenge_info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                '''
+                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes, created_at
+                FROM challenge_leaderboard
+                WHERE challenge_key = ?
+                ''',
+                (challenge_key,)
+            ).fetchall()
+
+            reverse_scores = challenge_info.get('score_direction', 'desc') != 'asc'
+            sorted_rows = sorted(
+                rows,
+                key=lambda row: (
+                    row['score'],
+                    row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9,
+                    row['created_at']
+                ),
+                reverse=reverse_scores
+            )
+
+            if reverse_scores:
+                # Keep tie-break as fastest time even for descending score challenges.
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['completion_time_seconds'] if row['completion_time_seconds'] is not None else 10**9
+                )
+                sorted_rows = sorted(
+                    sorted_rows,
+                    key=lambda row: row['score'],
+                    reverse=True
+                )
+
+            entries = []
+            for idx, row in enumerate(sorted_rows, start=1):
+                entries.append({
+                    'rank': idx,
+                    'id': row['id'],
+                    'camper_name': row['camper_name'],
+                    'challenge_key': row['challenge_key'],
+                    'score': row['score'],
+                    'starting_zone': row['starting_zone'] or '',
+                    'level_detail': row['level_detail'] or '',
+                    'completion_time_seconds': row['completion_time_seconds'],
+                    'run_notes': row['run_notes'] or '',
+                    'created_at': row['created_at']
+                })
+
+            leaderboard[challenge_key] = {
+                'challenge': challenge_info,
+                'entries': entries,
+                'trophy_winner': entries[0] if entries else None
+            }
+
+        return leaderboard
+    finally:
+        conn.close()
 
 def get_combined_camper_data():
     """Get combined camper data from both historical CSV and new registrations."""
@@ -210,6 +404,190 @@ def campers_page():
     """Serves the interactive campers list page."""
     return render_template('campers.html')
 
+
+@app.route('/leaderboard')
+def leaderboard_page():
+    """Serves the challenge leaderboard page."""
+    return render_template('leaderboard.html')
+
+
+@app.route('/api/leaderboard/challenges')
+def get_leaderboard_challenges():
+    """Get configured challenge metadata for the leaderboard UI."""
+    return jsonify(LEADERBOARD_CHALLENGES)
+
+
+@app.route('/api/leaderboard')
+def get_leaderboard():
+    """Get all leaderboard entries grouped by challenge."""
+    return jsonify(fetch_leaderboard_data())
+
+
+@app.route('/api/leaderboard/submit', methods=['POST'])
+def submit_leaderboard_score():
+    """Submit one camper score to the challenge leaderboard."""
+    data = request.get_json(silent=True) or {}
+
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+    starting_zone = str(data.get('starting_zone', '')).strip()
+    level_detail = str(data.get('level_detail', '')).strip()
+    completion_time = data.get('completion_time', '')
+    completion_hours = data.get('completion_hours', '')
+    completion_minutes = data.get('completion_minutes', '')
+    completion_seconds_raw = data.get('completion_seconds', '')
+    allow_after_deadline = bool(data.get('allow_after_deadline', False))
+    run_notes = str(data.get('run_notes', '')).strip()
+
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge selected.'}), 400
+
+    if is_submission_locked_after_2pm() and not allow_after_deadline:
+        return jsonify({'error': 'Score entry is locked after 2:00pm. Enable staff override to submit.'}), 400
+
+    try:
+        score = int(data.get('score'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Score must be a whole number.'}), 400
+
+    if score < 0:
+        return jsonify({'error': 'Score must be 0 or greater.'}), 400
+
+    try:
+        completion_time_seconds = parse_completion_hms_to_seconds(
+            completion_hours,
+            completion_minutes,
+            completion_seconds_raw
+        )
+        if completion_time_seconds is None:
+            completion_time_seconds = parse_completion_time_to_seconds(completion_time)
+    except ValueError as err:
+        return jsonify({'error': str(err)}), 400
+
+    ensure_leaderboard_table()
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute(
+            '''
+            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, completion_time_seconds, run_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                camper_name,
+                challenge_key,
+                score,
+                starting_zone or None,
+                level_detail or None,
+                completion_time_seconds,
+                run_notes or None
+            )
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': 'Score submitted successfully.',
+        'leaderboard': fetch_leaderboard_data()
+    })
+
+
+# ─────────────────────────────────────────────────────────
+# Challenge Sign-Up Queue
+# ─────────────────────────────────────────────────────────
+
+def ensure_signups_table():
+    """Create challenge_signups table if it does not already exist."""
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_signups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                status TEXT DEFAULT 'waiting',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_signup_queues():
+    """Return all sign-up queues grouped by challenge, ordered by sign-up time."""
+    ensure_signups_table()
+    conn = sqlite3.connect(get_challenge_db_path())
+    conn.row_factory = sqlite3.Row
+    try:
+        queues = {}
+        for key, info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                'SELECT id, camper_name, challenge_key, status, created_at FROM challenge_signups WHERE challenge_key = ? ORDER BY created_at ASC',
+                (key,)
+            ).fetchall()
+            queues[key] = {
+                'challenge': info,
+                'entries': [dict(r) for r in rows]
+            }
+        return queues
+    finally:
+        conn.close()
+
+
+@app.route('/api/signups')
+def get_signups():
+    return jsonify(fetch_signup_queues())
+
+
+@app.route('/api/signups/add', methods=['POST'])
+def add_signup():
+    data = request.get_json(silent=True) or {}
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge.'}), 400
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute('INSERT INTO challenge_signups (camper_name, challenge_key, status) VALUES (?, ?, ?)', (camper_name, challenge_key, 'waiting'))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/status', methods=['POST'])
+def update_signup_status(signup_id):
+    data = request.get_json(silent=True) or {}
+    new_status = str(data.get('status', '')).strip()
+    if new_status not in ('waiting', 'playing', 'done', 'skipped'):
+        return jsonify({'error': 'Invalid status.'}), 400
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute('UPDATE challenge_signups SET status = ? WHERE id = ?', (new_status, signup_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
+@app.route('/api/signups/<int:signup_id>/remove', methods=['DELETE'])
+def remove_signup(signup_id):
+    conn = sqlite3.connect(get_challenge_db_path())
+    try:
+        conn.execute('DELETE FROM challenge_signups WHERE id = ?', (signup_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'success': True, 'queues': fetch_signup_queues()})
+
+
 @app.route('/api/stats')
 def get_stats():
     """Get basic statistics about the campers from combined data sources."""
@@ -370,7 +748,10 @@ def get_games():
                 'game_behavior': camper.get('game_behavior', '')
             })
     
-    return jsonify(games_data)@app.route('/api/medical_alerts')
+    return jsonify(games_data)
+
+
+@app.route('/api/medical_alerts')
 def medical_alerts():
     """Get campers with allergies/medical needs for easy reference."""
     conn = sqlite3.connect(DB_FILE)

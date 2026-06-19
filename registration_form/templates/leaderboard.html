@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Power-Up Challenge Leaderboard</title>
+    <style>
+        :root {
+            --bg-start: #0f172a;
+            --bg-end: #1e293b;
+            --panel: rgba(255, 255, 255, 0.96);
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+            --brand: #f97316;
+            --brand-dark: #ea580c;
+            --success: #16a34a;
+            --border: #e5e7eb;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top, #334155 0%, var(--bg-start) 45%, var(--bg-end) 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .page {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        .header, .panel {
+            background: var(--panel);
+            border-radius: 16px;
+            box-shadow: 0 14px 34px rgba(2, 6, 23, 0.25);
+        }
+
+        .header { padding: 22px; text-align: center; }
+        .header h1 { margin: 0; font-size: 2.1rem; }
+        .header p { margin: 10px 0 0; color: var(--text-muted); }
+
+        .announce {
+            margin-top: 12px;
+            display: inline-block;
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .nav-link {
+            display: inline-block;
+            text-decoration: none;
+            color: white;
+            background: #2563eb;
+            padding: 9px 16px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-link:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            background: var(--panel);
+            border-radius: 14px;
+            padding: 10px;
+            box-shadow: 0 14px 34px rgba(2, 6, 23, 0.25);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            color: var(--text-muted);
+        }
+
+        .tab-btn.active { background: #1e3a8a; color: white; }
+        .tab-btn:hover:not(.active) { background: #f1f5f9; color: var(--text-dark); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Layout */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 20px;
+        }
+
+        .panel { padding: 20px; }
+        h2 { margin-top: 0; margin-bottom: 14px; }
+        .form-grid { display: grid; gap: 12px; }
+
+        label { font-weight: 600; font-size: 0.92rem; display: block; margin-bottom: 6px; }
+
+        input, select, textarea, button {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        textarea { min-height: 76px; resize: vertical; }
+        .helper { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; }
+
+        .time-ticker-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(80px, 1fr));
+            gap: 8px;
+        }
+
+        .override-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px dashed #f59e0b;
+            border-radius: 10px;
+            background: #fffbeb;
+        }
+
+        .override-row input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .btn {
+            margin-top: 4px;
+            border: none;
+            background: var(--brand);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn:hover { background: var(--brand-dark); }
+
+        .btn-sm {
+            width: auto;
+            padding: 5px 11px;
+            font-size: 0.8rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-start { background: #2563eb; color: white; }
+        .btn-start:hover { background: #1d4ed8; }
+        .btn-done  { background: #16a34a; color: white; }
+        .btn-done:hover { background: #15803d; }
+        .btn-skip  { background: #f59e0b; color: white; }
+        .btn-skip:hover { background: #d97706; }
+        .btn-remove { background: none; border: 1px solid #e5e7eb !important; color: #dc2626; }
+        .btn-remove:hover { background: #fee2e2; }
+
+        .status { margin-top: 10px; font-size: 0.9rem; min-height: 1.2rem; }
+        .status.success { color: var(--success); }
+        .status.error { color: #dc2626; }
+
+        /* Leaderboard */
+        .boards { display: grid; gap: 16px; }
+
+        .challenge-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            background: white;
+        }
+
+        .challenge-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .challenge-title { margin: 0; font-size: 1.05rem; }
+        .challenge-metric { color: var(--text-muted); font-size: 0.85rem; }
+
+        .winner {
+            margin-bottom: 10px;
+            padding: 9px 10px;
+            border-radius: 9px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            font-size: 0.9rem;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+
+        th, td {
+            text-align: left;
+            padding: 8px 7px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        th { color: #334155; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 2px; }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 0.85rem;
+            width: auto;
+            border-radius: 4px;
+        }
+
+        .delete-btn:hover { background: #fee2e2; }
+
+        /* Sign-up Queue */
+        .queue-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 18px;
+        }
+
+        .queue-card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            background: var(--panel);
+            box-shadow: 0 4px 12px rgba(2,6,23,0.15);
+        }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .queue-title { margin: 0; font-size: 1rem; font-weight: 700; }
+
+        .time-badge {
+            background: #1e3a8a;
+            color: white;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .queue-count { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 12px; }
+
+        .signup-form-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .signup-form-row input {
+            flex: 1;
+            padding: 9px 12px;
+            font-size: 0.9rem;
+        }
+
+        .signup-form-row button {
+            width: auto;
+            padding: 9px 16px;
+            white-space: nowrap;
+            font-size: 0.88rem;
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .signup-form-row button:hover { background: #1e40af; }
+
+        .queue-list { display: grid; gap: 8px; }
+
+        .queue-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .queue-row.status-playing { background: #eff6ff; border-color: #93c5fd; }
+        .queue-row.status-done { background: #f0fdf4; border-color: #86efac; opacity: 0.75; }
+        .queue-row.status-skipped { background: #fafafa; border-color: #e5e7eb; opacity: 0.55; text-decoration: line-through; }
+
+        .q-pos { font-weight: 700; color: #64748b; min-width: 28px; font-size: 0.85rem; }
+        .q-name { flex: 1; font-weight: 600; }
+
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        .badge-waiting  { background: #fef9c3; color: #92400e; }
+        .badge-playing  { background: #dbeafe; color: #1e40af; }
+        .badge-done     { background: #dcfce7; color: #166534; }
+        .badge-skipped  { background: #f1f5f9; color: #64748b; }
+
+        .q-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .queue-empty { color: var(--text-muted); font-size: 0.88rem; padding: 8px 0; text-align: center; }
+
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="header">
+            <h1>🏆 Camp Power-Up Challenges</h1>
+            <p>DK Bannooza &bull; Mario Kart World &bull; Hollow Knight Boss Rush</p>
+            <div class="announce">📣 Winners announced at 2:00pm</div>
+            <nav class="nav-links">
+                <a href="/" class="nav-link">📝 Registration</a>
+                <a href="/admin" class="nav-link">⚙️ Admin</a>
+                <a href="/leaderboard" class="nav-link">🏆 Leaderboard</a>
+            </nav>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-btn-signup" onclick="switchTab('signup', this)">📋 Sign-Up Queue</button>
+            <button class="tab-btn" id="tab-btn-scores" onclick="switchTab('scores', this)">🏆 Scores &amp; Rankings</button>
+        </div>
+
+        <!-- TAB: Sign-Up Queue -->
+        <div id="tab-signup" class="tab-content active">
+            <div id="queueGrid" class="queue-grid">
+                <p style="color:white;padding:10px;">Loading queues…</p>
+            </div>
+        </div>
+
+        <!-- TAB: Scores & Rankings -->
+        <div id="tab-scores" class="tab-content">
+            <section class="layout">
+                <article class="panel">
+                    <h2>Add Score</h2>
+                    <form id="scoreForm" class="form-grid">
+                        <div>
+                            <label for="camper_name">Camper Name</label>
+                            <input id="camper_name" name="camper_name" type="text" required placeholder="First name or nickname">
+                        </div>
+
+                        <div>
+                            <label for="challenge_key">Challenge</label>
+                            <select id="challenge_key" name="challenge_key" required></select>
+                            <div class="helper" id="challengeMetric"></div>
+                        </div>
+
+                        <div>
+                            <label for="score">Score</label>
+                            <input id="score" name="score" type="number" min="0" required>
+                            <div class="helper" id="scoreDirectionHelper">Whole number score.</div>
+                        </div>
+
+                        <div>
+                            <label>Completion Time <span style="font-weight:400;">(Tie-break)</span></label>
+                            <div class="time-ticker-grid">
+                                <input id="completion_hours" name="completion_hours" type="number" min="0" placeholder="Hours">
+                                <input id="completion_minutes" name="completion_minutes" type="number" min="0" max="59" placeholder="Minutes">
+                                <input id="completion_seconds" name="completion_seconds" type="number" min="0" max="59" placeholder="Seconds">
+                            </div>
+                            <div class="helper">Used only when score is tied. Faster total time wins tie-break.</div>
+                        </div>
+
+                        <div class="override-row">
+                            <input id="allow_after_deadline" name="allow_after_deadline" type="checkbox">
+                            <label for="allow_after_deadline" style="margin:0; font-weight:600;">Staff override: allow score entry after 2:00pm</label>
+                        </div>
+
+                        <div id="startingZoneWrap" style="display:none;">
+                            <label for="starting_zone">Starting Zone <span style="font-weight:400;">(DK Bannooza)</span></label>
+                            <input id="starting_zone" name="starting_zone" type="text" placeholder="e.g. Jungle Entrance">
+                        </div>
+
+                        <div id="levelDetailWrap" style="display:none;">
+                            <label for="level_detail">Level Detail <span style="font-weight:400;">(Hollow Knight)</span></label>
+                            <input id="level_detail" name="level_detail" type="text" placeholder="e.g. Pantheon 2">
+                        </div>
+
+                        <div>
+                            <label for="run_notes">Notes <span style="font-weight:400;">(Optional)</span></label>
+                            <textarea id="run_notes" name="run_notes" placeholder="Tie-break details, highlights, etc."></textarea>
+                        </div>
+
+                        <button class="btn" type="submit">Save Score</button>
+                    </form>
+                    <div id="statusMessage" class="status"></div>
+                </article>
+
+                <article class="panel">
+                    <h2>Live Rankings</h2>
+                    <div id="leaderboards" class="boards">
+                        <p style="color: var(--text-muted);">Loading&hellip;</p>
+                    </div>
+                </article>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let challenges = {};
+
+        function esc(v) {
+            return String(v || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // Tabs
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        // Challenge metadata
+        async function loadChallenges() {
+            const res = await fetch('/api/leaderboard/challenges');
+            challenges = await res.json();
+            const select = document.getElementById('challenge_key');
+            select.innerHTML = Object.entries(challenges)
+                .map(([key, info]) => `<option value="${key}">${esc(info.label)}</option>`)
+                .join('');
+            updateChallengeFields();
+        }
+
+        function updateChallengeFields() {
+            const key = document.getElementById('challenge_key').value;
+            const ch = challenges[key];
+            if (!ch) return;
+            document.getElementById('challengeMetric').textContent = `Metric: ${ch.metric}`;
+            document.getElementById('scoreDirectionHelper').textContent =
+                ch.score_direction === 'asc'
+                    ? 'Whole number score — lower ranks higher for this challenge.'
+                    : 'Whole number score — higher ranks higher for this challenge.';
+            document.getElementById('startingZoneWrap').style.display = ch.show_starting_zone ? 'block' : 'none';
+            document.getElementById('levelDetailWrap').style.display = ch.show_level_detail ? 'block' : 'none';
+        }
+
+        function formatSeconds(seconds) {
+            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '—';
+            const total = Number(seconds);
+            const mins = Math.floor(total / 60);
+            const secs = total % 60;
+            return `${mins}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Leaderboard
+        function renderBoard(key, board) {
+            const ch = board.challenge;
+            const entries = board.entries || [];
+            const winner = board.trophy_winner;
+
+            const winnerHtml = winner
+                ? `<div class="winner">🏆 Leader: <strong>${esc(winner.camper_name)}</strong> — <strong>${winner.score}</strong> ${esc(ch.score_unit)}</div>`
+                : `<div class="winner" style="border-color:#d1d5db;background:#f9fafb;">No scores yet — be the first!</div>`;
+
+            const rulesHtml = ch.rules
+                ? `<div style="margin-bottom:10px;padding:8px;background:#f0f9ff;border-left:3px solid #3b82f6;border-radius:6px;font-size:0.85rem;color:#1e40af;"><strong>Rules:</strong> ${esc(ch.rules)}</div>`
+                : '';
+
+            const rows = entries.length
+                ? entries.map(e => `
+                    <tr>
+                        <td>#${e.rank}</td>
+                        <td>${esc(e.camper_name)}</td>
+                        <td>${e.score}</td>
+                        <td>${formatSeconds(e.completion_time_seconds)}</td>
+                        <td>${esc(e.starting_zone || '—')}</td>
+                        <td>${esc(e.level_detail || '—')}</td>
+                        <td><button class="delete-btn" onclick="deleteEntry(${e.id})" title="Remove">✕</button></td>
+                    </tr>`).join('')
+                : `<tr><td colspan="7" class="empty">No scores yet.</td></tr>`;
+
+            return `
+                <section class="challenge-card">
+                    <div class="challenge-head">
+                        <h3 class="challenge-title">${esc(ch.label)}</h3>
+                        <div class="challenge-metric">${esc(ch.metric)}</div>
+                    </div>
+                    ${rulesHtml}
+                    ${winnerHtml}
+                    <table>
+                        <thead><tr><th>Rank</th><th>Camper</th><th>Score</th><th>Time</th><th>Zone</th><th>Level</th><th></th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </section>`;
+        }
+
+        async function loadLeaderboard() {
+            const res = await fetch('/api/leaderboard');
+            const data = await res.json();
+            document.getElementById('leaderboards').innerHTML =
+                Object.entries(data).map(([k, b]) => renderBoard(k, b)).join('');
+        }
+
+        async function deleteEntry(id) {
+            if (!confirm('Remove this score?')) return;
+            const res = await fetch(`/api/leaderboard/delete/${id}`, { method: 'DELETE' });
+            if (res.ok) await loadLeaderboard();
+        }
+
+        function setScoreStatus(msg, type) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = msg;
+            el.className = `status ${type}`;
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const payload = {
+                camper_name:   form.camper_name.value.trim(),
+                challenge_key: form.challenge_key.value,
+                score:         Number(form.score.value),
+                completion_hours: form.completion_hours.value.trim(),
+                completion_minutes: form.completion_minutes.value.trim(),
+                completion_seconds: form.completion_seconds.value.trim(),
+                allow_after_deadline: form.allow_after_deadline.checked,
+                starting_zone: form.starting_zone.value.trim(),
+                level_detail:  form.level_detail.value.trim(),
+                run_notes:     form.run_notes.value.trim()
+            };
+            try {
+                const res = await fetch('/api/leaderboard/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (!res.ok) { setScoreStatus(result.error || 'Could not save score.', 'error'); return; }
+                setScoreStatus('Score saved!', 'success');
+                form.score.value = '';
+                form.completion_hours.value = '';
+                form.completion_minutes.value = '';
+                form.completion_seconds.value = '';
+                form.run_notes.value = '';
+                await loadLeaderboard();
+            } catch {
+                setScoreStatus('Network error — please try again.', 'error');
+            }
+        }
+
+        // Sign-Up Queue
+        function statusBadge(status) {
+            const map = {
+                waiting: ['⏳ Waiting', 'badge-waiting'],
+                playing: ['🎮 Playing', 'badge-playing'],
+                done:    ['✅ Done',    'badge-done'],
+                skipped: ['⏭ Skipped', 'badge-skipped']
+            };
+            const [label, cls] = map[status] || ['?', 'badge-waiting'];
+            return `<span class="status-badge ${cls}">${label}</span>`;
+        }
+
+        function renderQueueCard(key, data) {
+            const ch = data.challenge;
+            const entries = data.entries || [];
+            const waiting = entries.filter(e => e.status === 'waiting').length;
+            const playing = entries.filter(e => e.status === 'playing').length;
+            const done    = entries.filter(e => e.status === 'done').length;
+
+            const rows = entries.length
+                ? entries.map((e, i) => {
+                    const actions = [];
+                    if (e.status === 'waiting') {
+                        actions.push(`<button class="btn-sm btn-start" onclick="updateQueueStatus(${e.id},'playing','${esc(key)}')">▶ Start</button>`);
+                        actions.push(`<button class="btn-sm btn-skip"  onclick="updateQueueStatus(${e.id},'skipped','${esc(key)}')">⏭ Skip</button>`);
+                    }
+                    if (e.status === 'playing') {
+                        actions.push(`<button class="btn-sm btn-done" onclick="updateQueueStatus(${e.id},'done','${esc(key)}','${encodeURIComponent(e.camper_name)}')">✅ Done</button>`);
+                    }
+                    if (e.status !== 'done') {
+                        actions.push(`<button class="btn-sm btn-remove" onclick="removeFromQueue(${e.id})">✕</button>`);
+                    }
+                    return `
+                        <div class="queue-row status-${esc(e.status)}">
+                            <span class="q-pos">#${i + 1}</span>
+                            <span class="q-name">${esc(e.camper_name)}</span>
+                            ${statusBadge(e.status)}
+                            <div class="q-actions">${actions.join('')}</div>
+                        </div>`;
+                }).join('')
+                : `<div class="queue-empty">No one signed up yet</div>`;
+
+            const countParts = [];
+            if (waiting) countParts.push(`${waiting} waiting`);
+            if (playing) countParts.push(`${playing} playing`);
+            if (done) countParts.push(`${done} done`);
+            const countLabel = countParts.length ? countParts.join(' · ') : 'Empty';
+
+            return `
+                <div class="queue-card">
+                    <div class="queue-header">
+                        <h3 class="queue-title">${esc(ch.label)}</h3>
+                        <span class="time-badge">🕐 ${esc(ch.time_window || '')}</span>
+                    </div>
+                    <div class="queue-count">${countLabel}</div>
+                    <div class="signup-form-row">
+                        <input type="text" id="sq-name-${esc(key)}" placeholder="Camper name…"
+                               onkeydown="if(event.key==='Enter'){addToQueue('${esc(key)}');}">
+                        <button onclick="addToQueue('${esc(key)}')">+ Add</button>
+                    </div>
+                    <div class="queue-list" id="qlist-${esc(key)}">${rows}</div>
+                </div>`;
+        }
+
+        async function loadQueues() {
+            const res = await fetch('/api/signups');
+            const data = await res.json();
+            document.getElementById('queueGrid').innerHTML =
+                Object.entries(data).map(([k, d]) => renderQueueCard(k, d)).join('');
+        }
+
+        async function addToQueue(challengeKey) {
+            const input = document.getElementById(`sq-name-${challengeKey}`);
+            const name = input.value.trim();
+            if (!name) { input.focus(); return; }
+            const res = await fetch('/api/signups/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ camper_name: name, challenge_key: challengeKey })
+            });
+            if (res.ok) { input.value = ''; await loadQueues(); }
+        }
+
+        function promptScoreEntry(camperName, challengeKey) {
+            const shouldEnterNow = confirm(`Marking ${camperName} as done. Enter score now?`);
+            if (!shouldEnterNow) return;
+
+            const form = document.getElementById('scoreForm');
+            const scoreTabBtn = document.getElementById('tab-btn-scores');
+            switchTab('scores', scoreTabBtn);
+
+            form.camper_name.value = camperName;
+            form.challenge_key.value = challengeKey;
+            updateChallengeFields();
+            form.score.focus();
+        }
+
+        async function updateQueueStatus(id, status, challengeKey = '', camperNameEncoded = '') {
+            const res = await fetch(`/api/signups/${id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            if (res.ok) {
+                await loadQueues();
+                if (status === 'done' && challengeKey && camperNameEncoded) {
+                    promptScoreEntry(decodeURIComponent(camperNameEncoded), challengeKey);
+                }
+            }
+        }
+
+        async function removeFromQueue(id) {
+            if (!confirm('Remove this camper from the queue?')) return;
+            const res = await fetch(`/api/signups/${id}/remove`, { method: 'DELETE' });
+            if (res.ok) await loadQueues();
+        }
+
+        function startLiveRefresh() {
+            setInterval(async () => {
+                try {
+                    await loadLeaderboard();
+
+                    const activeId = (document.activeElement && document.activeElement.id) || '';
+                    const isTypingQueueName = activeId.startsWith('sq-name-');
+                    if (!isTypingQueueName) {
+                        await loadQueues();
+                    }
+                } catch (_) {
+                    // Keep UI usable if one refresh cycle fails.
+                }
+            }, 8000);
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', async () => {
+            await Promise.all([loadChallenges(), loadQueues(), loadLeaderboard()]);
+            document.getElementById('challenge_key').addEventListener('change', updateChallengeFields);
+            document.getElementById('scoreForm').addEventListener('submit', handleSubmit);
+            startLiveRefresh();
+        });
+    </script>
+</body>
+</html>
