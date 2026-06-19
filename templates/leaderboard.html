@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Power-Up Challenge Leaderboard</title>
+    <style>
+        :root {
+            --bg-start: #0f172a;
+            --bg-end: #1e293b;
+            --panel: rgba(255, 255, 255, 0.96);
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+            --brand: #f97316;
+            --brand-dark: #ea580c;
+            --success: #16a34a;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top, #334155 0%, var(--bg-start) 45%, var(--bg-end) 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        .header,
+        .panel {
+            background: var(--panel);
+            border-radius: 16px;
+            box-shadow: 0 14px 34px rgba(2, 6, 23, 0.25);
+        }
+
+        .header {
+            padding: 22px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.1rem;
+            letter-spacing: 0.3px;
+        }
+
+        .header p {
+            margin: 10px 0 0;
+            color: var(--text-muted);
+        }
+
+        .nav-links {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .nav-link {
+            display: inline-block;
+            text-decoration: none;
+            color: white;
+            background: #2563eb;
+            padding: 9px 16px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-link:hover {
+            transform: translateY(-2px);
+            opacity: 0.95;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 14px;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.92rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 76px;
+            resize: vertical;
+        }
+
+        .helper {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-top: 4px;
+        }
+
+        .btn {
+            margin-top: 4px;
+            border: none;
+            background: var(--brand);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--brand-dark);
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            min-height: 1.2rem;
+        }
+
+        .status.success {
+            color: var(--success);
+        }
+
+        .status.error {
+            color: #dc2626;
+        }
+
+        .boards {
+            display: grid;
+            gap: 16px;
+        }
+
+        .challenge-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            background: white;
+        }
+
+        .challenge-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .challenge-title {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .challenge-metric {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .winner {
+            margin-bottom: 10px;
+            padding: 9px 10px;
+            border-radius: 9px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            font-size: 0.9rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px 7px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+
+        th {
+            color: #334155;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .empty {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            padding: 10px 2px;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="header">
+            <h1>Challenge Leaderboard</h1>
+            <p>Track scores for DK Bannooza, Mario Kart World, and Hollow Knight Boss Rush.</p>
+            <nav class="nav-links">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/campers" class="nav-link">Campers</a>
+                <a href="/leaderboard" class="nav-link">Leaderboard</a>
+                <a href="/game_library" class="nav-link">Game Library</a>
+            </nav>
+        </header>
+
+        <section class="layout">
+            <article class="panel">
+                <h2>Add Score</h2>
+                <form id="scoreForm" class="form-grid">
+                    <div>
+                        <label for="camper_name">Camper Name</label>
+                        <input id="camper_name" name="camper_name" type="text" required placeholder="Example: Jordan M">
+                    </div>
+
+                    <div>
+                        <label for="challenge_key">Challenge</label>
+                        <select id="challenge_key" name="challenge_key" required></select>
+                        <div class="helper" id="challengeMetric"></div>
+                    </div>
+
+                    <div>
+                        <label for="score">Score</label>
+                        <input id="score" name="score" type="number" min="0" required>
+                        <div class="helper">Use a whole number. Higher score ranks higher.</div>
+                    </div>
+
+                    <div id="startingZoneWrap" style="display:none;">
+                        <label for="starting_zone">Starting Zone (DK Bannooza)</label>
+                        <input id="starting_zone" name="starting_zone" type="text" placeholder="Example: Jungle Entrance">
+                    </div>
+
+                    <div id="levelDetailWrap" style="display:none;">
+                        <label for="level_detail">Level Detail (Hollow Knight)</label>
+                        <input id="level_detail" name="level_detail" type="text" placeholder="Example: Pantheon 2">
+                    </div>
+
+                    <div>
+                        <label for="run_notes">Notes (Optional)</label>
+                        <textarea id="run_notes" name="run_notes" placeholder="Any tie-break info, run notes, etc."></textarea>
+                    </div>
+
+                    <button class="btn" type="submit">Save Score</button>
+                </form>
+                <div id="statusMessage" class="status"></div>
+            </article>
+
+            <article class="panel">
+                <h2>Live Rankings</h2>
+                <div id="leaderboards" class="boards"></div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        let challenges = {};
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        async function loadChallenges() {
+            const response = await fetch('/api/leaderboard/challenges');
+            challenges = await response.json();
+
+            const challengeSelect = document.getElementById('challenge_key');
+            challengeSelect.innerHTML = Object.entries(challenges)
+                .map(([key, info]) => `<option value="${key}">${escapeHtml(info.label)}</option>`)
+                .join('');
+
+            updateChallengeFields();
+        }
+
+        function updateChallengeFields() {
+            const key = document.getElementById('challenge_key').value;
+            const challenge = challenges[key];
+            if (!challenge) {
+                return;
+            }
+
+            document.getElementById('challengeMetric').textContent = `Metric: ${challenge.metric}`;
+            document.getElementById('startingZoneWrap').style.display = challenge.show_starting_zone ? 'block' : 'none';
+            document.getElementById('levelDetailWrap').style.display = challenge.show_level_detail ? 'block' : 'none';
+        }
+
+        function renderLeaderboardBoard(key, board) {
+            const challenge = board.challenge;
+            const entries = board.entries || [];
+            const winner = board.trophy_winner;
+
+            const winnerHtml = winner
+                ? `<div class="winner">🏆 Current trophy leader: <strong>${escapeHtml(winner.camper_name)}</strong> with <strong>${winner.score}</strong> ${escapeHtml(challenge.score_unit)}</div>`
+                : '<div class="winner">No scores yet. Add the first run score.</div>';
+
+            const rulesHtml = challenge.rules
+                ? `<div style="margin-bottom:10px;padding:8px;background:#f0f9ff;border-left:3px solid #3b82f6;border-radius:6px;font-size:0.85rem;color:#1e40af;"><strong>Rules:</strong> ${escapeHtml(challenge.rules)}</div>`
+                : '';
+
+            const rows = entries.length
+                ? entries.map(entry => `
+                    <tr>
+                        <td>#${entry.rank}</td>
+                        <td>${escapeHtml(entry.camper_name)}</td>
+                        <td>${entry.score}</td>
+                        <td>${escapeHtml(entry.starting_zone || '-')}</td>
+                        <td>${escapeHtml(entry.level_detail || '-')}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="5" class="empty">No scores submitted yet.</td></tr>';
+
+            return `
+                <section class="challenge-card">
+                    <div class="challenge-head">
+                        <h3 class="challenge-title">${escapeHtml(challenge.label)}</h3>
+                        <div class="challenge-metric">${escapeHtml(challenge.metric)}</div>
+                    </div>
+                    ${rulesHtml}
+                    ${winnerHtml}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Camper</th>
+                                <th>Score</th>
+                                <th>Starting Zone</th>
+                                <th>Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </section>
+            `;
+        }
+
+        async function loadLeaderboard() {
+            const response = await fetch('/api/leaderboard');
+            const data = await response.json();
+
+            const container = document.getElementById('leaderboards');
+            const cards = Object.entries(data)
+                .map(([key, board]) => renderLeaderboardBoard(key, board))
+                .join('');
+
+            container.innerHTML = cards;
+        }
+
+        function setStatus(message, type) {
+            const status = document.getElementById('statusMessage');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const payload = {
+                camper_name: form.camper_name.value.trim(),
+                challenge_key: form.challenge_key.value,
+                score: Number(form.score.value),
+                starting_zone: form.starting_zone.value.trim(),
+                level_detail: form.level_detail.value.trim(),
+                run_notes: form.run_notes.value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/leaderboard/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    setStatus(result.error || 'Could not save score.', 'error');
+                    return;
+                }
+
+                setStatus('Score saved.', 'success');
+                form.score.value = '';
+                form.run_notes.value = '';
+                await loadLeaderboard();
+            } catch (error) {
+                setStatus('Network error while saving score.', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadChallenges();
+            await loadLeaderboard();
+
+            document.getElementById('challenge_key').addEventListener('change', updateChallengeFields);
+            document.getElementById('scoreForm').addEventListener('submit', handleSubmit);
+        });
+    </script>
+</body>
+</html>

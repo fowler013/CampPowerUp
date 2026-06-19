@@ -2409,6 +2409,185 @@ def get_attendance_status(date):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ─────────────────────────────────────────────────────────
+# Challenge Leaderboard
+# ─────────────────────────────────────────────────────────
+
+LEADERBOARD_CHALLENGES = {
+    'dk_bannooza': {
+        'label': 'DK Bannooza (Switch 2)',
+        'metric': 'Bananas in 10 minutes',
+        'score_unit': 'bananas',
+        'show_starting_zone': True,
+        'show_level_detail': False,
+        'rules': 'Pick a starting zone. Find as many bananas as possible in 10 minutes. Highest count wins the trophy.'
+    },
+    'mario_kart_world': {
+        'label': 'Mario Kart World - Knockout Tour',
+        'metric': 'Final placement / points',
+        'score_unit': 'points',
+        'show_starting_zone': False,
+        'show_level_detail': False,
+        'rules': 'Best of 3 knockout races. Score is cumulative placement points across all races played (lower is better; winner per race scores 1 point). Tournament runs 10am–3pm. Each kid gets one turn; play until eliminated or all 3 races complete.'
+    },
+    'hollow_knight_boss_rush': {
+        'label': 'Hollow Knight Boss Rush',
+        'metric': 'Bosses defeated',
+        'score_unit': 'bosses',
+        'show_starting_zone': False,
+        'show_level_detail': True,
+        'rules': 'Enter Pantheon mode at your chosen difficulty. Score = number of bosses defeated before losing all health. Higher difficulty = bragging rights. Record the level/difficulty you played.'
+    }
+}
+
+
+def ensure_leaderboard_table():
+    """Create leaderboard table in the registration DB if it does not already exist."""
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS challenge_leaderboard (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camper_name TEXT NOT NULL,
+                challenge_key TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                starting_zone TEXT,
+                level_detail TEXT,
+                run_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_leaderboard_data():
+    """Return ranked leaderboard entries grouped by challenge."""
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    conn.row_factory = sqlite3.Row
+    try:
+        leaderboard = {}
+        for challenge_key, challenge_info in LEADERBOARD_CHALLENGES.items():
+            rows = conn.execute(
+                '''
+                SELECT id, camper_name, challenge_key, score, starting_zone, level_detail, run_notes, created_at
+                FROM challenge_leaderboard
+                WHERE challenge_key = ?
+                ORDER BY score DESC, created_at ASC
+                ''',
+                (challenge_key,)
+            ).fetchall()
+
+            entries = [
+                {
+                    'rank': idx,
+                    'id': row['id'],
+                    'camper_name': row['camper_name'],
+                    'challenge_key': row['challenge_key'],
+                    'score': row['score'],
+                    'starting_zone': row['starting_zone'] or '',
+                    'level_detail': row['level_detail'] or '',
+                    'run_notes': row['run_notes'] or '',
+                    'created_at': row['created_at']
+                }
+                for idx, row in enumerate(rows, start=1)
+            ]
+
+            leaderboard[challenge_key] = {
+                'challenge': challenge_info,
+                'entries': entries,
+                'trophy_winner': entries[0] if entries else None
+            }
+
+        return leaderboard
+    finally:
+        conn.close()
+
+
+@app.route('/leaderboard')
+def leaderboard_page():
+    """Render the challenge leaderboard page."""
+    return render_template('leaderboard.html')
+
+
+@app.route('/api/leaderboard/challenges')
+def get_leaderboard_challenges():
+    """Return configured challenge metadata."""
+    return jsonify(LEADERBOARD_CHALLENGES)
+
+
+@app.route('/api/leaderboard')
+def get_leaderboard():
+    """Return all leaderboard entries grouped by challenge."""
+    return jsonify(fetch_leaderboard_data())
+
+
+@app.route('/api/leaderboard/submit', methods=['POST'])
+def submit_leaderboard_score():
+    """Accept one camper score submission."""
+    data = request.get_json(silent=True) or {}
+
+    camper_name = str(data.get('camper_name', '')).strip()
+    challenge_key = str(data.get('challenge_key', '')).strip()
+    starting_zone = str(data.get('starting_zone', '')).strip()
+    level_detail = str(data.get('level_detail', '')).strip()
+    run_notes = str(data.get('run_notes', '')).strip()
+
+    if not camper_name:
+        return jsonify({'error': 'Camper name is required.'}), 400
+
+    if challenge_key not in LEADERBOARD_CHALLENGES:
+        return jsonify({'error': 'Invalid challenge selected.'}), 400
+
+    try:
+        score = int(data.get('score'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Score must be a whole number.'}), 400
+
+    if score < 0:
+        return jsonify({'error': 'Score must be 0 or greater.'}), 400
+
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            '''
+            INSERT INTO challenge_leaderboard (camper_name, challenge_key, score, starting_zone, level_detail, run_notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''',
+            (camper_name, challenge_key, score, starting_zone or None, level_detail or None, run_notes or None)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'message': 'Score submitted successfully.',
+        'leaderboard': fetch_leaderboard_data()
+    })
+
+
+@app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
+def delete_leaderboard_score(entry_id):
+    """Remove a leaderboard entry by id (admin use)."""
+    ensure_leaderboard_table()
+    db_file = get_database_path()
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute('DELETE FROM challenge_leaderboard WHERE id = ?', (entry_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True, 'leaderboard': fetch_leaderboard_data()})
+
+
 # Initialize database on module load (Railway compatibility)
 print("🔧 Initializing database on startup...")
 init_db_with_logging()
