@@ -132,6 +132,27 @@
         textarea { min-height: 76px; resize: vertical; }
         .helper { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; }
 
+        .time-ticker-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(80px, 1fr));
+            gap: 8px;
+        }
+
+        .override-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px dashed #f59e0b;
+            border-radius: 10px;
+            background: #fffbeb;
+        }
+
+        .override-row input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
         .btn {
             margin-top: 4px;
             border: none;
@@ -378,9 +399,18 @@
                         </div>
 
                         <div>
-                            <label for="completion_time">Completion Time <span style="font-weight:400;">(Tie-break)</span></label>
-                            <input id="completion_time" name="completion_time" type="text" placeholder="mm:ss or seconds (e.g. 1:35 or 95)">
-                            <div class="helper">Used only when score is tied. Faster time wins tie-break.</div>
+                            <label>Completion Time <span style="font-weight:400;">(Tie-break)</span></label>
+                            <div class="time-ticker-grid">
+                                <input id="completion_hours" name="completion_hours" type="number" min="0" placeholder="Hours">
+                                <input id="completion_minutes" name="completion_minutes" type="number" min="0" max="59" placeholder="Minutes">
+                                <input id="completion_seconds" name="completion_seconds" type="number" min="0" max="59" placeholder="Seconds">
+                            </div>
+                            <div class="helper">Used only when score is tied. Faster total time wins tie-break.</div>
+                        </div>
+
+                        <div class="override-row">
+                            <input id="allow_after_deadline" name="allow_after_deadline" type="checkbox">
+                            <label for="allow_after_deadline" style="margin:0; font-weight:600;">Staff override: allow score entry after 2:00pm</label>
                         </div>
 
                         <div id="startingZoneWrap" style="display:none;">
@@ -530,7 +560,10 @@
                 camper_name:   form.camper_name.value.trim(),
                 challenge_key: form.challenge_key.value,
                 score:         Number(form.score.value),
-                completion_time: form.completion_time.value.trim(),
+                completion_hours: form.completion_hours.value.trim(),
+                completion_minutes: form.completion_minutes.value.trim(),
+                completion_seconds: form.completion_seconds.value.trim(),
+                allow_after_deadline: form.allow_after_deadline.checked,
                 starting_zone: form.starting_zone.value.trim(),
                 level_detail:  form.level_detail.value.trim(),
                 run_notes:     form.run_notes.value.trim()
@@ -545,7 +578,9 @@
                 if (!res.ok) { setScoreStatus(result.error || 'Could not save score.', 'error'); return; }
                 setScoreStatus('Score saved!', 'success');
                 form.score.value = '';
-                form.completion_time.value = '';
+                form.completion_hours.value = '';
+                form.completion_minutes.value = '';
+                form.completion_seconds.value = '';
                 form.run_notes.value = '';
                 await loadLeaderboard();
             } catch {

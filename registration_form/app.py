@@ -2506,6 +2506,37 @@ def parse_completion_time_to_seconds(raw_value):
     raise ValueError('Completion time must be seconds (e.g. 95) or mm:ss (e.g. 1:35).')
 
 
+def parse_completion_hms_to_seconds(hours_raw, minutes_raw, seconds_raw):
+    """Parse completion time from hour/minute/second fields."""
+    h_val = str(hours_raw or '').strip()
+    m_val = str(minutes_raw or '').strip()
+    s_val = str(seconds_raw or '').strip()
+
+    if not h_val and not m_val and not s_val:
+        return None
+
+    if h_val and not re.fullmatch(r'\d+', h_val):
+        raise ValueError('Hours must be a whole number.')
+    if m_val and not re.fullmatch(r'\d+', m_val):
+        raise ValueError('Minutes must be a whole number.')
+    if s_val and not re.fullmatch(r'\d+', s_val):
+        raise ValueError('Seconds must be a whole number.')
+
+    hours = int(h_val) if h_val else 0
+    minutes = int(m_val) if m_val else 0
+    seconds = int(s_val) if s_val else 0
+
+    if minutes >= 60 or seconds >= 60:
+        raise ValueError('Minutes and seconds must be between 0 and 59.')
+
+    return (hours * 3600) + (minutes * 60) + seconds
+
+
+def is_submission_locked_after_2pm():
+    """Return True after 2:00pm local server time."""
+    return datetime.now().time() >= datetime.strptime('14:00', '%H:%M').time()
+
+
 def fetch_leaderboard_data():
     """Return ranked leaderboard entries grouped by challenge."""
     ensure_leaderboard_table()
@@ -2601,6 +2632,10 @@ def submit_leaderboard_score():
     starting_zone = str(data.get('starting_zone', '')).strip()
     level_detail = str(data.get('level_detail', '')).strip()
     completion_time = data.get('completion_time', '')
+    completion_hours = data.get('completion_hours', '')
+    completion_minutes = data.get('completion_minutes', '')
+    completion_seconds_raw = data.get('completion_seconds', '')
+    allow_after_deadline = bool(data.get('allow_after_deadline', False))
     run_notes = str(data.get('run_notes', '')).strip()
 
     if not camper_name:
@@ -2608,6 +2643,9 @@ def submit_leaderboard_score():
 
     if challenge_key not in LEADERBOARD_CHALLENGES:
         return jsonify({'error': 'Invalid challenge selected.'}), 400
+
+    if is_submission_locked_after_2pm() and not allow_after_deadline:
+        return jsonify({'error': 'Score entry is locked after 2:00pm. Enable staff override to submit.'}), 400
 
     try:
         score = int(data.get('score'))
@@ -2618,7 +2656,13 @@ def submit_leaderboard_score():
         return jsonify({'error': 'Score must be 0 or greater.'}), 400
 
     try:
-        completion_time_seconds = parse_completion_time_to_seconds(completion_time)
+        completion_time_seconds = parse_completion_hms_to_seconds(
+            completion_hours,
+            completion_minutes,
+            completion_seconds_raw
+        )
+        if completion_time_seconds is None:
+            completion_time_seconds = parse_completion_time_to_seconds(completion_time)
     except ValueError as err:
         return jsonify({'error': str(err)}), 400
 
