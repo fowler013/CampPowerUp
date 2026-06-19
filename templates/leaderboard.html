@@ -705,11 +705,28 @@
             if (res.ok) await loadQueues();
         }
 
+        function startLiveRefresh() {
+            setInterval(async () => {
+                try {
+                    await loadLeaderboard();
+
+                    const activeId = (document.activeElement && document.activeElement.id) || '';
+                    const isTypingQueueName = activeId.startsWith('sq-name-');
+                    if (!isTypingQueueName) {
+                        await loadQueues();
+                    }
+                } catch (_) {
+                    // Keep UI usable if one refresh cycle fails.
+                }
+            }, 8000);
+        }
+
         // Init
         document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([loadChallenges(), loadQueues(), loadLeaderboard()]);
             document.getElementById('challenge_key').addEventListener('change', updateChallengeFields);
             document.getElementById('scoreForm').addEventListener('submit', handleSubmit);
+            startLiveRefresh();
         });
     </script>
 </body>

@@ -15,6 +15,11 @@ CSV_FILE_PATH = 'data/Camp_Power_Up_past_forms - Sheet1.csv'
 DB_FILE = 'camp_power_up.db'
 REGISTRATION_DB = 'registration_form/registration_submissions.db'
 
+
+def get_challenge_db_path():
+    """Use the shared registration DB for challenge leaderboard and signups."""
+    return REGISTRATION_DB
+
 LEADERBOARD_CHALLENGES = {
     'dk_bannooza': {
         'label': 'DK Bannooza (Switch 2)',
@@ -51,7 +56,7 @@ LEADERBOARD_CHALLENGES = {
 
 def ensure_leaderboard_table():
     """Create leaderboard table if it does not already exist."""
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute('''
             CREATE TABLE IF NOT EXISTS challenge_leaderboard (
@@ -141,7 +146,7 @@ def is_submission_locked_after_2pm():
 def fetch_leaderboard_data():
     """Fetch ranked leaderboard entries for all configured challenges."""
     ensure_leaderboard_table()
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     conn.row_factory = sqlite3.Row
     try:
         leaderboard = {}
@@ -463,7 +468,7 @@ def submit_leaderboard_score():
         return jsonify({'error': str(err)}), 400
 
     ensure_leaderboard_table()
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute(
             '''
@@ -497,7 +502,7 @@ def submit_leaderboard_score():
 
 def ensure_signups_table():
     """Create challenge_signups table if it does not already exist."""
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute('''
             CREATE TABLE IF NOT EXISTS challenge_signups (
@@ -516,7 +521,7 @@ def ensure_signups_table():
 def fetch_signup_queues():
     """Return all sign-up queues grouped by challenge, ordered by sign-up time."""
     ensure_signups_table()
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     conn.row_factory = sqlite3.Row
     try:
         queues = {}
@@ -548,7 +553,7 @@ def add_signup():
         return jsonify({'error': 'Camper name is required.'}), 400
     if challenge_key not in LEADERBOARD_CHALLENGES:
         return jsonify({'error': 'Invalid challenge.'}), 400
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute('INSERT INTO challenge_signups (camper_name, challenge_key, status) VALUES (?, ?, ?)', (camper_name, challenge_key, 'waiting'))
         conn.commit()
@@ -563,7 +568,7 @@ def update_signup_status(signup_id):
     new_status = str(data.get('status', '')).strip()
     if new_status not in ('waiting', 'playing', 'done', 'skipped'):
         return jsonify({'error': 'Invalid status.'}), 400
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute('UPDATE challenge_signups SET status = ? WHERE id = ?', (new_status, signup_id))
         conn.commit()
@@ -574,7 +579,7 @@ def update_signup_status(signup_id):
 
 @app.route('/api/signups/<int:signup_id>/remove', methods=['DELETE'])
 def remove_signup(signup_id):
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(get_challenge_db_path())
     try:
         conn.execute('DELETE FROM challenge_signups WHERE id = ?', (signup_id,))
         conn.commit()
