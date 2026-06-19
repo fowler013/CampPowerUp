@@ -590,25 +590,26 @@ def remove_signup(signup_id):
 
 @app.route('/api/stats')
 def get_stats():
-    """Get basic statistics about the campers from combined data sources."""
+    """Get basic statistics about the campers from combined data sources.
+    
+    Note: Sensitive medical data (allergies, sensory needs) is excluded from
+    public stats for privacy. This info is available in admin dashboard only.
+    """
     combined_data = get_combined_camper_data()
     
     if not combined_data:
         return jsonify({
             'total_campers': 0,
             'returning_campers': 0,
-            'with_allergies': 0,
-            'with_sensory_issues': 0,
             'bringing_switch': 0,
             'new_registrations': 0,
             'historical_records': 0
         })
     
     # Calculate statistics from combined data
+    # Sensitive data (allergies, sensory) excluded for privacy
     total_campers = len(combined_data)
     returning_campers = sum(1 for camper in combined_data if camper['is_returning'])
-    with_allergies = sum(1 for camper in combined_data if camper['has_allergies'])
-    with_sensory = sum(1 for camper in combined_data if camper['has_sensory_issues'])
     bringing_switch = sum(1 for camper in combined_data if camper['bringing_switch'])
     
     # Additional stats for data sources
@@ -618,8 +619,6 @@ def get_stats():
     return jsonify({
         'total_campers': total_campers,
         'returning_campers': returning_campers,
-        'with_allergies': with_allergies,
-        'with_sensory_issues': with_sensory,
         'bringing_switch': bringing_switch,
         'new_registrations': new_registrations,
         'historical_records': historical_records
@@ -678,10 +677,14 @@ def get_data(query):
 
 @app.route('/api/campers')
 def get_campers():
-    """Get the full list of campers from combined data sources."""
+    """Get the list of campers from combined data sources.
+    
+    Note: Sensitive medical data (allergies, sensory needs) is excluded from
+    public API for privacy. This info is available in admin dashboard only.
+    """
     combined_data = get_combined_camper_data()
     
-    # Format data to match the original expected structure
+    # Format data - exclude sensitive medical information for privacy
     formatted_campers = []
     for camper in combined_data:
         formatted_camper = {
@@ -690,38 +693,17 @@ def get_campers():
             'age': camper['age'],
             'grade': camper.get('grade', ''),
             'is_returning': 'Yes' if camper['is_returning'] else 'No',
-            'bringing_switch': 'Yes' if camper['bringing_switch'] else 'No',
-            'has_allergies': 'Yes' if camper['has_allergies'] else 'No',
-            'has_sensory_issues': 'Yes' if camper['has_sensory_issues'] else 'No'
+            'bringing_switch': 'Yes' if camper['bringing_switch'] else 'No'
+            # Note: has_allergies and has_sensory_issues removed for privacy
         }
         formatted_campers.append(formatted_camper)
     
     return jsonify(formatted_campers)
 
-@app.route('/api/special_needs')
-def get_special_needs():
-    """Get campers with special needs (allergies or sensory issues) from combined data."""
-    combined_data = get_combined_camper_data()
-    special_needs = []
-    
-    for camper in combined_data:
-        # Add allergy information
-        if camper['has_allergies'] and camper.get('allergy_details'):
-            special_needs.append({
-                'name': f"{camper['first_name']} {camper['last_name']}",
-                'type': 'Allergies',
-                'description': camper['allergy_details']
-            })
-        
-        # Add sensory information
-        if camper['has_sensory_issues'] and camper.get('sensory_details'):
-            special_needs.append({
-                'name': f"{camper['first_name']} {camper['last_name']}",
-                'type': 'Sensory Issues',
-                'description': camper['sensory_details']
-            })
-    
-    return jsonify(special_needs)
+# Note: /api/special_needs endpoint has been removed for privacy.
+# Sensitive medical data (allergies, sensory needs) is now only available
+# through the authenticated admin dashboard at /admin.
+# See registration_form/app.py for admin-only access to this data.
 
 @app.route('/api/games')
 def get_games():

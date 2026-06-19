@@ -1,31 +1,61 @@
 # Camp Power-Up Security .gitignore
 # ==================================
+# IMPORTANT: This project handles camper PII - be strict about what gets committed
 
-# Environment files with sensitive data
+# ===========================================
+# ENVIRONMENT FILES - NEVER COMMIT
+# ===========================================
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+!.env.template
+*.env
+sendgrid.env
 
-# Security credentials and keys
+# ===========================================
+# SECURITY CREDENTIALS - NEVER COMMIT
+# ===========================================
 INITIAL_ADMIN_CREDENTIALS.txt
 *.key
 *.pem
 *.crt
+*.p12
 security_key.key
+credentials*.json
+secrets*.json
 
-# Database files
+# ===========================================
+# DATABASE FILES - CONTAIN PII, NEVER COMMIT
+# ===========================================
 *.db
 *.sqlite
 *.sqlite3
+camp_power_up.db
+camper_data.db
+registration_submissions.db
 
-# Exception: Allow historical data for deployment
-!camp_power_up.db
+# ===========================================
+# CAMPER DATA FILES - PII, NEVER COMMIT
+# ===========================================
+# CSV files with camper information
+data/*.csv
+data/*.xlsx
+data/*.xls
+*.csv
 
-# Auto-backup files (keep local, don't commit to git)
-registration_form/registrations_backup.json
-registrations.json
+# Backup files with registration data
+registration_form/backups/
+registration_form/registrations_backup*.json
+registrations*.json
+*_backup*.json
 
-# Python
+# Audit logs may contain sensitive info
+registration_form/audit_logs/
+audit_log*.json
+
+# ===========================================
+# PYTHON
+# ===========================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -48,41 +78,35 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual Environment
+# ===========================================
+# VIRTUAL ENVIRONMENT
+# ===========================================
 .venv/
 venv/
 ENV/
 env/
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Camp Data - NEVER commit sensitive information
-data/*.csv
-data/*.xlsx
-data/*.xls
-*.csv
-camp_power_up.db
-
-# Exception: Allow specific historical CSV for deployment
-!data/Camp_Power_Up_past_forms\ -\ Sheet1.csv
-camper_data.db
-
-# IDE
+# ===========================================
+# IDE & OS
+# ===========================================
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Logs
+# ===========================================
+# LOGS
+# ===========================================
 *.log
+logs/
 
-# Environment variables
-.env
-sendgrid.env
+# ===========================================
+# ALLOWED CONFIG TEMPLATES (no secrets)
+# ===========================================
+!config/.env.example
+!config/.env.template
+!config/.env.production.example
+!config/.env.staging.example
+!registration_form/.env.example

@@ -229,6 +229,17 @@
     </div>
 
     <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; {% if category == 'success' %}background: #d4edda; border: 1px solid #28a745; color: #155724;{% elif category == 'error' %}background: #f8d7da; border: 1px solid #dc3545; color: #721c24;{% else %}background: #d1ecf1; border: 1px solid #17a2b8; color: #0c5460;{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-number">{{ historical_data|length }}</div>
@@ -241,6 +252,38 @@
             <div class="stat-card">
                 <div class="stat-number">{{ (historical_data|length) + (csv_data|length) }}</div>
                 <div class="stat-label">Total Historical</div>
+            </div>
+        </div>
+
+        <!-- CSV Upload Section -->
+        <div class="section" style="margin-bottom: 20px;">
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h2>📤 Import Historical Data</h2>
+                    <p>Upload a CSV file with 2025 historical camper data</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <form action="/admin/upload-historical" method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" name="csv_file" accept=".csv" required 
+                               style="padding: 8px; border: 2px solid #667eea; border-radius: 8px; background: white;">
+                        <button type="submit" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            📥 Import CSV
+                        </button>
+                    </form>
+                    <form action="/admin/clear-historical" method="POST" onsubmit="return confirm('⚠️ This will delete all historical (HIST_) records. Are you sure?');">
+                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            🗑️ Clear Historical
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div style="padding: 15px 20px; background: #f8f9fa; border-top: 1px solid #eee;">
+                <p style="margin: 0; color: #666; font-size: 14px;">
+                    <strong>Expected CSV columns:</strong> Timestamp, Email Address, Childs First Name?, Childs Last Name?, Grade?, Age?, Has your Child attended Camp Power-Up before?, etc.
+                </p>
+                <p style="margin: 5px 0 0 0; color: #856404; font-size: 13px;">
+                    💡 <strong>Tip:</strong> If import shows "duplicates", click "Clear Historical" first, then reimport.
+                </p>
             </div>
         </div>
 

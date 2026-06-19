@@ -1,4 +1,4 @@
-# Railway deployment requirements - with pandas compatibility fix
+# Railway deployment requirements
 Flask==2.3.3
 Werkzeug==2.3.7
 gunicorn==21.2.0
@@ -6,13 +6,13 @@ gunicorn==21.2.0
 # Database - PostgreSQL for Railway
 psycopg2-binary==2.9.9
 
-# Data processing - use older pandas version to avoid Python 3.13 issues
-pandas==1.5.3
+# Data processing - Python 3.13 compatible versions
+pandas>=2.2.0
+numpy>=1.26.0
 
 # Email service for Railway (SMTP alternative)
-sendgrid==6.10.0
-requests==2.31.0
-numpy==1.24.4
+sendgrid>=6.10.0
+requests>=2.31.0
 
 # Environment and utilities
-python-dotenv==1.0.0
+python-dotenv>=1.0.0

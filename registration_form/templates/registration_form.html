@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camp Power-Up Registration 2025</title>
+    <title>{{ camp_title }}</title>
     <style>
         * {
             margin: 0;
@@ -299,6 +299,12 @@
             </div>
         </div>
 
+        {% if other_session_link %}
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 12px 0; border-radius: 6px; text-align: center;">
+            <a href="{{ other_session_link.url }}" style="color: #856404; font-weight: 600; text-decoration: none;">{{ other_session_link.label }}</a>
+        </div>
+        {% endif %}
+
         <div class="pricing-info">
             <h3>💰 Registration Fees</h3>
             <p><strong>{{ pricing.returning_text }}</strong></p>
@@ -307,6 +313,7 @@
         </div>
 
         <form id="registrationForm" class="form-container">
+            <input type="hidden" name="camp_session_id" value="{{ camp_session_id|default('june-2026') }}">
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -557,7 +564,7 @@
             <!-- Payment Information -->
             <div class="payment-info">
                 <h3>💳 Payment Information</h3>
-                <p>After submitting this form, you can send your $50 deposit via:</p>
+                <p>After submitting this form, you can send your ${{ deposit_amount|default(50) }} deposit via:</p>
                 <div class="payment-methods">
                     <div class="payment-method">Cash App<br><strong>$TevinFowler</strong></div>
                     <div class="payment-method">Venmo<br><strong>@Brandon-Ballard</strong></div>

@@ -17,7 +17,17 @@ from sendgrid.helpers.mail import Mail, Email, To, Content
 
 # Import camp configuration
 try:
-    from camp_config import CAMP_CONFIG, get_camp_title, get_camp_subtitle, get_pricing_text
+    from camp_config import (
+        CAMP_CONFIG,
+        SESSIONS,
+        DEFAULT_SESSION_ID,
+        get_camp_title,
+        get_camp_subtitle,
+        get_pricing_text,
+        get_session_config,
+        get_session_label,
+        get_pricing_text_for,
+    )
 except ImportError:
     # Fallback config if camp_config.py is not available
     CAMP_CONFIG = {
@@ -30,6 +40,8 @@ except ImportError:
             'returning_camper': {'total': 80, 'deposit': 50, 'final_payment': 30}
         }
     }
+    SESSIONS = {'june-2026': CAMP_CONFIG}
+    DEFAULT_SESSION_ID = 'june-2026'
     def get_camp_title(): return CAMP_CONFIG['camp_name']
     def get_camp_subtitle(): return 'Nintendo Switch Gaming Camp Registration'
     def get_pricing_text():
@@ -38,6 +50,9 @@ except ImportError:
             'new_text': f"New Campers: ${CAMP_CONFIG['pricing']['new_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['new_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['new_camper']['total']} total",
             'payment_deadline': f"Camp runs {CAMP_CONFIG['camp_dates']}, {CAMP_CONFIG['daily_hours']} daily."
         }
+    def get_session_config(session_id): return SESSIONS.get(session_id)
+    def get_session_label(cfg): return f"{cfg.get('camp_name', 'Camp Power-Up')} - {cfg.get('camp_dates', 'Unknown')}"
+    def get_pricing_text_for(cfg): return get_pricing_text()
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -242,7 +257,7 @@ def init_db_with_logging():
             print("🔧 Migrating database: Adding camp_session column...")
             cursor.execute("ALTER TABLE registrations ADD COLUMN camp_session TEXT")
             # Update existing records with a default session
-            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2026 - June 15th-19th' WHERE camp_session IS NULL")
+            cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2025 - November 24th-26th' WHERE camp_session IS NULL")
             print("✅ Migration complete: camp_session column added")
         
         conn.commit()
@@ -373,9 +388,29 @@ def send_parent_confirmation_email(registration_data):
         print(f"💰 Email pricing debug - raw value: {is_returning_raw} (type: {type(is_returning_raw)})")
         print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
         
-        deposit = "$50"
-        final_payment = "$30" if is_returning else "$50"
-        total = "$80" if is_returning else "$100"
+        # Resolve session-specific display + pricing. For backward compatibility
+        # we keep the prior hardcoded values when the session is the default
+        # (June) or unknown, so live June emails are unaffected.
+        session_id = registration_data.get('camp_session_id') or DEFAULT_SESSION_ID
+        session_cfg = get_session_config(session_id)
+        if session_cfg and session_id != DEFAULT_SESSION_ID:
+            tier_key = 'returning_camper' if is_returning else 'new_camper'
+            tier = session_cfg['pricing'][tier_key]
+            deposit = f"${tier['deposit']}"
+            final_payment = f"${tier['final_payment']}"
+            total = f"${tier['total']}"
+            camp_name_display = session_cfg.get('camp_name', 'Camp Power-Up')
+            camp_dates_display = session_cfg.get('camp_dates', '')
+            daily_hours_display = session_cfg.get('daily_hours', '10:00 AM - 3:00 PM')
+            final_due_display = session_cfg.get('final_payment_due', '')
+        else:
+            deposit = "$50"
+            final_payment = "$130" if is_returning else "$150"
+            total = "$180" if is_returning else "$200"
+            camp_name_display = "Camp Power-Up Summer 2026"
+            camp_dates_display = "June 15-19, 2026"
+            daily_hours_display = "10:00 AM - 3:00 PM"
+            final_due_display = "June 1st"
         
         print(f"💰 Calculated prices - Deposit: {deposit}, Final: {final_payment}, Total: {total}")
         
@@ -403,7 +438,7 @@ def send_parent_confirmation_email(registration_data):
                 <div class="header">
                     <div class="success-icon">✅</div>
                     <h1>Registration Confirmed!</h1>
-                    <p>Welcome to Camp Power-Up 2026</p>
+                    <p>Welcome to {camp_name_display}</p>
                 </div>
                 
                 <div class="content">
@@ -417,20 +452,20 @@ def send_parent_confirmation_email(registration_data):
                         <p><strong>Camper:</strong> {child_name}</p>
                         <p><strong>Age:</strong> {registration_data.get('child_age', 'N/A')}</p>
                         <p><strong>Grade:</strong> {registration_data.get('child_grade', 'N/A')}</p>
-                        <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
-                        <p><strong>Camp Times:</strong> 10:00 AM - 3:00 PM daily</p>
+                        <p><strong>Camp Dates:</strong> {camp_dates_display}</p>
+                        <p><strong>Camp Times:</strong> {daily_hours_display} daily</p>
                     </div>
                     
                     <div class="payment-box">
                         <h2>💳 Payment Information</h2>
                         <p><strong>Total Fee:</strong> {total}</p>
                         <p><strong>Deposit Required Now:</strong> {deposit}</p>
-                        <p><strong>Final Payment:</strong> {final_payment} (due before June 1st)</p>
+                        <p><strong>Final Payment:</strong> {final_payment} (due before {final_due_display})</p>
                         
                         <p><strong>Payment Methods:</strong></p>
                         <ul>
-                            <li><strong>CashApp:</strong> camppowerup2025@gmail.com</li>
-                            <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
+                            <li><strong>CashApp:</strong> $TevinFowler</li>
+                            <li><strong>Venmo:</strong> @Tevin-Fowler or @Brandon-Ballard</li>
                         </ul>
                         
                         <p>⚠️ <strong>Important:</strong> Include "{child_name}" or "{submission_id}" in the payment memo</p>
@@ -441,13 +476,13 @@ def send_parent_confirmation_email(registration_data):
                         <ol>
                             <li>Complete your {deposit} deposit payment via CashApp or Venmo</li>
                             <li>Save this confirmation email for your records</li>
-                            <li>Mark your calendar: June 15-19, 2026</li>
-                            <li>Pay final {final_payment} before camp starts</li>
+                            <li>Mark your calendar: {camp_dates_display}</li>
+                            <li>Pay final {final_payment} before {final_due_display}</li>
                         </ol>
                     </div>
                     
                     <h3>❓ Questions or Need to Make Changes?</h3>
-                    <p>Email us at: <a href="mailto:camppowerup2025@gmail.com">camppowerup2025@gmail.com</a></p>
+                    <p>Email us at: <a href="mailto:camppowerup2026@gmail.com">camppowerup2026@gmail.com</a></p>
                     <p>Include your confirmation ID: <code>{submission_id}</code></p>
                     
                     <p style="margin-top: 30px;">We can't wait to see {child_name.split()[0]} at camp!</p>
@@ -457,7 +492,7 @@ def send_parent_confirmation_email(registration_data):
                 </div>
                 
                 <div class="footer">
-                    <p>Camp Power-Up 2026 | June 15-19, 2026</p>
+                    <p>{camp_name_display} | {camp_dates_display}</p>
                     <p><a href="https://camppowerup-registration.up.railway.app/confirmation/{submission_id}">View Your Confirmation Online</a></p>
                 </div>
             </div>
@@ -466,7 +501,7 @@ def send_parent_confirmation_email(registration_data):
         """
         
         text_content = f"""
-        Camp Power-Up 2026 - Registration Confirmed
+        {camp_name_display} - Registration Confirmed
         
         Dear {parent_name},
         
@@ -477,27 +512,27 @@ def send_parent_confirmation_email(registration_data):
         Camper: {child_name}
         Age: {registration_data.get('child_age', 'N/A')}
         Grade: {registration_data.get('child_grade', 'N/A')}
-        Camp Dates: June 15-19, 2026
-        Camp Times: 10:00 AM - 3:00 PM daily
+        Camp Dates: {camp_dates_display}
+        Camp Times: {daily_hours_display} daily
         
         PAYMENT INFORMATION:
         Total Fee: {total}
         Deposit Required Now: {deposit}
-        Final Payment: {final_payment} (due before June 1st)
+        Final Payment: {final_payment} (due before {final_due_display})
         
         Payment Methods:
-        - CashApp: camppowerup2025@gmail.com
-        - Venmo: camppowerup2025@gmail.com
+        - CashApp: $TevinFowler
+        - Venmo: @Tevin-Fowler or @Brandon-Ballard
         
         IMPORTANT: Include "{child_name}" in the payment memo
         
         NEXT STEPS:
         1. Complete your {deposit} deposit payment
         2. Save this email for your records
-        3. Mark your calendar: June 15-19, 2026
-        4. Pay final {final_payment} before camp starts
+        3. Mark your calendar: {camp_dates_display}
+        4. Pay final {final_payment} before {final_due_display}
         
-        Questions? Email: camppowerup2025@gmail.com
+        Questions? Email: camppowerup2026@gmail.com
         Include your confirmation ID: {submission_id}
         
         View online: https://camppowerup-registration.up.railway.app/confirmation/{submission_id}
@@ -624,19 +659,9 @@ def send_admin_notification_email(registration_data):
         print(f"❌ Admin email error: {str(e)}")
         return False
 
-# Helper functions for templates
-def get_camp_title():
-    return "Camp Power-Up 2026 Registration"
-
-def get_camp_subtitle():
-    return "Nintendo Switch Gaming Camp - June 15-19, 2026"
-
-def get_pricing_text():
-    return "Registration fees listed below"
-
 # Admin credentials
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2025!')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2026!')
 
 def require_admin_auth(f):
     """Decorator to require admin authentication."""
@@ -698,7 +723,10 @@ def home():
                              camp_title=get_camp_title() + ' Registration',
                              camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', 'March 26th-27th')}",
                              pricing_text='Registration fees listed below',
-                             pricing=pricing)
+                             pricing=pricing,
+                             camp_session_id='june-2026',
+                             deposit_amount=CAMP_CONFIG.get('pricing', {}).get('new_camper', {}).get('deposit', 50),
+                             other_session_link={'url': '/session/july-2026', 'label': 'Registering for our 2-day July 20-21 mini camp? Click here.'})
     except Exception as e:
         # Fallback if template fails
         return f'''
@@ -710,6 +738,31 @@ def home():
         <p><a href="/test-db">Test Database</a></p>
         </body></html>
         '''
+
+
+@app.route('/session/july-2026')
+def july_2026_registration():
+    """Registration form for the July 20-21, 2026 2-day session."""
+    cfg = get_session_config('july-2026') or CAMP_CONFIG
+    pricing = get_pricing_text_for(cfg)
+    camp_config = {
+        'camp_name': cfg.get('camp_name'),
+        'camp_dates': cfg.get('camp_dates'),
+        'camp_times': cfg.get('daily_hours'),
+        'pricing': cfg.get('pricing', {})
+    }
+    return render_template(
+        'registration_form.html',
+        camp_config=camp_config,
+        config=cfg,
+        camp_title=cfg.get('camp_name', 'Camp Power-Up') + ' Registration',
+        camp_subtitle=f"Nintendo Switch Gaming Mini Camp - {cfg.get('camp_dates')}",
+        pricing_text='Registration fees listed below',
+        pricing=pricing,
+        camp_session_id='july-2026',
+        deposit_amount=cfg.get('pricing', {}).get('new_camper', {}).get('deposit', 25),
+        other_session_link={'url': '/', 'label': 'Looking for the June 15-19 camp? Click here.'}
+    )
 
 @app.route('/faq')
 def faq():
@@ -1215,8 +1268,13 @@ def submit():
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
-        # Get current camp session
-        current_session = f"{CAMP_CONFIG.get('camp_name', 'Camp Power-Up')} - {CAMP_CONFIG.get('camp_dates', 'Unknown')}"
+        # Determine which camp session this registration is for. The form
+        # posts a hidden `camp_session_id` field; fall back to the current
+        # default (June 2026) for backward compatibility.
+        session_id = json_data.get('camp_session_id') or json_data.get('campSessionId') or DEFAULT_SESSION_ID
+        session_cfg = get_session_config(session_id) or CAMP_CONFIG
+        current_session = get_session_label(session_cfg)
+        print(f"📅 Registration session: {session_id} -> {current_session}")
         
         cursor.execute("""
             INSERT INTO registrations (
@@ -1291,7 +1349,9 @@ def submit():
             'returning_years': data['returning_years'],
             'bringing_own_switch': data['bringing_own_switch'],
             'how_heard_about_camp': data['how_heard_about_camp'],
-            'additional_comments': data['additional_comments']
+            'additional_comments': data['additional_comments'],
+            'camp_session_id': session_id,
+            'camp_session': current_session,
         }
         
         # Send parent confirmation email
@@ -1384,7 +1444,7 @@ def confirmation(submission_id):
                 return f'''
                 <html>
                 <head>
-                    <title>Registration Confirmed - Camp Power-Up 2026</title>
+                    <title>Registration Confirmed - Camp Power-Up 2025</title>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
@@ -1441,12 +1501,12 @@ def confirmation(submission_id):
                                 <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
                             </ul>
                             <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
-                            <p><strong>Final Payment:</strong> Due before June 1st</p>
+                            <p><strong>Final Payment:</strong> Due before November 24th</p>
                         </div>
 
                         <div class="contact-info">
                             <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> June 15-19, 2026</p>
+                            <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
                             <p><strong>Camp Times:</strong> 10am-3pm daily</p>
                             <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
                             <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
@@ -1458,7 +1518,7 @@ def confirmation(submission_id):
                         </div>
                         
                         <p style="text-align: center; color: #6c757d; margin-top: 30px;">
-                            <small>Camp Power-Up 2026 • Nintendo Switch Gaming Camp</small>
+                            <small>Camp Power-Up 2025 • Nintendo Switch Gaming Camp</small>
                         </p>
                     </div>
                 </body>
@@ -1738,10 +1798,213 @@ def admin_historical():
         return render_template('admin_historical.html', 
                              historical_data=historical_data,
                              registrations=historical_registrations,
-                             stats=stats)
+                             stats=stats,
+                             hist_count=total_hist,
+                             csv_data=[])
                              
     except Exception as e:
         flash(f'Error loading historical data: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/metrics')
+@require_admin_auth
+def admin_metrics():
+    """View metrics dashboard with session comparisons."""
+    import csv
+    import json
+    from collections import Counter
+    
+    try:
+        sessions = []
+        all_ages = []
+        all_grades = []
+        total_new = 0
+        total_returning = 0
+        
+        # --- Load 2025 Historical Data from CSV ---
+        csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        historical_2025 = []
+        
+        if os.path.exists(csv_path):
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    historical_2025.append(row)
+            
+            # Parse 2025 data
+            ages_2025 = []
+            grades_2025 = []
+            returning_2025 = 0
+            new_2025 = 0
+            
+            for row in historical_2025:
+                # Get age
+                age_str = row.get('Age?', '').strip()
+                if age_str and age_str.isdigit():
+                    ages_2025.append(int(age_str))
+                    all_ages.append(int(age_str))
+                
+                # Get grade
+                grade = row.get('Grade?', '').strip()
+                if grade:
+                    grades_2025.append(grade)
+                    all_grades.append(grade)
+                
+                # Check returning status
+                is_returning = row.get('Has your Child attended Camp Power-Up before?', '').lower() == 'yes'
+                if is_returning:
+                    returning_2025 += 1
+                    total_returning += 1
+                else:
+                    new_2025 += 1
+                    total_new += 1
+            
+            # Calculate revenue for 2025 (old pricing: $80 returning, $100 new)
+            revenue_2025 = (returning_2025 * 80) + (new_2025 * 100)
+            
+            sessions.append({
+                'name': '2025 Sessions (Historical)',
+                'total': len(historical_2025),
+                'new_campers': new_2025,
+                'returning_campers': returning_2025,
+                'avg_age': round(sum(ages_2025) / len(ages_2025), 1) if ages_2025 else 0,
+                'revenue': revenue_2025
+            })
+        
+        # --- Load 2026 Data from Database ---
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get all 2026 registrations (non-historical)
+        cursor.execute("""
+            SELECT * FROM registrations 
+            WHERE submission_id NOT LIKE 'HIST_%'
+            ORDER BY timestamp DESC
+        """)
+        registrations_2026 = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        # Parse 2026 data
+        ages_2026 = []
+        grades_2026 = []
+        returning_2026 = 0
+        new_2026 = 0
+        
+        for reg in registrations_2026:
+            # Get age
+            age = reg.get('child_age')
+            if age:
+                ages_2026.append(int(age))
+                all_ages.append(int(age))
+            
+            # Get grade
+            grade = reg.get('child_grade', '')
+            if grade:
+                grades_2026.append(grade)
+                all_grades.append(grade)
+            
+            # Check returning status
+            is_returning = reg.get('is_returning_camper')
+            if isinstance(is_returning, str):
+                is_returning = is_returning.lower() in ['true', '1', 'yes']
+            else:
+                is_returning = bool(is_returning)
+            
+            if is_returning:
+                returning_2026 += 1
+                total_returning += 1
+            else:
+                new_2026 += 1
+                total_new += 1
+        
+        # Calculate revenue for 2026 ($180 returning, $200 new)
+        revenue_2026 = (returning_2026 * 180) + (new_2026 * 200)
+        
+        sessions.append({
+            'name': 'Summer 2026',
+            'total': len(registrations_2026),
+            'new_campers': new_2026,
+            'returning_campers': returning_2026,
+            'avg_age': round(sum(ages_2026) / len(ages_2026), 1) if ages_2026 else 0,
+            'revenue': revenue_2026
+        })
+        
+        # --- Calculate Aggregated Stats ---
+        total_campers = len(historical_2025) + len(registrations_2026)
+        total_revenue = sum(s['revenue'] for s in sessions)
+        returning_rate = round((total_returning / total_campers * 100), 1) if total_campers > 0 else 0
+        
+        # Age distribution
+        age_counter = Counter(all_ages)
+        age_groups = {
+            '5-7 years': sum(age_counter.get(a, 0) for a in range(5, 8)),
+            '8-10 years': sum(age_counter.get(a, 0) for a in range(8, 11)),
+            '11-13 years': sum(age_counter.get(a, 0) for a in range(11, 14)),
+            '14+ years': sum(age_counter.get(a, 0) for a in range(14, 20))
+        }
+        age_labels = list(age_groups.keys())
+        age_counts = list(age_groups.values())
+        
+        # Grade distribution
+        grade_counter = Counter(all_grades)
+        # Normalize grades
+        normalized_grades = Counter()
+        for grade, count in grade_counter.items():
+            grade_lower = grade.lower().strip()
+            if 'k' in grade_lower or 'kindergarten' in grade_lower:
+                normalized_grades['Kindergarten'] += count
+            elif '1' in grade_lower and 'rising' not in grade_lower:
+                normalized_grades['1st Grade'] += count
+            elif '2' in grade_lower:
+                normalized_grades['2nd Grade'] += count
+            elif '3' in grade_lower:
+                normalized_grades['3rd Grade'] += count
+            elif '4' in grade_lower:
+                normalized_grades['4th Grade'] += count
+            elif '5' in grade_lower:
+                normalized_grades['5th Grade'] += count
+            elif '6' in grade_lower:
+                normalized_grades['6th Grade'] += count
+            elif '7' in grade_lower:
+                normalized_grades['7th Grade'] += count
+            elif '8' in grade_lower:
+                normalized_grades['8th Grade'] += count
+            else:
+                normalized_grades['Other'] += count
+        
+        # Sort grades
+        grade_order = ['Kindergarten', '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', 
+                      '5th Grade', '6th Grade', '7th Grade', '8th Grade', 'Other']
+        grade_labels = [g for g in grade_order if normalized_grades.get(g, 0) > 0]
+        grade_counts = [normalized_grades.get(g, 0) for g in grade_labels]
+        
+        # Session labels and counts for chart
+        session_labels = [s['name'] for s in sessions]
+        session_counts = [s['total'] for s in sessions]
+        
+        return render_template('metrics_dashboard.html',
+            total_campers=total_campers,
+            returning_rate=returning_rate,
+            total_sessions=len(sessions),
+            total_revenue=total_revenue,
+            sessions=sessions,
+            current_registrations=registrations_2026,
+            session_labels=json.dumps(session_labels),
+            session_counts=json.dumps(session_counts),
+            age_labels=json.dumps(age_labels),
+            age_counts=json.dumps(age_counts),
+            grade_labels=json.dumps(grade_labels),
+            grade_counts=json.dumps(grade_counts),
+            total_new=total_new,
+            total_returning=total_returning
+        )
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Error loading metrics: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/verify-returning-campers')
@@ -2178,6 +2441,163 @@ def import_historical_data():
         flash(f'Import error: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/upload-historical', methods=['POST'])
+@require_admin_auth
+def upload_historical_data():
+    """Upload and import historical camper data from CSV file upload."""
+    try:
+        import csv
+        import io
+        
+        # Check if file was uploaded
+        if 'csv_file' not in request.files:
+            flash('No file uploaded', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        file = request.files['csv_file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        if not file.filename.endswith('.csv'):
+            flash('Please upload a CSV file', 'error')
+            return redirect(url_for('admin_historical'))
+        
+        # Read the CSV content
+        content = file.read().decode('utf-8')
+        reader = csv.DictReader(io.StringIO(content))
+        
+        db_file = get_database_path()
+        print(f"📥 Uploading historical data to database: {db_file}")
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        imported_count = 0
+        skipped_count = 0
+        error_count = 0
+        
+        for row in reader:
+            try:
+                # Extract data from CSV columns
+                child_first_name = row.get('Childs First Name?', '').strip()
+                child_last_name = row.get('Childs Last Name?', '').strip()
+                parent_email = row.get('Email Address', '').strip()
+                
+                # Skip rows without basic info
+                if not child_first_name or not child_last_name:
+                    skipped_count += 1
+                    continue
+                
+                # Check if already imported (by email + child name)
+                cursor.execute("""
+                    SELECT id FROM registrations 
+                    WHERE child_first_name = ? AND child_last_name = ? AND parent_email = ?
+                """, (child_first_name, child_last_name, parent_email))
+                
+                if cursor.fetchone():
+                    skipped_count += 1
+                    continue
+                
+                # Parse and map CSV fields to database schema
+                age = row.get('Age?', '').strip()
+                grade = row.get('Grade?', '').strip()
+                is_returning = row.get('Has your Child attended Camp Power-Up before?', '').strip().lower() == 'yes'
+                bringing_switch = row.get('Will your child be bringing their own personal Switch?', '').strip().lower() == 'yes'
+                
+                # Medical info
+                has_allergies_text = row.get('allergies?', '').strip().lower()
+                has_allergies = has_allergies_text in ['yes', 'y']
+                allergies_desc = row.get('If yes, please list any medical conditions or allergies', '').strip()
+                
+                has_sensory = row.get('any sensory issues?', '').strip().lower() in ['yes', 'y']
+                sensory_desc = row.get('If yes please describe?  ', '').strip()
+                
+                # Combine medical info
+                medical_desc = []
+                if sensory_desc:
+                    medical_desc.append(f"Sensory: {sensory_desc}")
+                medical_conditions_text = ' | '.join(medical_desc) if medical_desc else ''
+                
+                # Additional info
+                gaming_behavior = row.get('Can you describe what your child is like playing video games around others? Are they good at taking turns? Are they a good sport?', '').strip()
+                game_restrictions = row.get('Is there a rating of games your child is not allowed to play?', '').strip()
+                favorite_games = row.get('What games do they enjoy playing?', '').strip()
+                
+                # Combine into additional comments
+                comments = []
+                if gaming_behavior:
+                    comments.append(f"Gaming Behavior: {gaming_behavior}")
+                if game_restrictions:
+                    comments.append(f"Game Restrictions: {game_restrictions}")
+                if favorite_games:
+                    comments.append(f"Favorite Games: {favorite_games}")
+                additional_comments = ' | '.join(comments)
+                
+                # Generate submission ID with HIST_ prefix for historical data
+                timestamp = row.get('Timestamp', datetime.now().strftime('%m/%d/%Y %H:%M:%S'))
+                submission_id = f"HIST_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
+                
+                # Insert into database
+                cursor.execute("""
+                    INSERT INTO registrations (
+                        submission_id, timestamp, child_first_name, child_last_name, 
+                        child_age, child_grade, parent_email,
+                        has_allergies, allergies_description, 
+                        has_medical_conditions, medical_conditions_description,
+                        is_returning_camper, bringing_own_switch, additional_comments
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    submission_id, timestamp, child_first_name, child_last_name,
+                    age, grade, parent_email,
+                    has_allergies, allergies_desc,
+                    has_sensory, medical_conditions_text,
+                    is_returning, bringing_switch, additional_comments
+                ))
+                
+                imported_count += 1
+                
+            except Exception as e:
+                print(f"Error importing row: {e}")
+                error_count += 1
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"📊 Upload results - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
+        flash(f'✅ Import complete! Imported: {imported_count}, Skipped (duplicates): {skipped_count}, Errors: {error_count}', 'success')
+        return redirect(url_for('admin_historical'))
+        
+    except Exception as e:
+        flash(f'Upload error: {str(e)}', 'error')
+        return redirect(url_for('admin_historical'))
+
+@app.route('/admin/clear-historical', methods=['POST'])
+@require_admin_auth
+def clear_historical_data():
+    """Clear all historical (HIST_) records from the database."""
+    try:
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        
+        # Count records to delete
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        count = cursor.fetchone()[0]
+        
+        # Delete historical records
+        cursor.execute("DELETE FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        conn.commit()
+        conn.close()
+        
+        print(f"🗑️ Cleared {count} historical records")
+        flash(f'✅ Cleared {count} historical records. You can now reimport.', 'success')
+        return redirect(url_for('admin_historical'))
+        
+    except Exception as e:
+        flash(f'Clear error: {str(e)}', 'error')
+        return redirect(url_for('admin_historical'))
+
 @app.route('/admin/fix-historical-records', methods=['POST'])
 @require_admin_auth
 def fix_historical_records():
@@ -2338,7 +2758,7 @@ def attendance():
         return render_template('attendance.html', 
                              registrations=registrations,
                              today=today,
-                             camp_dates=['2026-06-15', '2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19'])
+                             camp_dates=['2025-11-24', '2025-11-25'])
     except Exception as e:
         flash(f'Error loading attendance: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))

@@ -7,35 +7,45 @@ This file contains the dynamic camp session information that changes
 between different camp offerings throughout the year.
 
 Update this file for each new camp session rather than modifying templates.
-LAST UPDATED: 2025-07-28 13:10:20
+LAST UPDATED: 2026-04-06
 """
 
 from datetime import datetime
 
 # Current Camp Session Configuration
-CAMP_CONFIG = {   'age_range': '5-18',
+CAMP_CONFIG = {
+    'age_range': 'K-8th Grade',
     'camp_dates': 'June 15-19, 2026',
     'camp_days': 5,
-    'camp_name': 'Summer Gaming Camp',
-    'camp_subtitle': 'A week of Nintendo Switch gaming fun!',
+    'camp_name': 'Camp Power-Up Summer 2026',
+    'camp_subtitle': 'A week of gaming fun this summer!',
     'daily_hours': '10:00 AM - 3:00 PM',
     'deposit_due': 'Upon Registration',
-    'early_bird_deadline': None,
+    'early_bird_deadline': 'May 15, 2026',
     'final_payment_due': 'June 1, 2026',
     'max_campers': 24,
-    'pricing': {   'new_camper': {   'deposit': 55,
-                                     'final_payment': 145,
-                                     'total': 200},
-                   'returning_camper': {   'deposit': 50,
-                                           'final_payment': 130,
-                                           'total': 180}},
+    'pricing': {
+        'new_camper': {
+            'deposit': 55,
+            'final_payment': 145,
+            'total': 200
+        },
+        'returning_camper': {
+            'deposit': 50,
+            'final_payment': 130,
+            'total': 180
+        }
+    },
     'registration_open': True,
-    'session_type': 'Summer Intensive',
-    'special_features': [   'Nintendo Switch Gaming',
-                            'Board Game Library',
-                            'Team Building Activities',
-                            'Daily Tournaments'],
-    'total_hours': 25,
+    'session_type': 'Summer Camp',
+    'special_features': [
+        'Nintendo Switch Gaming',
+        'Retro Gaming Station',
+        'Multiplayer Tournaments',
+        'Daily Park Time',
+        'Prizes & Trophies'
+    ],
+    'total_hours': 30,
     'waitlist_available': True}
 
 # Dynamic text generation functions

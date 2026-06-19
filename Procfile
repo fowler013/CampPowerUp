@@ -1,1 +1,1 @@
-web: python -m gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 300 registration_form.app:app
+web: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 300 wsgi_railway:app

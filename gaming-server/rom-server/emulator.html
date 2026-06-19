@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampPowerUp - Emulator Test</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .upload-zone {
+            background: rgba(255,255,255,0.05);
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.1);
+        }
+        .upload-zone input { display: none; }
+        .quick-play {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .quick-play button {
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            color: #fff;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .quick-play button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,212,255,0.4);
+        }
+        .info {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #aaa;
+            max-width: 640px;
+        }
+        #game-container {
+            width: 640px;
+            height: 480px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .controls {
+            margin-top: 1rem;
+            color: #888;
+            font-size: 0.875rem;
+        }
+        .controls kbd {
+            background: rgba(255,255,255,0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            margin: 0 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 CampPowerUp Emulator Test</h1>
+    
+    <div class="quick-play">
+        <button onclick="playDriar()">🕹️ Play Driar (NES Puzzle Game)</button>
+    </div>
+    
+    <div class="info">
+        <strong>Test your retro gaming setup!</strong><br>
+        Load a homebrew ROM file to test the emulator. Supports NES (.nes), SNES (.sfc/.smc), 
+        Genesis (.md/.gen), GBA (.gba), and GB/GBC (.gb/.gbc) files.
+    </div>
+
+    <label class="upload-zone" id="drop-zone">
+        <input type="file" id="rom-input" accept=".nes,.sfc,.smc,.md,.gen,.gba,.gb,.gbc,.n64,.z64">
+        <div>📁 Click to select a ROM file<br><small>or drag and drop here</small></div>
+    </label>
+
+    <div id="game-container"></div>
+
+    <div class="controls">
+        <strong>Controls:</strong>
+        <kbd>Arrow Keys</kbd> D-Pad |
+        <kbd>Z</kbd> A Button |
+        <kbd>X</kbd> B Button |
+        <kbd>Enter</kbd> Start |
+        <kbd>Shift</kbd> Select
+    </div>
+
+    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+    <script>
+        const coreMap = {
+            'nes': 'nes',
+            'sfc': 'snes',
+            'smc': 'snes',
+            'md': 'segaMD',
+            'gen': 'segaMD',
+            'gba': 'gba',
+            'gb': 'gb',
+            'gbc': 'gb',
+            'n64': 'n64',
+            'z64': 'n64'
+        };
+
+        function getCore(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            return coreMap[ext] || 'nes';
+        }
+
+        function loadROM(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const container = document.getElementById('game-container');
+                container.innerHTML = '';
+                
+                // Create EmulatorJS instance
+                window.EJS_player = '#game-container';
+                window.EJS_core = getCore(file.name);
+                window.EJS_gameUrl = URL.createObjectURL(file);
+                window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+                
+                // Reload the loader script to reinitialize
+                const script = document.createElement('script');
+                script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+                document.body.appendChild(script);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function playDriar() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = '<div style="color:#888;padding:2rem;text-align:center;">Loading Driar...</div>';
+            
+            window.EJS_player = '#game-container';
+            window.EJS_core = 'nes';
+            window.EJS_gameUrl = '/roms/nes/driar.nes';
+            window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+            document.body.appendChild(script);
+        }
+
+        // File input handler
+        document.getElementById('rom-input').addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                loadROM(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop handlers
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#00d4ff';
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'rgba(255,255,255,0.3)';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'rgba(255,255,255,0.3)';
+            if (e.dataTransfer.files.length > 0) {
+                loadROM(e.dataTransfer.files[0]);
+            }
+        });
+    </script>
+</body>
+</html>
