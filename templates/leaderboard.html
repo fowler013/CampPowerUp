@@ -615,7 +615,7 @@
                         actions.push(`<button class="btn-sm btn-skip"  onclick="updateQueueStatus(${e.id},'skipped','${esc(key)}')">⏭ Skip</button>`);
                     }
                     if (e.status === 'playing') {
-                        actions.push(`<button class="btn-sm btn-done" onclick="updateQueueStatus(${e.id},'done','${esc(key)}')">✅ Done</button>`);
+                        actions.push(`<button class="btn-sm btn-done" onclick="updateQueueStatus(${e.id},'done','${esc(key)}','${encodeURIComponent(e.camper_name)}')">✅ Done</button>`);
                     }
                     if (e.status !== 'done') {
                         actions.push(`<button class="btn-sm btn-remove" onclick="removeFromQueue(${e.id})">✕</button>`);
@@ -671,13 +671,32 @@
             if (res.ok) { input.value = ''; await loadQueues(); }
         }
 
-        async function updateQueueStatus(id, status) {
+        function promptScoreEntry(camperName, challengeKey) {
+            const shouldEnterNow = confirm(`Marking ${camperName} as done. Enter score now?`);
+            if (!shouldEnterNow) return;
+
+            const form = document.getElementById('scoreForm');
+            const scoreTabBtn = document.getElementById('tab-btn-scores');
+            switchTab('scores', scoreTabBtn);
+
+            form.camper_name.value = camperName;
+            form.challenge_key.value = challengeKey;
+            updateChallengeFields();
+            form.score.focus();
+        }
+
+        async function updateQueueStatus(id, status, challengeKey = '', camperNameEncoded = '') {
             const res = await fetch(`/api/signups/${id}/status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
             });
-            if (res.ok) await loadQueues();
+            if (res.ok) {
+                await loadQueues();
+                if (status === 'done' && challengeKey && camperNameEncoded) {
+                    promptScoreEntry(decodeURIComponent(camperNameEncoded), challengeKey);
+                }
+            }
         }
 
         async function removeFromQueue(id) {
