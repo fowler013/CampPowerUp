@@ -219,6 +219,14 @@
             font-size: 0.9rem;
         }
 
+        .entry-note {
+            display: block;
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
         table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 
         th, td {
@@ -423,9 +431,15 @@
                             <input id="level_detail" name="level_detail" type="text" placeholder="e.g. Pantheon 2">
                         </div>
 
+                        <div id="raceRoundWrap" style="display:none;">
+                            <label for="race_round">Race / Heat <span style="font-weight:400;">(Mario Kart, 1-3)</span></label>
+                            <input id="race_round" name="race_round" type="number" min="1" max="3" placeholder="1, 2, or 3">
+                            <div class="helper">Use this to track a camper's first, second, and third race. Top 3 move on to the next race.</div>
+                        </div>
+
                         <div>
                             <label for="run_notes">Notes <span style="font-weight:400;">(Optional)</span></label>
-                            <textarea id="run_notes" name="run_notes" placeholder="Tie-break details, highlights, etc."></textarea>
+                            <textarea id="run_notes" name="run_notes" placeholder="Race notes, tie-break details, highlights, etc."></textarea>
                         </div>
 
                         <button class="btn" type="submit">Save Score</button>
@@ -482,6 +496,7 @@
                     : 'Whole number score — higher ranks higher for this challenge.';
             document.getElementById('startingZoneWrap').style.display = ch.show_starting_zone ? 'block' : 'none';
             document.getElementById('levelDetailWrap').style.display = ch.show_level_detail ? 'block' : 'none';
+            document.getElementById('raceRoundWrap').style.display = ch.show_race_round ? 'block' : 'none';
         }
 
         function formatSeconds(seconds) {
@@ -496,7 +511,12 @@
         function renderBoard(key, board) {
             const ch = board.challenge;
             const entries = board.entries || [];
+            const summaryEntries = board.summary_entries || [];
             const winner = board.trophy_winner;
+            const showStartingZone = !!ch.show_starting_zone;
+            const showLevelDetail = !!ch.show_level_detail;
+            const showRaceRound = !!ch.show_race_round;
+            const columnCount = 5 + (showStartingZone ? 1 : 0) + (showLevelDetail ? 1 : 0) + (showRaceRound ? 1 : 0);
 
             const winnerHtml = winner
                 ? `<div class="winner">🏆 Leader: <strong>${esc(winner.camper_name)}</strong> — <strong>${winner.score}</strong> ${esc(ch.score_unit)}</div>`
@@ -506,18 +526,37 @@
                 ? `<div style="margin-bottom:10px;padding:8px;background:#f0f9ff;border-left:3px solid #3b82f6;border-radius:6px;font-size:0.85rem;color:#1e40af;"><strong>Rules:</strong> ${esc(ch.rules)}</div>`
                 : '';
 
-            const rows = entries.length
-                ? entries.map(e => `
-                    <tr>
-                        <td>#${e.rank}</td>
-                        <td>${esc(e.camper_name)}</td>
-                        <td>${e.score}</td>
-                        <td>${formatSeconds(e.completion_time_seconds)}</td>
-                        <td>${esc(e.starting_zone || '—')}</td>
-                        <td>${esc(e.level_detail || '—')}</td>
-                        <td><button class="delete-btn" onclick="deleteEntry(${e.id})" title="Remove">✕</button></td>
-                    </tr>`).join('')
-                : `<tr><td colspan="7" class="empty">No scores yet.</td></tr>`;
+            const headers = showRaceRound
+                ? ['<th>Rank</th>', '<th>Camper</th>', '<th>Total Points</th>', '<th>Best Time</th>', '<th>Races</th>', '<th>Last Race</th>', '<th>Breakdown</th>', '<th></th>']
+                : ['<th>Rank</th>', '<th>Camper</th>', '<th>Score</th>', '<th>Time</th>', '<th></th>'];
+
+            const rows = showRaceRound
+                ? (summaryEntries.length
+                    ? summaryEntries.map(e => `
+                        <tr>
+                            <td>#${e.rank}</td>
+                            <td>${esc(e.camper_name)}</td>
+                            <td>${e.total_score}</td>
+                            <td>${formatSeconds(e.best_time_seconds)}</td>
+                            <td>${e.race_count}/3</td>
+                            <td>Race ${esc(e.race_round ?? '—')}</td>
+                            <td>${e.race_breakdown.map(r => `Race ${esc(r.race_round)}: ${esc(r.score)}`).join(' • ')}</td>
+                            <td></td>
+                        </tr>`).join('')
+                    : `<tr><td colspan="8" class="empty">No scores yet.</td></tr>`)
+                : (entries.length
+                    ? entries.map(e => `
+                        <tr>
+                            <td>#${e.rank}</td>
+                            <td>${esc(e.camper_name)}</td>
+                            <td>${e.score}${showRaceRound && e.race_round ? `<span class="entry-note">Race ${esc(e.race_round)} of 3</span>` : ''}${e.run_notes ? `<span class="entry-note">${esc(e.run_notes)}</span>` : ''}</td>
+                            <td>${formatSeconds(e.completion_time_seconds)}</td>
+                            ${showStartingZone ? `<td>${esc(e.starting_zone || '—')}</td>` : ''}
+                            ${showLevelDetail ? `<td>${esc(e.level_detail || '—')}</td>` : ''}
+                            ${showRaceRound ? `<td>${esc(e.race_round ?? '—')}</td>` : ''}
+                            <td><button class="delete-btn" onclick="deleteEntry(${e.id})" title="Remove">✕</button></td>
+                        </tr>`).join('')
+                    : `<tr><td colspan="${columnCount}" class="empty">No scores yet.</td></tr>`);
 
             return `
                 <section class="challenge-card">
@@ -527,8 +566,9 @@
                     </div>
                     ${rulesHtml}
                     ${winnerHtml}
+                    ${showRaceRound ? '<div class="entry-note" style="margin:6px 0 10px;">Overall standings are ranked by total points across all 3 races.</div>' : ''}
                     <table>
-                        <thead><tr><th>Rank</th><th>Camper</th><th>Score</th><th>Time</th><th>Zone</th><th>Level</th><th></th></tr></thead>
+                        <thead><tr>${headers.join('')}</tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </section>`;
@@ -566,6 +606,7 @@
                 allow_after_deadline: form.allow_after_deadline.checked,
                 starting_zone: form.starting_zone.value.trim(),
                 level_detail:  form.level_detail.value.trim(),
+                race_round:    form.race_round.value.trim(),
                 run_notes:     form.run_notes.value.trim()
             };
             try {
@@ -581,6 +622,7 @@
                 form.completion_hours.value = '';
                 form.completion_minutes.value = '';
                 form.completion_seconds.value = '';
+                form.race_round.value = '';
                 form.run_notes.value = '';
                 await loadLeaderboard();
             } catch {
