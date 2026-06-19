@@ -2428,7 +2428,7 @@ LEADERBOARD_CHALLENGES = {
         'score_unit': 'points',
         'show_starting_zone': False,
         'show_level_detail': False,
-        'rules': 'Best of 3 knockout races. Score is cumulative placement points across all races played (lower is better; winner per race scores 1 point). Tournament runs 10am–3pm. Each kid gets one turn; play until eliminated or all 3 races complete.'
+        'rules': 'Each kid gets ONE turn with up to 3 races. Score = cumulative placement points (lower is better). Example: If you place 3rd, 2nd, then 1st, your score = 3+2+1 = 6 points. Tournament runs 10am–3pm.'
     },
     'hollow_knight_boss_rush': {
         'label': 'Hollow Knight Boss Rush',
