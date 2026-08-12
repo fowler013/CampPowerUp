@@ -7,7 +7,7 @@ This file contains the dynamic camp session information that changes
 between different camp offerings throughout the year.
 
 Update this file for each new camp session rather than modifying templates.
-LAST UPDATED: 2026-04-06
+LAST UPDATED: 2026-08-11
 """
 
 from datetime import datetime
@@ -15,30 +15,30 @@ from datetime import datetime
 # Current Camp Session Configuration
 CAMP_CONFIG = {
     'age_range': 'K-8th Grade',
-    'camp_dates': 'June 15th-19th',
-    'camp_days': 5,
-    'camp_name': 'Camp Power-Up Summer 2026',
-    'camp_subtitle': 'Nintendo Switch Gaming Camp Registration',
-    'daily_hours': '10:00am-3:00pm',
+    'camp_dates': 'November 23-25, 2026',
+    'camp_days': 3,
+    'camp_name': 'Camp Power-Up Thanksgiving 2026',
+    'camp_subtitle': 'Nintendo Switch Thanksgiving Break Camp Registration',
+    'daily_hours': '10:00 AM - 3:00 PM',
     'deposit_due': 'Upon Registration',
-    'early_bird_deadline': 'May 15th',
-    'final_payment_due': 'June 1st',
+    'early_bird_deadline': None,
+    'final_payment_due': 'November 22, 2026',
     'max_campers': 24,
     'location': 'Youth Loft at Shades Valley Community Church',
     'pricing': {
         'new_camper': {
-            'deposit': 55,
-            'final_payment': 145,
-            'total': 200
+            'deposit': 50,
+            'final_payment': 50,
+            'total': 100
         },
         'returning_camper': {
             'deposit': 50,
-            'final_payment': 130,
-            'total': 180
+            'final_payment': 30,
+            'total': 80
         }
     },
     'registration_open': True,
-    'session_type': 'Summer Camp',
+    'session_type': 'Thanksgiving Break Camp',
     'special_features': [
         'Nintendo Switch Gaming',
         'Retro Gaming Station',
@@ -46,7 +46,7 @@ CAMP_CONFIG = {
         'Daily Park Time at Patriot Park',
         'Prizes & Trophies'
     ],
-    'total_hours': 30,
+    'total_hours': 15,
     'waitlist_available': True,
     # Lunch info
     'lunch_provided': False,
@@ -109,60 +109,14 @@ def validate_config():
     return True
 
 
-# ---------------------------------------------------------------------------
-# Additional camp sessions
-# ---------------------------------------------------------------------------
-# CAMP_CONFIG above remains the "default/current" session that powers the
-# existing routes (`/`, `/faq`, etc). Add additional offerings here and they
-# will be exposed via dedicated routes (e.g. `/session/july-2026`).
-
-JULY_2026_CONFIG = {
-    'age_range': 'K-8th Grade',
-    'camp_dates': 'July 20th-21st',
-    'camp_days': 2,
-    'camp_name': 'Camp Power-Up July 2026',
-    'camp_subtitle': 'Nintendo Switch Gaming Mini-Camp Registration',
-    'daily_hours': '10:00am-3:00pm',
-    'deposit_due': 'Upon Registration',
-    'early_bird_deadline': None,
-    'final_payment_due': 'July 19th',
-    'max_campers': 24,
-    'location': 'Youth Loft at Shades Valley Community Church',
-    'pricing': {
-        'new_camper': {
-            'deposit': 25,
-            'final_payment': 75,
-            'total': 100
-        },
-        'returning_camper': {
-            'deposit': 25,
-            'final_payment': 55,
-            'total': 80
-        }
-    },
-    'registration_open': True,
-    'session_type': '2-Day Mini Camp',
-    'special_features': [
-        'Nintendo Switch Gaming',
-        'Retro Gaming Station',
-        'Multiplayer Tournaments',
-        'Prizes & Trophies'
-    ],
-    'total_hours': 10,
-    'waitlist_available': True,
-    'lunch_provided': False,
-    'lunch_note': 'Please pack lunch, snacks, and a water bottle for your camper.'
-}
-
 # Registry of currently offered sessions, keyed by URL slug.
 # `/submit` uses this to attach the correct camp_session label to a
 # registration and to look up pricing for confirmation emails.
 SESSIONS = {
-    'june-2026': CAMP_CONFIG,
-    'july-2026': JULY_2026_CONFIG,
+    'thanksgiving-2026': CAMP_CONFIG,
 }
 
-DEFAULT_SESSION_ID = 'june-2026'
+DEFAULT_SESSION_ID = 'thanksgiving-2026'
 
 
 def get_session_config(session_id):

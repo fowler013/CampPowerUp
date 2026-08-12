@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camp Attendance - Camp Power-Up 2025</title>
+    <title>Camp Attendance - Camp Power-Up Thanksgiving 2026</title>
     <style>
         * {
             margin: 0;
@@ -266,15 +266,18 @@
         
         <div class="header">
             <h1>📋 Daily Attendance</h1>
-            <p>Camp Power-Up 2025 - November 24-25</p>
+            <p>Camp Power-Up Thanksgiving 2026 - November 23-25</p>
         </div>
         
         <div class="date-tabs">
-            <div class="date-tab" data-date="2025-11-24" onclick="selectDate('2025-11-24')">
-                📅 Day 1 - Monday, Nov 24
+            <div class="date-tab" data-date="2026-11-23" onclick="selectDate('2026-11-23')">
+                📅 Day 1 - Monday, Nov 23
             </div>
-            <div class="date-tab" data-date="2025-11-25" onclick="selectDate('2025-11-25')">
-                📅 Day 2 - Tuesday, Nov 25
+            <div class="date-tab" data-date="2026-11-24" onclick="selectDate('2026-11-24')">
+                📅 Day 2 - Tuesday, Nov 24
+            </div>
+            <div class="date-tab" data-date="2026-11-25" onclick="selectDate('2026-11-25')">
+                📅 Day 3 - Wednesday, Nov 25
             </div>
         </div>
         
@@ -337,7 +340,7 @@
                 todayTab.classList.add('active');
             } else {
                 // Default to first camp day if not today
-                selectDate('2025-11-24');
+                selectDate('2026-11-23');
             }
             loadAttendance(currentDate);
         };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration Confirmed - Camp Power-Up 2025</title>
+    <title>Registration Confirmed - {{ config.camp_name if config else 'Camp Power-Up' }}</title>
     <style>
         * {
             margin: 0;
@@ -230,7 +230,7 @@
                 <p><strong>What this means:</strong></p>
                 <ul style="color: #0c5460;">
                     <li>✅ Your registration is <strong>100% valid and confirmed</strong></li>
-                    <li>💳 Please proceed with the $50 deposit payment below</li>
+                    <li>💳 Please proceed with the ${{ config.pricing.new_camper.deposit }} deposit payment below</li>
                     <li>📧 You'll receive email confirmation within 24 hours</li>
                     <li>🏕️ Your spot at Camp Power-Up is secured!</li>
                 </ul>
@@ -287,7 +287,7 @@
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Payment Required:</span>
-                    <span class="summary-value">$50 deposit (New Camper rate applies)</span>
+                    <span class="summary-value">${{ config.pricing.new_camper.deposit }} deposit (New Camper rate applies)</span>
                 </div>
                 {% endif %}
                 <div class="summary-row">
@@ -299,22 +299,22 @@
             <div class="next-steps">
                 <h3>📝 Next Steps</h3>
                 <ol>
-                    <li><strong>Send your $50 deposit</strong> using one of the payment methods below</li>
+                    <li><strong>Send your ${{ config.pricing.returning_camper.deposit if registration.is_returning_camper else config.pricing.new_camper.deposit }} deposit</strong> using one of the payment methods below</li>
                     <li><strong>Include your {% if registration._is_fallback %}confirmation ID{% else %}child's name{% endif %}</strong> in the payment memo: "{% if registration._is_fallback %}{{ registration.submission_id }}{% else %}{{ registration.child_first_name }} {{ registration.child_last_name }}{% endif %}"</li>
                     <li><strong>Watch for confirmation email</strong> - we'll send payment confirmation within 24 hours</li>
-                    <li><strong>Final payment due before June 1st</strong> - 
+                    <li><strong>Final payment due before {{ config.final_payment_due }}</strong> -
                         {% if registration.is_returning_camper %}
-                            $130 remaining ($180 total)
+                            ${{ config.pricing.returning_camper.final_payment }} remaining (${{ config.pricing.returning_camper.total }} total)
                         {% else %}
-                            $150 remaining ($200 total)
+                            ${{ config.pricing.new_camper.final_payment }} remaining (${{ config.pricing.new_camper.total }} total)
                         {% endif %}
                     </li>
-                    <li><strong>Camp runs June 15th-19th, 2026</strong>, 10am-3pm daily - details will be emailed closer to camp</li>
+                    <li><strong>Camp runs {{ config.camp_dates }}</strong>, {{ config.daily_hours }} daily - details will be emailed closer to camp</li>
                 </ol>
             </div>
 
             <div class="payment-info">
-                <h3>💳 Send Your $50 Deposit</h3>
+                <h3>💳 Send Your ${{ config.pricing.returning_camper.deposit if registration.is_returning_camper else config.pricing.new_camper.deposit }} Deposit</h3>
                 <p>Please send your deposit using one of these methods:</p>
                 <div class="payment-methods">
                     <div class="payment-method">

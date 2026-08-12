@@ -303,7 +303,7 @@
 
         <!-- Recent Registrations Table -->
         <div class="chart-card">
-            <h3>📋 Summer 2026 Registrations</h3>
+            <h3>📋 {{ config.camp_name }} Registrations</h3>
             {% if current_registrations %}
             <table class="data-table">
                 <thead>
@@ -334,7 +334,7 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="color: #94a3b8; text-align: center; padding: 40px;">No registrations for Summer 2026 yet.</p>
+            <p style="color: #94a3b8; text-align: center; padding: 40px;">No registrations for {{ config.camp_name }} yet.</p>
             {% endif %}
         </div>
     </div>
