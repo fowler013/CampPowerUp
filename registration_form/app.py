@@ -16,8 +16,20 @@ from functools import wraps
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 
-# Import camp configuration
-try:
+# Import the registration app's config in package deployments and direct runs.
+if __package__:
+    from .camp_config import (
+        CAMP_CONFIG,
+        SESSIONS,
+        DEFAULT_SESSION_ID,
+        get_camp_title,
+        get_camp_subtitle,
+        get_pricing_text,
+        get_session_config,
+        get_session_label,
+        get_pricing_text_for,
+    )
+else:
     from camp_config import (
         CAMP_CONFIG,
         SESSIONS,
@@ -29,31 +41,6 @@ try:
         get_session_label,
         get_pricing_text_for,
     )
-except ImportError:
-    # Fallback config if camp_config.py is not available
-    CAMP_CONFIG = {
-        'camp_name': 'Camp Power-Up 2026',
-        'camp_dates': 'March 26th-27th',
-        'camp_days': 2,
-        'daily_hours': '10:00am-3:00pm',
-        'pricing': {
-            'new_camper': {'total': 100, 'deposit': 50, 'final_payment': 50},
-            'returning_camper': {'total': 80, 'deposit': 50, 'final_payment': 30}
-        }
-    }
-    SESSIONS = {'june-2026': CAMP_CONFIG}
-    DEFAULT_SESSION_ID = 'june-2026'
-    def get_camp_title(): return CAMP_CONFIG['camp_name']
-    def get_camp_subtitle(): return 'Nintendo Switch Gaming Camp Registration'
-    def get_pricing_text():
-        return {
-            'returning_text': f"Returning Campers: ${CAMP_CONFIG['pricing']['returning_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['returning_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['returning_camper']['total']} total",
-            'new_text': f"New Campers: ${CAMP_CONFIG['pricing']['new_camper']['deposit']} deposit + ${CAMP_CONFIG['pricing']['new_camper']['final_payment']} final = ${CAMP_CONFIG['pricing']['new_camper']['total']} total",
-            'payment_deadline': f"Camp runs {CAMP_CONFIG['camp_dates']}, {CAMP_CONFIG['daily_hours']} daily."
-        }
-    def get_session_config(session_id): return SESSIONS.get(session_id)
-    def get_session_label(cfg): return f"{cfg.get('camp_name', 'Camp Power-Up')} - {cfg.get('camp_dates', 'Unknown')}"
-    def get_pricing_text_for(cfg): return get_pricing_text()
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -389,29 +376,17 @@ def send_parent_confirmation_email(registration_data):
         print(f"💰 Email pricing debug - raw value: {is_returning_raw} (type: {type(is_returning_raw)})")
         print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
         
-        # Resolve session-specific display + pricing. For backward compatibility
-        # we keep the prior hardcoded values when the session is the default
-        # (June) or unknown, so live June emails are unaffected.
         session_id = registration_data.get('camp_session_id') or DEFAULT_SESSION_ID
-        session_cfg = get_session_config(session_id)
-        if session_cfg and session_id != DEFAULT_SESSION_ID:
-            tier_key = 'returning_camper' if is_returning else 'new_camper'
-            tier = session_cfg['pricing'][tier_key]
-            deposit = f"${tier['deposit']}"
-            final_payment = f"${tier['final_payment']}"
-            total = f"${tier['total']}"
-            camp_name_display = session_cfg.get('camp_name', 'Camp Power-Up')
-            camp_dates_display = session_cfg.get('camp_dates', '')
-            daily_hours_display = session_cfg.get('daily_hours', '10:00 AM - 3:00 PM')
-            final_due_display = session_cfg.get('final_payment_due', '')
-        else:
-            deposit = "$50"
-            final_payment = "$130" if is_returning else "$150"
-            total = "$180" if is_returning else "$200"
-            camp_name_display = "Camp Power-Up Summer 2026"
-            camp_dates_display = "June 15-19, 2026"
-            daily_hours_display = "10:00 AM - 3:00 PM"
-            final_due_display = "June 1st"
+        session_cfg = get_session_config(session_id) or CAMP_CONFIG
+        tier_key = 'returning_camper' if is_returning else 'new_camper'
+        tier = session_cfg['pricing'][tier_key]
+        deposit = f"${tier['deposit']}"
+        final_payment = f"${tier['final_payment']}"
+        total = f"${tier['total']}"
+        camp_name_display = session_cfg.get('camp_name', 'Camp Power-Up')
+        camp_dates_display = session_cfg.get('camp_dates', '')
+        daily_hours_display = session_cfg.get('daily_hours', '10:00 AM - 3:00 PM')
+        final_due_display = session_cfg.get('final_payment_due', '')
         
         print(f"💰 Calculated prices - Deposit: {deposit}, Final: {final_payment}, Total: {total}")
         
@@ -713,8 +688,8 @@ def home():
         # Use dynamic camp config
         camp_config = {
             'camp_name': get_camp_title(),
-            'camp_dates': CAMP_CONFIG.get('camp_dates', 'March 26th-27th'),
-            'camp_times': CAMP_CONFIG.get('daily_hours', '10:00am-3:00pm'),
+            'camp_dates': CAMP_CONFIG.get('camp_dates', ''),
+            'camp_times': CAMP_CONFIG.get('daily_hours', ''),
             'pricing': CAMP_CONFIG.get('pricing', {})
         }
         
@@ -722,12 +697,11 @@ def home():
                              camp_config=camp_config,
                              config=CAMP_CONFIG,
                              camp_title=get_camp_title() + ' Registration',
-                             camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', 'March 26th-27th')}",
+                             camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', '')}",
                              pricing_text='Registration fees listed below',
                              pricing=pricing,
-                             camp_session_id='june-2026',
-                             deposit_amount=CAMP_CONFIG.get('pricing', {}).get('new_camper', {}).get('deposit', 50),
-                             other_session_link={'url': '/session/july-2026', 'label': 'Registering for our 2-day July 20-21 mini camp? Click here.'})
+                             camp_session_id=DEFAULT_SESSION_ID,
+                             deposit_amount=CAMP_CONFIG.get('pricing', {}).get('new_camper', {}).get('deposit', 50))
     except Exception as e:
         # Fallback if template fails
         return f'''
@@ -743,27 +717,8 @@ def home():
 
 @app.route('/session/july-2026')
 def july_2026_registration():
-    """Registration form for the July 20-21, 2026 2-day session."""
-    cfg = get_session_config('july-2026') or CAMP_CONFIG
-    pricing = get_pricing_text_for(cfg)
-    camp_config = {
-        'camp_name': cfg.get('camp_name'),
-        'camp_dates': cfg.get('camp_dates'),
-        'camp_times': cfg.get('daily_hours'),
-        'pricing': cfg.get('pricing', {})
-    }
-    return render_template(
-        'registration_form.html',
-        camp_config=camp_config,
-        config=cfg,
-        camp_title=cfg.get('camp_name', 'Camp Power-Up') + ' Registration',
-        camp_subtitle=f"Nintendo Switch Gaming Mini Camp - {cfg.get('camp_dates')}",
-        pricing_text='Registration fees listed below',
-        pricing=pricing,
-        camp_session_id='july-2026',
-        deposit_amount=cfg.get('pricing', {}).get('new_camper', {}).get('deposit', 25),
-        other_session_link={'url': '/', 'label': 'Looking for the June 15-19 camp? Click here.'}
-    )
+    """Redirect the expired July session URL to current registration."""
+    return redirect(url_for('home'))
 
 @app.route('/faq')
 def faq():
@@ -1271,7 +1226,7 @@ def submit():
         
         # Determine which camp session this registration is for. The form
         # posts a hidden `camp_session_id` field; fall back to the current
-        # default (June 2026) for backward compatibility.
+        # default session.
         session_id = json_data.get('camp_session_id') or json_data.get('campSessionId') or DEFAULT_SESSION_ID
         session_cfg = get_session_config(session_id) or CAMP_CONFIG
         current_session = get_session_label(session_cfg)
@@ -1445,7 +1400,7 @@ def confirmation(submission_id):
                 return f'''
                 <html>
                 <head>
-                    <title>Registration Confirmed - Camp Power-Up 2025</title>
+                    <title>Registration Confirmed - {CAMP_CONFIG['camp_name']}</title>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
@@ -1502,13 +1457,13 @@ def confirmation(submission_id):
                                 <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
                             </ul>
                             <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
-                            <p><strong>Final Payment:</strong> Due before November 24th</p>
+                            <p><strong>Final Payment:</strong> Due before {CAMP_CONFIG['final_payment_due']}</p>
                         </div>
 
                         <div class="contact-info">
                             <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> November 24-25, 2025</p>
-                            <p><strong>Camp Times:</strong> 10am-3pm daily</p>
+                            <p><strong>Camp Dates:</strong> {CAMP_CONFIG['camp_dates']}</p>
+                            <p><strong>Camp Times:</strong> {CAMP_CONFIG['daily_hours']} daily</p>
                             <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
                             <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
                         </div>
@@ -1519,7 +1474,7 @@ def confirmation(submission_id):
                         </div>
                         
                         <p style="text-align: center; color: #6c757d; margin-top: 30px;">
-                            <small>Camp Power-Up 2025 • Nintendo Switch Gaming Camp</small>
+                            <small>{CAMP_CONFIG['camp_name']} • Nintendo Switch Gaming Camp</small>
                         </p>
                     </div>
                 </body>
@@ -1544,14 +1499,14 @@ def confirmation(submission_id):
                     '_is_fallback': True
                 }
                 
-                return render_template('confirmation.html', registration=mock_registration)
+                return render_template('confirmation.html', registration=mock_registration, config=CAMP_CONFIG)
             
         conn.close()
         
         # Convert to dictionary for template
         registration_data = dict(registration)
         
-        return render_template('confirmation.html', registration=registration_data)
+        return render_template('confirmation.html', registration=registration_data, config=CAMP_CONFIG)
         
     except Exception as e:
         # Fallback to basic confirmation if there's an error
@@ -1700,8 +1655,8 @@ def admin_dashboard():
         # Mock camp config for template - use dynamic config
         camp_config = {
             'camp_name': get_camp_title(),
-            'camp_dates': CAMP_CONFIG.get('camp_dates', 'March 26th-27th'),
-            'camp_times': CAMP_CONFIG.get('daily_hours', '10:00am-3:00pm')
+            'camp_dates': CAMP_CONFIG.get('camp_dates', ''),
+            'camp_times': CAMP_CONFIG.get('daily_hours', '')
         }
         
         session_stats = {
@@ -1920,11 +1875,12 @@ def admin_metrics():
                 new_2026 += 1
                 total_new += 1
         
-        # Calculate revenue for 2026 ($180 returning, $200 new)
-        revenue_2026 = (returning_2026 * 180) + (new_2026 * 200)
+        returning_price = CAMP_CONFIG['pricing']['returning_camper']['total']
+        new_price = CAMP_CONFIG['pricing']['new_camper']['total']
+        revenue_2026 = (returning_2026 * returning_price) + (new_2026 * new_price)
         
         sessions.append({
-            'name': 'Summer 2026',
+            'name': CAMP_CONFIG['camp_name'],
             'total': len(registrations_2026),
             'new_campers': new_2026,
             'returning_campers': returning_2026,
@@ -1992,6 +1948,7 @@ def admin_metrics():
             total_revenue=total_revenue,
             sessions=sessions,
             current_registrations=registrations_2026,
+            config=CAMP_CONFIG,
             session_labels=json.dumps(session_labels),
             session_counts=json.dumps(session_counts),
             age_labels=json.dumps(age_labels),
@@ -2759,7 +2716,7 @@ def attendance():
         return render_template('attendance.html', 
                              registrations=registrations,
                              today=today,
-                             camp_dates=['2025-11-24', '2025-11-25'])
+                             camp_dates=['2026-11-23', '2026-11-24', '2026-11-25'])
     except Exception as e:
         flash(f'Error loading attendance: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))

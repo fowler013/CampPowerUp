@@ -293,7 +293,7 @@
             <div class="faq-item">
                 <div class="faq-question">🎮 What is Camp Power-Up?</div>
                 <div class="faq-answer">
-                    Camp Power-Up is a Nintendo Switch gaming camp where kids come together to play multiplayer games in a fun, social environment. We focus on cooperative and competitive multiplayer experiences that help kids make friends, develop teamwork skills, and have a blast gaming together. We offer both 5-day and 2-day camp sessions throughout the year.
+                    Camp Power-Up is a Nintendo Switch gaming camp where kids come together to play multiplayer games in a fun, social environment. We focus on cooperative and competitive multiplayer experiences that help kids make friends, develop teamwork skills, and have a blast gaming together.
                 </div>
             </div>
 
@@ -325,16 +325,10 @@
                 <h3>💰 How much does it cost?</h3>
                 <div class="pricing-grid">
                     <div class="pricing-card">
-                        <h4>5-Day Camps</h4>
-                        <div class="price">$200</div>
+                        <h4>{{ config.camp_days }}-Day Thanksgiving Camp</h4>
+                        <div class="price">${{ config.pricing.new_camper.total }}</div>
                         <div class="price-type">New Campers</div>
-                        <div style="margin-top: 10px; color: #28a745; font-weight: 500;">$180 Returning Campers</div>
-                    </div>
-                    <div class="pricing-card">
-                        <h4>2-Day Camps</h4>
-                        <div class="price">$100</div>
-                        <div class="price-type">New Campers</div>
-                        <div style="margin-top: 10px; color: #28a745; font-weight: 500;">$80 Returning Campers</div>
+                        <div style="margin-top: 10px; color: #28a745; font-weight: 500;">${{ config.pricing.returning_camper.total }} Returning Campers</div>
                     </div>
                 </div>
                 <p style="margin-top: 20px; text-align: center; color: #666;">
