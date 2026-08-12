@@ -177,25 +177,40 @@ SAMPLE_GAMES = [
 
 
 def seed_sample_games():
-    """Seed the game library with sample data when no registration data exists."""
+    """Seed an empty game library with sample data when no registration data exists."""
     initialize_game_library()
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     try:
+        cursor.execute('SELECT COUNT(*) FROM games')
+        if cursor.fetchone()[0] > 0:
+            print("ℹ️ Game library already contains data; skipping sample seed")
+            return
+
+        cursor.execute('DELETE FROM camper_games')
+
+        next_camper_id = 1
         for name, total_owned, camp_copies in SAMPLE_GAMES:
             normalized = normalize_game_name(name)
-            cursor.execute('SELECT id FROM games WHERE normalized_name = ?', (normalized,))
-            existing = cursor.fetchone()
-            if existing:
+            cursor.execute(
+                'INSERT INTO games (name, normalized_name, total_owned, camp_copies) VALUES (?, ?, ?, ?)',
+                (name, normalized, total_owned, camp_copies)
+            )
+            game_id = cursor.lastrowid
+
+            for ownership_index in range(total_owned):
                 cursor.execute(
-                    'UPDATE games SET total_owned = ?, camp_copies = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                    (total_owned, camp_copies, existing[0])
+                    '''
+                    INSERT INTO camper_games (camper_id, game_id, owns_game, brings_to_camp)
+                    VALUES (?, ?, 1, ?)
+                    ''',
+                    (
+                        next_camper_id,
+                        game_id,
+                        1 if ownership_index < camp_copies else 0,
+                    )
                 )
-            else:
-                cursor.execute(
-                    'INSERT INTO games (name, normalized_name, total_owned, camp_copies) VALUES (?, ?, ?, ?)',
-                    (name, normalized, total_owned, camp_copies)
-                )
+                next_camper_id += 1
         conn.commit()
     finally:
         conn.close()
