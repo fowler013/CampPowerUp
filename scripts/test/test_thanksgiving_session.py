@@ -1,3 +1,5 @@
+import sqlite3
+
 from registration_form import app as registration_app
 from registration_form.camp_config import (
     CAMP_CONFIG,
@@ -62,3 +64,73 @@ def test_expired_july_registration_redirects_to_current_session():
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
+
+
+def test_confirmation_uses_stored_session_configuration(monkeypatch):
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    db.execute(
+        """
+        CREATE TABLE registrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            submission_id TEXT,
+            timestamp TEXT,
+            child_first_name TEXT,
+            child_last_name TEXT,
+            child_age TEXT,
+            child_grade TEXT,
+            parent_email TEXT,
+            is_returning_camper INTEGER,
+            bringing_own_switch INTEGER,
+            camp_session TEXT
+        )
+        """
+    )
+    db.execute(
+        """
+        INSERT INTO registrations (
+            submission_id, timestamp, child_first_name, child_last_name, child_age, child_grade,
+            parent_email, is_returning_camper, bringing_own_switch, camp_session
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "CONFIRM-OLD-SESSION",
+            "2026-05-01 12:00:00",
+            "Jamie",
+            "Legacy",
+            "10",
+            "5",
+            "legacy@example.com",
+            1,
+            0,
+            "Camp Power-Up Summer 2026 - June 15-19, 2026",
+        ),
+    )
+    db.commit()
+
+    monkeypatch.setattr(registration_app, "get_database_path", lambda: ":memory:")
+    monkeypatch.setattr(registration_app.sqlite3, "connect", lambda *args, **kwargs: db)
+    monkeypatch.setitem(
+        registration_app.SESSIONS,
+        "legacy-june-2026",
+        {
+            "camp_name": "Camp Power-Up Summer 2026",
+            "camp_dates": "June 15-19, 2026",
+            "camp_days": 5,
+            "daily_hours": "10:00 AM - 3:00 PM",
+            "final_payment_due": "June 1st",
+            "pricing": {
+                "new_camper": {"deposit": 50, "final_payment": 150, "total": 200},
+                "returning_camper": {"deposit": 50, "final_payment": 130, "total": 180},
+            },
+        },
+    )
+
+    client = registration_app.app.test_client()
+    response = client.get("/confirmation/CONFIRM-OLD-SESSION")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "June 15-19, 2026" in html
+    assert "June 1st" in html
+    assert "$130 remaining ($180 total)" in html

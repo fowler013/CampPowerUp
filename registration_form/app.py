@@ -59,6 +59,16 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
     }
 })
 
+
+def get_config_for_stored_session(camp_session_label):
+    """Resolve a stored `camp_session` label to a known session config."""
+    if not camp_session_label:
+        return None
+    for config in SESSIONS.values():
+        if get_session_label(config) == camp_session_label:
+            return config
+    return None
+
 # Railway-aware database setup for persistent data  
 def get_database_path():
     """Get the appropriate database path based on environment."""
@@ -1505,8 +1515,10 @@ def confirmation(submission_id):
         
         # Convert to dictionary for template
         registration_data = dict(registration)
-        
-        return render_template('confirmation.html', registration=registration_data, config=CAMP_CONFIG)
+        stored_session_config = get_config_for_stored_session(registration_data.get('camp_session'))
+        confirmation_config = stored_session_config or CAMP_CONFIG
+
+        return render_template('confirmation.html', registration=registration_data, config=confirmation_config)
         
     except Exception as e:
         # Fallback to basic confirmation if there's an error
@@ -1827,38 +1839,52 @@ def admin_metrics():
                 'revenue': revenue_2025
             })
         
-        # --- Load 2026 Data from Database ---
+        # --- Load current registrations from Database ---
         db_file = get_database_path()
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get all 2026 registrations (non-historical)
+        # Get all current registrations (non-historical)
         cursor.execute("""
             SELECT * FROM registrations 
             WHERE submission_id NOT LIKE 'HIST_%'
             ORDER BY timestamp DESC
         """)
-        registrations_2026 = [dict(row) for row in cursor.fetchall()]
+        current_registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        
-        # Parse 2026 data
-        ages_2026 = []
-        grades_2026 = []
-        returning_2026 = 0
-        new_2026 = 0
-        
-        for reg in registrations_2026:
+
+        # Parse current registrations by stored camp_session label
+        grouped_sessions = {}
+        for reg in current_registrations:
+            session_label = reg.get('camp_session') or get_session_label(CAMP_CONFIG)
+            if session_label not in grouped_sessions:
+                grouped_sessions[session_label] = {
+                    'label': session_label,
+                    'ages': [],
+                    'grades': [],
+                    'returning': 0,
+                    'new': 0,
+                    'total': 0,
+                }
+
+            group = grouped_sessions[session_label]
+            group['total'] += 1
+
             # Get age
             age = reg.get('child_age')
             if age:
-                ages_2026.append(int(age))
-                all_ages.append(int(age))
+                try:
+                    numeric_age = int(age)
+                    group['ages'].append(numeric_age)
+                    all_ages.append(numeric_age)
+                except (TypeError, ValueError):
+                    pass
             
             # Get grade
             grade = reg.get('child_grade', '')
             if grade:
-                grades_2026.append(grade)
+                group['grades'].append(grade)
                 all_grades.append(grade)
             
             # Check returning status
@@ -1869,27 +1895,29 @@ def admin_metrics():
                 is_returning = bool(is_returning)
             
             if is_returning:
-                returning_2026 += 1
+                group['returning'] += 1
                 total_returning += 1
             else:
-                new_2026 += 1
+                group['new'] += 1
                 total_new += 1
-        
-        returning_price = CAMP_CONFIG['pricing']['returning_camper']['total']
-        new_price = CAMP_CONFIG['pricing']['new_camper']['total']
-        revenue_2026 = (returning_2026 * returning_price) + (new_2026 * new_price)
-        
-        sessions.append({
-            'name': CAMP_CONFIG['camp_name'],
-            'total': len(registrations_2026),
-            'new_campers': new_2026,
-            'returning_campers': returning_2026,
-            'avg_age': round(sum(ages_2026) / len(ages_2026), 1) if ages_2026 else 0,
-            'revenue': revenue_2026
-        })
+
+        for session_label, group in grouped_sessions.items():
+            session_cfg = get_config_for_stored_session(session_label) or CAMP_CONFIG
+            returning_price = session_cfg['pricing']['returning_camper']['total']
+            new_price = session_cfg['pricing']['new_camper']['total']
+            revenue = (group['returning'] * returning_price) + (group['new'] * new_price)
+
+            sessions.append({
+                'name': session_label,
+                'total': group['total'],
+                'new_campers': group['new'],
+                'returning_campers': group['returning'],
+                'avg_age': round(sum(group['ages']) / len(group['ages']), 1) if group['ages'] else 0,
+                'revenue': revenue
+            })
         
         # --- Calculate Aggregated Stats ---
-        total_campers = len(historical_2025) + len(registrations_2026)
+        total_campers = len(historical_2025) + len(current_registrations)
         total_revenue = sum(s['revenue'] for s in sessions)
         returning_rate = round((total_returning / total_campers * 100), 1) if total_campers > 0 else 0
         
@@ -1947,7 +1975,7 @@ def admin_metrics():
             total_sessions=len(sessions),
             total_revenue=total_revenue,
             sessions=sessions,
-            current_registrations=registrations_2026,
+            current_registrations=current_registrations,
             config=CAMP_CONFIG,
             session_labels=json.dumps(session_labels),
             session_counts=json.dumps(session_counts),
