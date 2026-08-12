@@ -205,7 +205,20 @@ The system is designed to be flexible:
 - **Main README**: This file - system overview and setup
 - **Registration Guide**: `/registration_form/REGISTRATION_GUIDE.md` - comprehensive admin guide
 - **Changelog**: `CHANGELOG.md` - version history and feature updates
+- **Camp League Plan**: `/docs/development/CAMP_LEAGUE_PROJECT_PLAN.md` - Minecraft and Pokémon league roadmap
+- **Camp League Data**: `/camp_league.py` - reusable rules, scoring, themes, and gym definitions
 - **Individual Component READMEs**: Component-specific documentation in each directory
+
+## 🎮 Camp League Program Planning
+
+The project now includes a reusable rules engine for the camp league build process:
+- Minecraft Build Battle themes and rubric
+- Survival Challenge objectives and scoring
+- July 4-gym Pokémon pilot league
+- 8-gym November expansion model
+- Award definitions and flagship camp schedule
+
+This foundation supports the July pilot and the later league expansion phases without duplicating rules across documents.
 
 ## 🚀 Recent Updates (v2.1.0)
 
