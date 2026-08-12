@@ -647,7 +647,10 @@ def send_admin_notification_email(registration_data):
 
 # Admin credentials
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'campadmin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'PowerUp2026!')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+if not ADMIN_PASSWORD:
+    print("⚠️ ADMIN_PASSWORD environment variable is not set - admin login is DISABLED. "
+          "Set ADMIN_PASSWORD to enable the admin dashboard.")
 
 def require_admin_auth(f):
     """Decorator to require admin authentication."""
@@ -664,6 +667,7 @@ def init_db():
     return init_db_with_logging()
 
 @app.route('/debug-all-registrations')
+@require_admin_auth
 def debug_all_registrations():
     """Show all registrations with full details for debugging."""
     try:
@@ -736,6 +740,7 @@ def faq():
     return render_template('faq.html', config=CAMP_CONFIG)
 
 @app.route('/test-template')
+@require_admin_auth
 def test_template():
     """Test if templates are working."""
     try:
@@ -747,6 +752,7 @@ def test_template():
         return f'Template error: {str(e)}'
 
 @app.route('/test-db')
+@require_admin_auth
 def test_db():
     """Test database with detailed information."""
     try:
@@ -802,6 +808,7 @@ def test_db():
         }), 500
 
 @app.route('/debug-registration/<submission_id>')
+@require_admin_auth
 def debug_registration(submission_id):
     """Debug specific registration by ID."""
     try:
@@ -847,6 +854,7 @@ def debug_registration(submission_id):
         return jsonify({"error": str(e), "submission_id": submission_id}), 500
 
 @app.route('/test-submit')
+@require_admin_auth
 def test_submit():
     """Test submission endpoint with sample data."""
     try:
@@ -931,6 +939,7 @@ def test_submit():
         }), 500
 
 @app.route('/railway-status')
+@require_admin_auth
 def railway_status():
     """Check Railway configuration and provide setup instructions."""
     try:
@@ -1055,6 +1064,7 @@ def railway_status():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/find-volumes')
+@require_admin_auth
 def find_volumes():
     """Aggressively search the entire filesystem for Railway volumes."""
     try:
@@ -1546,7 +1556,7 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        if ADMIN_PASSWORD and username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['admin_logged_in'] = True
             flash('Login successful!', 'success')
             return redirect(url_for('admin_dashboard'))
@@ -2075,6 +2085,7 @@ def verify_returning_campers():
         return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/export-json')
+@require_admin_auth
 def admin_export_json():
     """Export all registrations as JSON for migration."""
     try:
@@ -2100,6 +2111,7 @@ def admin_export_json():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/admin/import-json', methods=['POST'])
+@require_admin_auth
 def admin_import_json():
     """Import registrations from JSON for migration."""
     try:
@@ -3276,6 +3288,7 @@ def submit_leaderboard_score():
 
 
 @app.route('/api/leaderboard/delete/<int:entry_id>', methods=['DELETE'])
+@require_admin_auth
 def delete_leaderboard_entry(entry_id):
     """Delete one leaderboard score entry by id."""
     ensure_leaderboard_table()
