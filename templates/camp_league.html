@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp League | Camp Power-Up</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 45%, #7c3aed 100%);
+            color: #1f2937;
+        }
+
+        .page-shell {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+        }
+
+        .topbar {
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+            padding: 22px 24px;
+            margin-bottom: 22px;
+        }
+
+        .topbar h1 {
+            margin: 0 0 16px;
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            color: #111827;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            background: #2563eb;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        .nav-link.highlight {
+            background: #16a34a;
+        }
+
+        .container {
+            display: grid;
+            gap: 22px;
+        }
+
+        .hero,
+        .section-card {
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+            padding: 24px;
+        }
+
+        .hero h2 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: clamp(1.4rem, 2vw, 2rem);
+        }
+
+        .hero p {
+            margin-top: 0;
+            margin-bottom: 18px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #eff6ff, #ede9fe);
+            border: 1px solid #dbeafe;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .stat-box span {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #4f46e5;
+            margin-bottom: 8px;
+        }
+
+        .stat-box strong {
+            font-size: 2rem;
+            color: #111827;
+        }
+
+        .section-card h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 1.7rem;
+            color: #111827;
+        }
+
+        .section-card p {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .theme-grid,
+        .gym-grid,
+        .badge-grid,
+        .awards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .theme-item,
+        .gym-item,
+        .badge-item,
+        .award-item {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .gym-item small,
+        .award-item small {
+            display: block;
+            margin-top: 6px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-size: 0.86rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        td {
+            color: #334155;
+        }
+
+        .list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .check-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .schedule-table {
+            margin-top: 18px;
+        }
+
+        @media (max-width: 640px) {
+            .page-shell {
+                padding: 18px 14px 40px;
+            }
+
+            .topbar,
+            .hero,
+            .section-card {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <h1>🎯 Camp League</h1>
+            <nav class="nav-links">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link" href="/campers">Campers</a>
+                <a class="nav-link" href="/leaderboard">Leaderboard</a>
+                <a class="nav-link highlight" href="/camp-league">Camp League</a>
+                <a class="nav-link" href="/game_library">Game Library</a>
+            </nav>
+        </header>
+
+        <main class="container">
+            <section class="hero">
+                <h2>Balanced league design for the November pilot and the full seasonal program</h2>
+                <p>
+                    July has already passed, so this version reflects the active November pilot and the league structure
+                    that follows it into the March refinement camp and June flagship event.
+                </p>
+                <div class="stat-row">
+                    <div class="stat-box">
+                        <span>Build Battle</span>
+                        <strong>{{ build_battle_total }}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Survival</span>
+                        <strong>{{ survival_total }}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>November Gyms</span>
+                        <strong>{{ pilot_gyms|length }}</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Scavenger Hunt</span>
+                        <strong>{{ scavenger_hunt|length }}</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section-card">
+                <h3>Minecraft Build Battle</h3>
+                <p>
+                    The November pilot starts with the same simple 10-theme library and 40-point rubric, now positioned as
+                    the live event kickoff rather than the earlier July test.
+                </p>
+                <div class="theme-grid">
+                    {% for theme in build_battle_themes %}
+                    <div class="theme-item">{{ theme }}</div>
+                    {% endfor %}
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in build_battle_rubric %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.points }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td><strong>{{ build_battle_total }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section-card">
+                <h3>Minecraft Survival Challenge</h3>
+                <p>
+                    The survival challenge is designed to reward essential survival milestones and progression from shelter to fortress.
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Objective</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for objective in survival_objectives %}
+                        <tr>
+                            <td>{{ objective.name }}</td>
+                            <td>{{ objective.points }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td><strong>{{ survival_total }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section-card">
+                <h3>Pokemon Gym Challenge</h3>
+                <p>
+                    The active pilot is now the November league, which uses the full 8-gym progression: Fire, Water,
+                    Grass, Electric, Fighting, Psychic, Ghost, and Dragon. These badges unlock championship entry.
+                </p>
+                <div class="gym-grid">
+                    {% for gym in pilot_gyms %}
+                    <div class="gym-item">
+                        {{ gym.name }} Gym
+                        <small>{{ gym.badge_name }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div style="margin-top: 22px;">
+                    <h4 style="margin-bottom: 12px;">Legacy July starter set</h4>
+                    <div class="gym-grid">
+                        {% for gym in july_gyms %}
+                        <div class="gym-item">
+                            {{ gym.name }} Gym
+                            <small>{{ gym.badge_name }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="section-card">
+                <h3>Pokemon Scavenger Hunt</h3>
+                <p>
+                    The initial scavenger hunt includes 20 challenges that encourage exploration, catching variety, and noticing Pokemon patterns.
+                </p>
+                <div class="list-grid">
+                    {% for challenge in scavenger_hunt %}
+                    <div class="check-item">{{ challenge.description }}</div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="section-card">
+                <h3>Awards</h3>
+                <div class="awards-grid">
+                    {% for award in awards %}
+                    <div class="award-item">
+                        {{ award.name }}
+                        <small>{{ award.description }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="section-card">
+                <h3>Flagship Camp Schedule</h3>
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Event</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day, event in flagship_schedule %}
+                        <tr>
+                            <td>{{ day }}</td>
+                            <td>{{ event }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

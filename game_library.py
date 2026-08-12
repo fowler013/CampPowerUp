@@ -162,8 +162,86 @@ def add_or_update_game(game_name, platform='Nintendo Switch', genre=None, rating
     conn.close()
     return game_id
 
+SAMPLE_GAMES = [
+    ('Mario Kart 8 Deluxe', 45, 5),
+    ('Super Smash Bros Ultimate', 38, 3),
+    ('Animal Crossing New Horizons', 32, 2),
+    ('Minecraft', 28, 4),
+    ('Pokemon Sword/Shield', 24, 2),
+    ('Splatoon 3', 19, 2),
+    ('Fortnite', 17, 0),
+    ('Roblox', 15, 0),
+    ('The Legend of Zelda Breath of the Wild', 12, 1),
+    ('Kirby and the Forgotten Land', 9, 1),
+]
+
+
+def seed_sample_games():
+    """Seed an empty game library with sample data when no registration data exists."""
+    initialize_game_library()
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT COUNT(*) FROM games')
+        if cursor.fetchone()[0] > 0:
+            print("ℹ️ Game library already contains data; skipping sample seed")
+            return
+
+        cursor.execute('DELETE FROM camper_games')
+
+        next_camper_id = 1
+        for name, total_owned, camp_copies in SAMPLE_GAMES:
+            normalized = normalize_game_name(name)
+            cursor.execute(
+                'INSERT INTO games (name, normalized_name, total_owned, camp_copies) VALUES (?, ?, ?, ?)',
+                (name, normalized, total_owned, camp_copies)
+            )
+            game_id = cursor.lastrowid
+
+            for ownership_index in range(total_owned):
+                cursor.execute(
+                    '''
+                    INSERT INTO camper_games (camper_id, game_id, owns_game, brings_to_camp)
+                    VALUES (?, ?, 1, ?)
+                    ''',
+                    (
+                        next_camper_id,
+                        game_id,
+                        1 if ownership_index < camp_copies else 0,
+                    )
+                )
+                next_camper_id += 1
+        conn.commit()
+    finally:
+        conn.close()
+    print(f"✅ Seeded {len(SAMPLE_GAMES)} sample games")
+
+
+def registrations_table_exists():
+    """Check whether the registrations table exists in the main database."""
+    conn = sqlite3.connect(DATABASE_PATH)
+    try:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='registrations'"
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
 def process_camper_games():
-    """Process existing registration data to populate game library"""
+    """Process existing registration data to populate game library.
+
+    Falls back to seeding sample data if no registrations table exists.
+    """
+    # Initialize game library tables first so the dashboard always works
+    initialize_game_library()
+
+    if not registrations_table_exists():
+        print("⚠️ No registrations table found — seeding sample game data instead")
+        seed_sample_games()
+        return Counter({name.lower(): count for name, count, _ in SAMPLE_GAMES})
+
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -184,9 +262,6 @@ def process_camper_games():
     
     campers = cursor.fetchall()
     conn.close()
-    
-    # Initialize game library
-    initialize_game_library()
     
     game_counts = Counter()
     camper_game_data = []
