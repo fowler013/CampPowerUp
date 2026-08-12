@@ -9,6 +9,19 @@ import os
 import math
 from collections import Counter, defaultdict
 
+from camp_league import (
+    BUILD_BATTLE_RUBRIC,
+    BUILD_BATTLE_THEMES,
+    CAMP_AWARDS,
+    FLAGSHIP_SCHEDULE,
+    JULY_GYMS,
+    NOVEMBER_GYMS,
+    POKEMON_SCAVENGER_HUNT,
+    SURVIVAL_OBJECTIVES,
+    build_battle_total_points,
+    survival_challenge_total_points,
+)
+
 app = Flask(__name__)
 
 # Configuration
@@ -501,6 +514,25 @@ def index():
 def campers_page():
     """Serves the interactive campers list page."""
     return render_template('campers.html')
+
+
+@app.route('/camp-league')
+def camp_league_page():
+    """Serves the camp league planning and rules page."""
+    return render_template(
+        'camp_league.html',
+        build_battle_themes=BUILD_BATTLE_THEMES,
+        build_battle_rubric=BUILD_BATTLE_RUBRIC,
+        build_battle_total=build_battle_total_points(),
+        survival_objectives=SURVIVAL_OBJECTIVES,
+        survival_total=survival_challenge_total_points(),
+        pilot_gyms=NOVEMBER_GYMS,
+        july_gyms=JULY_GYMS,
+        november_gyms=NOVEMBER_GYMS,
+        scavenger_hunt=POKEMON_SCAVENGER_HUNT,
+        awards=CAMP_AWARDS,
+        flagship_schedule=FLAGSHIP_SCHEDULE.items(),
+    )
 
 
 @app.route('/leaderboard')
