@@ -1,8 +1,9 @@
 """Reusable data model for the Camp Power-Up Minecraft & Pokémon League.
 
 This module captures the baseline peer-to-peer rules, challenge sets, and league
-structure used across the July pilot, November league, March refinement camp,
-and June flagship event.
+structure used across the November pilot, March refinement camp, and June
+flagship event. The earlier July session remains in the record as a historical
+starter version.
 """
 
 from __future__ import annotations
@@ -126,23 +127,23 @@ PROJECT_PHASES = [
     {
         "name": "Phase 0",
         "window": "This Week",
-        "goal": "Define the minimum viable camp product and success criteria.",
+        "goal": "Define the minimum viable camp product and success criteria for the November pilot.",
         "deliverables": [
             "Finalize Minecraft Build Battle rules",
             "Finalize Survival Challenge scoring",
             "Create Pokémon scavenger hunt",
-            "Create 4-gym Pokémon League",
-            "Design July awards",
+            "Create 8-gym Pokémon league structure",
+            "Design November pilot awards",
         ],
     },
     {
         "name": "Phase 1",
-        "window": "July 20-21 Pilot Camp",
+        "window": "November Pilot Camp",
         "goal": "Test activities, timing, age range, and interest before broader league expansion.",
         "deliverables": [
-            "Run July Build Battle rubric",
-            "Run July Survival objectives",
-            "Run 4-gym challenge set",
+            "Run November Build Battle rubric",
+            "Run November Survival objectives",
+            "Run 8-gym challenge set",
             "Capture staff observations for iteration",
         ],
     },

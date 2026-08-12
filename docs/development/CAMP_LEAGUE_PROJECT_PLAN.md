@@ -25,19 +25,19 @@ Create a repeatable camp program for grades 1-8 that can run as a 2-day pilot ca
 ## Project Phases
 
 ### Phase 0: project setup (this week)
-Focus on creating the foundation for the July pilot and the later league model.
+Focus on creating the foundation for the November pilot and the later league model.
 
-### Phase 1: July 20-21 pilot camp
+### Phase 1: November pilot camp
 Keep the pilot intentionally simple while testing:
 - activities
 - timing
 - age ranges
 - interest level
 
-This is not the full league yet; it is the learning and validation phase.
+This is the active version of the camp league that replaces the earlier July test phase.
 
-### Phase 2: November camp
-Introduce the league model with the full Pokémon gym progression and Minecraft event structure.
+### Phase 2: March camp
+Refine the league model with the full Pokémon gym progression and Minecraft event structure.
 
 ### Phase 3: March camp
 Refine the camp with leadership roles and team-based challenges.
@@ -45,7 +45,7 @@ Refine the camp with leadership roles and team-based challenges.
 ### Phase 4: June flagship camp
 Deliver the polished final camp experience using the complete schedule and event cadence.
 
-## Deliverables for the July MVP
+## Deliverables for the November Pilot
 
 ### Minecraft Build Battle
 The Build Battle opens with a 10-theme library and a 40-point rubric.
@@ -83,11 +83,15 @@ Objectives and scoring:
 Total: 70
 
 ### Pokémon Gym Challenge
-The July pilot includes four gyms:
+The November pilot includes the full 8-gym league structure:
 - Fire
 - Water
 - Grass
 - Electric
+- Fighting
+- Psychic
+- Ghost
+- Dragon
 
 Each gym uses a simple badge card system and a lightweight score sheet for the pilot event.
 
@@ -173,15 +177,15 @@ Adds:
 - [ ] Judge guide
 
 ## Recommended first milestone
-Complete by July 1:
+Complete before the November pilot:
 1. Finalize Minecraft Build Battle rules
 2. Finalize Survival Challenge scoring
 3. Create Pokémon Scavenger Hunt
-4. Create 4-Gym Pokémon League
-5. Design awards for July
+4. Create the 8-Gym Pokémon League structure
+5. Design pilot awards for November
 
-This is the minimum viable set needed to operate the July 20-21 camp successfully.
+This is the minimum viable set needed to operate the November camp successfully.
 
 ## Supporting Implementation Files
 - `camp_league.py` contains reusable data structures for the build battle themes, survival objectives, gym lineups, scavenger hunt prompts, and award definitions.
-- This project plan will be expanded into scorecards, score sheets, staff playbooks, and printable badge sheets after the July pilot.
+- This project plan will be expanded into scorecards, score sheets, staff playbooks, and printable badge sheets after the November pilot.

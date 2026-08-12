@@ -225,10 +225,10 @@
 
         <main class="container">
             <section class="hero">
-                <h2>Balanced league design for the July pilot and the full seasonal program</h2>
+                <h2>Balanced league design for the November pilot and the full seasonal program</h2>
                 <p>
-                    This page captures the repeatable Minecraft and Pokemon camp model for the July 20-21 pilot,
-                    November league expansion, March refinement camp, and the June flagship event.
+                    July has already passed, so this version reflects the active November pilot and the league structure
+                    that follows it into the March refinement camp and June flagship event.
                 </p>
                 <div class="stat-row">
                     <div class="stat-box">
@@ -240,8 +240,8 @@
                         <strong>{{ survival_total }}</strong>
                     </div>
                     <div class="stat-box">
-                        <span>July Gyms</span>
-                        <strong>{{ july_gyms|length }}</strong>
+                        <span>November Gyms</span>
+                        <strong>{{ pilot_gyms|length }}</strong>
                     </div>
                     <div class="stat-box">
                         <span>Scavenger Hunt</span>
@@ -253,8 +253,8 @@
             <section class="section-card">
                 <h3>Minecraft Build Battle</h3>
                 <p>
-                    The July pilot begins with a simple 10-theme list and a 40-point rubric. Every build is judged on
-                    creativity, detail, theme fit, and presentation.
+                    The November pilot starts with the same simple 10-theme library and 40-point rubric, now positioned as
+                    the live event kickoff rather than the earlier July test.
                 </p>
                 <div class="theme-grid">
                     {% for theme in build_battle_themes %}
@@ -313,10 +313,11 @@
             <section class="section-card">
                 <h3>Pokemon Gym Challenge</h3>
                 <p>
-                    The July pilot uses four simple gym badges: Fire, Water, Grass, and Electric. Each badge becomes a lightweight milestone in the camp league.
+                    The active pilot is now the November league, which uses the full 8-gym progression: Fire, Water,
+                    Grass, Electric, Fighting, Psychic, Ghost, and Dragon. These badges unlock championship entry.
                 </p>
                 <div class="gym-grid">
-                    {% for gym in july_gyms %}
+                    {% for gym in pilot_gyms %}
                     <div class="gym-item">
                         {{ gym.name }} Gym
                         <small>{{ gym.badge_name }}</small>
@@ -325,9 +326,9 @@
                 </div>
 
                 <div style="margin-top: 22px;">
-                    <h4 style="margin-bottom: 12px;">Expanded November League</h4>
+                    <h4 style="margin-bottom: 12px;">Legacy July starter set</h4>
                     <div class="gym-grid">
-                        {% for gym in november_gyms %}
+                        {% for gym in july_gyms %}
                         <div class="gym-item">
                             {{ gym.name }} Gym
                             <small>{{ gym.badge_name }}</small>

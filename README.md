@@ -214,11 +214,11 @@ The system is designed to be flexible:
 The project now includes a reusable rules engine for the camp league build process:
 - Minecraft Build Battle themes and rubric
 - Survival Challenge objectives and scoring
-- July 4-gym Pokémon pilot league
-- 8-gym November expansion model
+- November 8-gym Pokémon pilot league
+- March and June refinement and flagship model
 - Award definitions and flagship camp schedule
 
-This foundation supports the July pilot and the later league expansion phases without duplicating rules across documents.
+This foundation supports the active November pilot and the later seasonal expansion phases without duplicating rules across documents.
 
 ## 🚀 Recent Updates (v2.1.0)
 

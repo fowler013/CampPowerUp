@@ -526,6 +526,7 @@ def camp_league_page():
         build_battle_total=build_battle_total_points(),
         survival_objectives=SURVIVAL_OBJECTIVES,
         survival_total=survival_challenge_total_points(),
+        pilot_gyms=NOVEMBER_GYMS,
         july_gyms=JULY_GYMS,
         november_gyms=NOVEMBER_GYMS,
         scavenger_hunt=POKEMON_SCAVENGER_HUNT,
