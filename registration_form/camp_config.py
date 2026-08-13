@@ -15,8 +15,8 @@ from datetime import datetime
 # Current Camp Session Configuration
 CAMP_CONFIG = {
     'age_range': 'K-8th Grade',
-    'camp_dates': 'November 23-25, 2026',
-    'camp_days': 3,
+    'camp_dates': 'November 23-24, 2026',
+    'camp_days': 2,
     'camp_name': 'Camp Power-Up Thanksgiving 2026',
     'camp_subtitle': 'Nintendo Switch Thanksgiving Break Camp Registration',
     'daily_hours': '10:00 AM - 3:00 PM',
@@ -46,7 +46,7 @@ CAMP_CONFIG = {
         'Daily Park Time at Patriot Park',
         'Prizes & Trophies'
     ],
-    'total_hours': 15,
+    'total_hours': 10,
     'waitlist_available': True,
     # Lunch info
     'lunch_provided': False,

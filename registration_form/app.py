@@ -2756,7 +2756,7 @@ def attendance():
         return render_template('attendance.html', 
                              registrations=registrations,
                              today=today,
-                             camp_dates=['2026-11-23', '2026-11-24', '2026-11-25'])
+                             camp_dates=['2026-11-23', '2026-11-24'])
     except Exception as e:
         flash(f'Error loading attendance: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
