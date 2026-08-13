@@ -13,8 +13,8 @@ def test_thanksgiving_session_configuration():
     assert validate_config()
     assert DEFAULT_SESSION_ID == "thanksgiving-2026"
     assert SESSIONS[DEFAULT_SESSION_ID] is CAMP_CONFIG
-    assert CAMP_CONFIG["camp_dates"] == "November 23-25, 2026"
-    assert CAMP_CONFIG["camp_days"] == 3
+    assert CAMP_CONFIG["camp_dates"] == "November 23-24, 2026"
+    assert CAMP_CONFIG["camp_days"] == 2
     assert CAMP_CONFIG["daily_hours"] == "10:00 AM - 3:00 PM"
     assert CAMP_CONFIG["pricing"]["new_camper"]["total"] == 100
     assert CAMP_CONFIG["pricing"]["returning_camper"]["total"] == 80
@@ -27,7 +27,7 @@ def test_registration_page_uses_thanksgiving_session():
 
     assert response.status_code == 200
     assert b"Camp Power-Up Thanksgiving 2026" in response.data
-    assert b"November 23-25, 2026" in response.data
+    assert b"November 23-24, 2026" in response.data
     assert b'name="camp_session_id" value="thanksgiving-2026"' in response.data
 
 
@@ -51,7 +51,7 @@ def test_confirmation_page_uses_current_dates_and_pricing():
             config=CAMP_CONFIG,
         )
 
-    assert "November 23-25, 2026" in rendered
+    assert "November 23-24, 2026" in rendered
     assert "November 22, 2026" in rendered
     assert "$50 remaining ($100 total)" in rendered
     assert "June" not in rendered

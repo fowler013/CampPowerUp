@@ -15,10 +15,10 @@ from datetime import datetime
 # Current Camp Session Configuration
 CAMP_CONFIG = {
     'age_range': 'K-8th Grade',
-    'camp_dates': 'November 23-25, 2026',
-    'camp_days': 3,
+    'camp_dates': 'November 23-24, 2026',
+    'camp_days': 2,
     'camp_name': 'Camp Power-Up Thanksgiving 2026',
-    'camp_subtitle': 'Three days of gaming fun during Thanksgiving break!',
+    'camp_subtitle': 'Two days of gaming fun during Thanksgiving break!',
     'daily_hours': '10:00 AM - 3:00 PM',
     'deposit_due': 'Upon Registration',
     'early_bird_deadline': None,
@@ -45,7 +45,7 @@ CAMP_CONFIG = {
         'Daily Park Time',
         'Prizes & Trophies'
     ],
-    'total_hours': 15,
+    'total_hours': 10,
     'waitlist_available': True}
 
 # Dynamic text generation functions
