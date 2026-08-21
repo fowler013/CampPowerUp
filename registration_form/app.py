@@ -1137,6 +1137,70 @@ def find_volumes():
     except Exception as e:
         return jsonify({"error": str(e), "traceback": str(e.__traceback__)}), 500
 
+@app.route('/api/check-returning-camper', methods=['POST'])
+def check_returning_camper():
+    """Check if a camper has attended before based on their name."""
+    try:
+        data = request.get_json()
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        
+        if not first_name or not last_name:
+            return jsonify({"found": False, "message": "Name required"})
+        
+        db_file = get_database_path()
+        conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Search for previous registrations with similar name (case-insensitive)
+        cursor.execute("""
+            SELECT submission_id, timestamp, child_first_name, child_last_name, 
+                   child_age, child_grade, is_returning_camper, returning_years
+            FROM registrations 
+            WHERE LOWER(child_first_name) = LOWER(?) 
+              AND LOWER(child_last_name) = LOWER(?)
+            ORDER BY timestamp DESC
+        """, (first_name, last_name))
+        
+        previous_registrations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        if previous_registrations:
+            # Extract years from timestamps
+            years_attended = []
+            for reg in previous_registrations:
+                try:
+                    timestamp = reg.get('timestamp', '')
+                    # Handle different date formats
+                    if '/' in timestamp:
+                        # Format like "2/24/2025 17:44:32"
+                        year = timestamp.split('/')[-1].split(' ')[0]
+                    else:
+                        # ISO format
+                        year = timestamp[:4]
+                    if year and year not in years_attended:
+                        years_attended.append(year)
+                except:
+                    pass
+            
+            return jsonify({
+                "found": True,
+                "message": f"Welcome back, {first_name}!",
+                "years_attended": years_attended,
+                "total_registrations": len(previous_registrations),
+                "last_registration": previous_registrations[0] if previous_registrations else None
+            })
+        else:
+            return jsonify({
+                "found": False,
+                "message": "No previous registrations found - welcome new camper!"
+            })
+            
+    except Exception as e:
+        print(f"Error checking returning camper: {e}")
+        return jsonify({"found": False, "error": str(e)}), 500
+
 @app.route('/submit', methods=['POST'])
 def submit():
     """Handle registration - accepts JSON data."""

@@ -413,6 +413,15 @@
                     </div>
                 </div>
 
+                <!-- Auto-detection notification -->
+                <div id="returning_camper_notification" style="display: none; background: #d4edda; border: 2px solid #28a745; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                    <h4 style="color: #155724; margin-bottom: 10px;">🎉 Welcome Back!</h4>
+                    <p id="notification_message" style="color: #155724; font-size: 14px; margin-bottom: 10px;"></p>
+                    <p style="color: #155724; font-size: 13px; font-weight: bold;">
+                        💰 As a returning camper, you qualify for the $80 discounted rate (instead of $100)!
+                    </p>
+                </div>
+
                 <div class="form-group">
                     <label>Has your child attended Camp Power-Up before? <span class="required">*</span></label>
                     <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
@@ -603,7 +612,60 @@
         const saveBtn = document.getElementById('saveBtn');
         const loading = document.getElementById('loading');
 
-                // Show/hide conditional fields
+        // Auto-check for returning campers when name is entered
+        let checkTimeout;
+        function checkReturningCamper() {
+            clearTimeout(checkTimeout);
+            checkTimeout = setTimeout(async () => {
+                const firstName = document.getElementById('child_first_name').value.trim();
+                const lastName = document.getElementById('child_last_name').value.trim();
+                
+                if (firstName && lastName) {
+                    try {
+                        const response = await fetch('/api/check-returning-camper', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                first_name: firstName,
+                                last_name: lastName
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        const notification = document.getElementById('returning_camper_notification');
+                        const message = document.getElementById('notification_message');
+                        
+                        if (data.found) {
+                            const yearsText = data.years_attended && data.years_attended.length > 0 
+                                ? `We found records from: ${data.years_attended.join(', ')}` 
+                                : 'We found previous registration(s) for this camper!';
+                            
+                            message.textContent = `${data.message} ${yearsText}`;
+                            notification.style.display = 'block';
+                            
+                            // Auto-select "Yes" for returning camper
+                            document.getElementById('returning_yes').checked = true;
+                            document.getElementById('returning_yes').dispatchEvent(new Event('change'));
+                            
+                            // Pre-fill years if available
+                            if (data.years_attended && data.years_attended.length > 0) {
+                                document.getElementById('previous_year').value = data.years_attended.join(', ');
+                            }
+                        } else {
+                            notification.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.log('Error checking returning camper:', error);
+                    }
+                }
+            }, 1000); // Wait 1 second after user stops typing
+        }
+
+        // Add listeners to name fields
+        document.getElementById('child_first_name').addEventListener('input', checkReturningCamper);
+        document.getElementById('child_last_name').addEventListener('input', checkReturningCamper);
+
+        // Show/hide conditional fields
         document.getElementById('has_allergies').addEventListener('change', function() {
             const detailsGroup = document.getElementById('allergy_details_group');
             detailsGroup.style.display = this.checked ? 'block' : 'none';
