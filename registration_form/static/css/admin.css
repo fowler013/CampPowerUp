@@ -1,0 +1,282 @@
+body {
+    overflow-wrap: anywhere;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+button, input, select, textarea {
+    font: inherit;
+}
+
+button, input, select, textarea, .btn {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+a:focus-visible, button:focus-visible, summary:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid #304bb0;
+    outline-offset: 3px;
+}
+
+.nav-links.admin-nav-links {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.admin-nav-links a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: #4658aa;
+    font-size: 1rem;
+    padding: 10px 12px;
+}
+
+.admin-nav-links a[aria-current="page"] {
+    background: #eef0fc;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 5px;
+}
+
+.admin-nav-links .logout-btn {
+    margin-inline-start: auto;
+    background: #ad2433;
+}
+
+.admin-maintenance {
+    margin-block-start: 12px;
+    padding-block-start: 12px;
+    border-block-start: 1px solid #d9dce5;
+}
+
+.admin-maintenance summary {
+    cursor: pointer;
+    padding: 8px 0;
+    color: #46506a;
+}
+
+.admin-maintenance p {
+    max-width: 75ch;
+    line-height: 1.5;
+    margin: 8px 0 12px;
+}
+
+.maintenance-actions, .view-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.maintenance-actions form {
+    margin: 0;
+}
+
+.scope-panel {
+    margin: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+}
+
+.scope-panel p {
+    margin-block-start: 8px;
+    color: #495065;
+    line-height: 1.5;
+}
+
+.extra-stats summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding-block: 8px;
+}
+
+.extra-stats .stats-bar {
+    margin: 12px 0;
+    padding: 0;
+}
+
+.session-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.session-filter select {
+    flex: 1 1 280px;
+    min-width: 0;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #788296;
+    border-radius: 6px;
+}
+
+.stats-bar {
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+}
+
+.stat-card {
+    min-width: 0;
+    border: 1px solid #dfe3ed;
+}
+
+.stat-number {
+    color: #4d58a6;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.stat-label {
+    color: #485065;
+}
+
+.search-box, .search-box input, .controls > *, .card-header > * {
+    min-width: 0;
+}
+
+.search-box {
+    flex-wrap: wrap;
+}
+
+.card-header, .card-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.card-details {
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+}
+
+.detail-value, .special-notes {
+    white-space: pre-line;
+}
+
+.admin-notice, .empty-state, .search-status {
+    margin: 12px 20px;
+    padding: 12px;
+    line-height: 1.5;
+    color: #273145;
+    background: #edf1f8;
+    border-radius: 6px;
+}
+
+.admin-notice.error {
+    color: #842029;
+    background: #f8d7da;
+}
+
+.admin-notice.warning {
+    color: #664d03;
+    background: #fff3cd;
+}
+
+.btn-primary {
+    background: #4658aa;
+    color: white;
+}
+
+.btn-success {
+    background: #1c7140;
+    color: white;
+}
+
+.btn-danger {
+    background: #ad2433;
+    color: white;
+}
+
+.btn-info {
+    background: #e6edf8;
+    color: #263f6b;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.toast {
+    transform: none;
+    opacity: 0;
+    visibility: hidden;
+    width: max-content;
+    max-width: calc(100vw - 40px);
+    transition: opacity 150ms ease;
+}
+
+.toast.show {
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+}
+
+.toast.success {
+    background: #1c7140;
+}
+
+.toast.error {
+    background: #ad2433;
+}
+
+.data-table {
+    width: 100%;
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
+    .nav-bar, .scope-panel, .stats-bar {
+        padding: 12px;
+    }
+
+    .scope-panel {
+        margin: 12px;
+    }
+
+    .admin-nav-links a {
+        font-size: 0.95rem;
+        padding: 8px;
+    }
+
+    .session-filter label {
+        flex-basis: 100%;
+    }
+
+    .session-filter select {
+        flex-basis: 100%;
+    }
+
+    .controls, .registration-card {
+        padding: 12px;
+    }
+
+    .stats-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .stat-card {
+        padding: 12px 8px;
+    }
+
+    .card-header {
+        align-items: stretch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+}

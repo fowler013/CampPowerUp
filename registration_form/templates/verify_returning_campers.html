@@ -244,6 +244,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
     <div class="header">
@@ -251,24 +252,16 @@
         <p>Cross-reference returning camper claims against historical database</p>
     </div>
 
-    <div class="nav-bar">
-        <div class="nav-links">
-            <a href="/admin">📊 Current Registrations</a>
-            <a href="/admin/historical">📚 Historical Data</a>
-            <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
-            <a href="/admin/config">⚙️ Configuration</a>
-            <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
-        </div>
-    </div>
+    {% include 'admin_navigation.html' %}
 
     <div class="container">
         <!-- Alert Box -->
         <div class="alert">
-            <h3>🛡️ Fraud Prevention Tool</h3>
+            <h3>Returning camper verification</h3>
             <p>
-                This tool helps you identify fraudulent returning camper claims. 
-                It checks each registration that claims "returning camper" status against your historical database.
-                <strong>Unverified claims</strong> may indicate fraud (trying to get the $80 discount instead of $100).
+                Checks returning camper registrations against imported historical records using the camper's name and parent email.
+                An unverified result means no exact match was found; it is not proof of fraud. Confirm missing or changed details with the family.
+                <strong>Selection:</strong> {{ selected_session if selected_session != 'all' else 'All sessions' }}.
             </p>
         </div>
 
@@ -287,7 +280,7 @@
                 <div class="stat-number">{{ stats.unverified_count }}</div>
             </div>
             <div class="stat-card fraud">
-                <div class="stat-label">Fraud Rate</div>
+                <div class="stat-label">Unverified rate</div>
                 <div class="stat-number">{{ stats.fraud_rate }}%</div>
             </div>
         </div>
@@ -296,7 +289,7 @@
         <div class="section">
             <div class="section-header">
                 <h2>Verification Results</h2>
-                <p>All registrations claiming returning camper status</p>
+                <p>Returning camper registrations in the selected session</p>
             </div>
 
             {% if results %}
@@ -322,12 +315,12 @@
                             {% if result.is_verified %}
                                 <span class="badge badge-verified">✅ VERIFIED</span>
                             {% else %}
-                                <span class="badge badge-unverified">⚠️ UNVERIFIED - POTENTIAL FRAUD</span>
+                                <span class="badge badge-unverified">⚠️ NO EXACT MATCH</span>
                             {% endif %}
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="/admin/edit/{{ result.id }}" class="btn btn-view">View/Edit</a>
+                                <a href="{{ admin_url('admin_edit', registration_id=result.id) }}" class="btn btn-view">View/Edit</a>
                             </div>
                         </td>
                     </tr>

@@ -1,5 +1,25 @@
 # Camp Power-Up System Changelog
 
+## Unreleased - Registration and admin workflow reliability
+
+- Added responsive, session-aware administration navigation and accurate counts
+  for payments, returning campers, equipment, support flags and UTC registration dates.
+- Added validated, database-backed configuration with stale-save protection and
+  previous-label snapshots, without changing existing registration labels.
+- Scoped exports, metrics, verification and edit redirects to the selected camp.
+  Unknown session prices are explicitly unavailable rather than replaced with current fees.
+- Kept attendance's payment controls compatible with CSRF protection, added date
+  selection, and handled an empty attendance database without false load errors.
+- Added CSRF protection to registration/configuration/history mutations and
+  explicit missing-record, expired-session and payment-reminder failure handling.
+- Preserved public form details, normalized legacy flags, validated required
+  fields, and removed fabricated confirmation and automatic timeout-retry behavior.
+  Browser drafts no longer replace the selected camp or block a successful submission.
+- Made JSON import transactional, preserved session/payment fields, and restricted
+  historical repairs so current registrations cannot be relabeled as history.
+- Added isolated synthetic regression and optional browser workflow checks.
+- Updated the live URLs, default Thanksgiving pricing and database backup/deployment guidance.
+
 ## Version 2.1.0 - Fraud Prevention & Security Update (July 28, 2025)
 
 ### 🛡️ **Major Security Enhancement: Fraud Prevention System**

@@ -564,7 +564,13 @@
             <!-- Payment Information -->
             <div class="payment-info">
                 <h3>💳 Payment Information</h3>
-                <p>After submitting this form, you can send your ${{ deposit_amount|default(50) }} deposit via:</p>
+                <p>After submitting this form, you can send your deposit via the methods below:
+                    {% if config.pricing.new_camper.deposit == config.pricing.returning_camper.deposit %}
+                    ${{ config.pricing.new_camper.deposit }} per camper.
+                    {% else %}
+                    ${{ config.pricing.new_camper.deposit }} for a new camper or ${{ config.pricing.returning_camper.deposit }} for a returning camper.
+                    {% endif %}
+                </p>
                 <div class="payment-methods">
                     <div class="payment-method">Cash App<br><strong>$TevinFowler</strong></div>
                     <div class="payment-method">Venmo<br><strong>@Brandon-Ballard</strong></div>
@@ -582,6 +588,7 @@
                 <button type="button" class="submit-btn" id="saveBtn" style="background: #6c757d;">
                     💾 Save Draft
                 </button>
+                <p id="draftStatus" role="status" aria-live="polite" hidden></p>
                 
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
@@ -674,38 +681,47 @@
 
         // Auto-save functionality
         function saveFormData() {
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData);
-            localStorage.setItem('campPowerUpDraft', JSON.stringify(data));
+            const status = document.getElementById('draftStatus');
+            try {
+                const data = Object.fromEntries(new FormData(form));
+                localStorage.setItem('campPowerUpDraft', JSON.stringify(data));
+                status.textContent = 'Draft saved in this browser. This is not a submitted registration.';
+                status.hidden = false;
+            } catch (error) {
+                status.textContent = 'This browser could not save your draft. Keep this page open until you submit.';
+                status.hidden = false;
+            }
         }
 
         // Load saved form data
         function loadFormData() {
-            const saved = localStorage.getItem('campPowerUpDraft');
-            if (saved) {
+            try {
+                const saved = localStorage.getItem('campPowerUpDraft');
+                if (!saved) return;
                 const data = JSON.parse(saved);
-                Object.entries(data).forEach(([key, value]) => {
-                    const field = form.querySelector(`[name="${key}"]`);
-                    if (field) {
-                        if (field.type === 'checkbox') {
-                            field.checked = value === 'true';
-                        } else if (field.type === 'radio') {
-                            const radio = form.querySelector(`[name="${key}"][value="${value}"]`);
-                            if (radio) radio.checked = true;
-                        } else {
-                            field.value = value;
+                if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid draft');
+                form.querySelectorAll('input, select, textarea').forEach(field => {
+                    if (field.type === 'hidden' || !Object.hasOwn(data, field.name)) return;
+                    const value = data[field.name];
+                    if (field.type === 'checkbox' || field.type === 'radio') {
+                        field.checked = field.type === 'checkbox' ? value === 'true' : field.value === value;
+                        if (field.type === 'checkbox' || field.checked) {
+                            field.dispatchEvent(new Event('change', {bubbles: true}));
                         }
+                    } else {
+                        field.value = typeof value === 'string' ? value : '';
                     }
                 });
                 updateProgress();
+            } catch (error) {
+                const status = document.getElementById('draftStatus');
+                status.textContent = 'Your saved draft could not be loaded. You can still complete and submit this form.';
+                status.hidden = false;
             }
         }
 
         // Save draft
-        saveBtn.addEventListener('click', function() {
-            saveFormData();
-            alert('Draft saved successfully!');
-        });
+        saveBtn.addEventListener('click', saveFormData);
 
         // Auto-save while typing
         let saveTimeout;
@@ -717,6 +733,8 @@
         // Form submission
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (submitBtn.disabled || !form.reportValidity()) return;
+            clearTimeout(saveTimeout);
             
             // Show loading
             loading.style.display = 'block';
@@ -732,11 +750,10 @@
                 data[checkbox] = formData.has(checkbox) ? 'true' : 'false';
             });
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            let completed = false;
             try {
-                // Add timeout to prevent freezing
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                
                 const response = await fetch('/submit', {
                     method: 'POST',
                     headers: {
@@ -746,48 +763,35 @@
                     signal: controller.signal
                 });
                 
-                clearTimeout(timeoutId);
-
+                if (!response.headers.get('content-type')?.includes('application/json')) {
+                    throw new Error('The server returned an unexpected response. Contact the camp to check whether your registration was saved before submitting again.');
+                }
                 const result = await response.json();
 
-                if (result.success) {
+                if (response.ok && result.success === true && result.submission_id) {
+                    completed = true;
                     // Clear saved draft
-                    localStorage.removeItem('campPowerUpDraft');
-                    
+                    try {
+                        localStorage.removeItem('campPowerUpDraft');
+                    } catch (error) {
+                        console.warn('Registration saved, but this browser could not clear its saved draft.');
+                    }
                     // Redirect to confirmation page
-                    window.location.href = `/confirmation/${result.submission_id}`;
+                    window.location.href = `/confirmation/${encodeURIComponent(result.submission_id)}`;
                 } else {
                     // Show errors
-                    alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+                    alert('Registration was not completed: ' + (result.error || (Array.isArray(result.errors) ? result.errors.join(', ') : 'Please try again later.')));
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    // Timeout occurred - try the fast backup endpoint
-                    try {
-                        const backupResponse = await fetch('/submit_fast', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(data)
-                        });
-                        
-                        const backupResult = await backupResponse.json();
-                        if (backupResult.success) {
-                            localStorage.removeItem('campPowerUpDraft');
-                            window.location.href = `/confirmation/${backupResult.submission_id}`;
-                        } else {
-                            alert('Backup submission failed. Please contact fowler013@gmail.com with your information.');
-                        }
-                    } catch (backupError) {
-                        alert('Form submission timed out. Please contact fowler013@gmail.com directly to complete your registration.');
-                    }
+                    alert('The request timed out and may already have been saved. Contact the camp before submitting again to avoid a duplicate registration.');
                 } else {
-                    alert('Error submitting form: ' + error.message);
+                    alert('We could not confirm your registration: ' + error.message + ' Check with the camp before retrying.');
                 }
             } finally {
+                clearTimeout(timeoutId);
                 loading.style.display = 'none';
-                submitBtn.disabled = false;
+                submitBtn.disabled = completed;
             }
         });
 

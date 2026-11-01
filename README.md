@@ -1,10 +1,11 @@
 # 🏕️ Camp Power-Up Registration System
 
-[![Deployment Status](https://img.shields.io/badge/status-live-brightgreen)](https://camppowerup-production.up.railway.app/)
+[![Deployment Status](https://img.shields.io/badge/status-live-brightgreen)](https://camppowerup-registration.up.railway.app/)
 [![Railway Deploy](https://img.shields.io/badge/deploy-automatic-blue)](https://railway.app)
 
-**🌐 Live Registration Form**: https://camppowerup-production.up.railway.app/  
-**👨‍💻 Admin Dashboard**: https://camppowerup-production.up.railway.app/admin
+**🌐 Live Registration Form**: https://camppowerup-registration.up.railway.app/
+
+**👨‍💻 Admin Dashboard**: https://camppowerup-registration.up.railway.app/admin
 
 A modern, production-ready camp registration system with automatic deployment and comprehensive management tools.
 
@@ -44,6 +45,74 @@ The system provides insights into:
 - **Revenue impact analysis** from pricing tiers and fraud prevention
 
 ## 🚀 Quick Start
+
+### Registration administration
+
+The deployed entry point is `wsgi_railway:app`, which loads
+`registration_form\app.py` and `registration_form\camp_config.py`. The similarly
+named root dashboard and backup application files are not this registration service.
+
+- Sign in at `/admin` using `ADMIN_USERNAME` (default `campadmin`) and the
+  deployment's `ADMIN_PASSWORD`. Set a strong, stable `SECRET_KEY` shared by all
+  workers. Change passwords through Railway Variables, not source code.
+- Select the exact **Camp session** before reading counts or exporting records.
+  November 23-24 and November 23-25, 2026 remain separate labels. Text search
+  filters visible cards; it does not change the selected session's summary or export.
+- **Mark fully paid** records an administrator's confirmation; it does not charge
+  a payment method or track partial deposits. Payment reminders require working
+  email-provider configuration and known session pricing. Delivery failures are
+  reported rather than counted as successful sends.
+- **Configuration** saves validated settings in the SQLite `camp_configurations`
+  table. All workers read saved settings on each request. Stale editor saves are
+  rejected. Changing a camp name or dates preserves existing registrations and
+  their previous label's configuration; it does not merge or migrate registrations.
+  Fee edits for an unchanged label affect that label's displayed fee estimates.
+- Metrics include imported history only in the all-sessions view. Unknown
+  historical prices are not replaced with today's fees. Estimated fees are not
+  payments collected. Returning-camper verification matches imported historical
+  records; an unmatched record is not proof of fraud.
+- Historical import/repair tools are separate from everyday navigation. Repair
+  only considers unassigned legacy records with exact name, email and original
+  timestamp matches. Back up before importing, repairing, clearing history or
+  deleting registrations.
+- Mutating registration/configuration/history admin requests require a signed-in
+  session and its CSRF token (hidden `csrf_token` for forms or `X-CSRF-Token` for
+  JSON requests). Read-only `/admin/export-json` remains compatible with Kit;
+  omitting `session` exports all non-historical registrations.
+
+**Before deploying:** verify that the actual SQLite database resides on a mounted,
+persistent Railway volume and take a consistent database backup. An environment
+variable alone does not prove a volume is mounted. The full SQLite backup includes
+both registrations and saved configuration; JSON registration exports do not include
+configuration. Do not redeploy an ephemeral database without first preserving its
+data. These code changes do not configure production storage or reset passwords.
+
+### Isolated registration checks
+
+Run from the repository root with its Python dependencies and `pytest` installed:
+
+```powershell
+python scripts\test\run_registration_tests.py
+```
+
+The runner uses a temporary working directory and synthetic databases, disables
+Railway/SendGrid environment selection, and mocks outgoing emails. Do not import
+the registration app from a directory containing a live database just to run tests:
+the application initializes its database during import.
+
+Optional browser checks use Python Playwright and a local-only server, never the
+live registration site:
+
+```powershell
+python -m pip install playwright
+python -m playwright install chromium
+python scripts\test\run_registration_tests.py scripts\test\test_admin_browser.py
+```
+
+Alternatively, set `CAMP_BROWSER_CHANNEL=msedge` when testing with an installed
+Microsoft Edge browser. `CAMP_UI_ARTIFACT_DIR` optionally captures synthetic UI
+screenshots. The browser checks include desktop and narrow layouts, session
+selection, search, administrative actions, configuration saves and form submission.
 
 ### 📊 **Data Dashboard Setup**
 
@@ -156,7 +225,10 @@ Some families may fraudulently claim "returning camper" status to receive discou
 - **Security**: Custom fraud prevention validation
 - **Configuration**: Dynamic camp configuration system
 
-## 📈 Current Statistics Overview
+## 📈 Historical Statistics Example
+
+These example counts are historical, not live registration totals. Use the
+session-filtered admin dashboard for current records.
 
 **Dashboard Insights:**
 - 138 total campers (after deduplication)
@@ -173,10 +245,13 @@ Some families may fraudulently claim "returning camper" status to receive discou
 
 ## 💰 Pricing & Revenue Protection
 
-**Current Pricing Structure:**
-- **New Campers**: $200 total
-- **Returning Campers**: $170 total (15% discount)
-- **Potential Savings from Fraud**: Up to $30 per false claim
+**Default Thanksgiving 2026 pricing (November 23-24):**
+- **New Campers**: $100 total ($50 deposit and $50 final payment)
+- **Returning Campers**: $80 total ($50 deposit and $30 final payment)
+- **Final payment due**: November 22, 2026
+
+Saved administrator configuration overrides these defaults. Other historical
+session labels must have their own known pricing; do not apply these fees to them.
 
 **Revenue Protection Metrics:**
 - Automatic validation prevents most fraudulent claims

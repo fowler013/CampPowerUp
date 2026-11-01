@@ -218,14 +218,16 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
     <div class="container">
-        <a href="/admin" class="back-link">← Back to Admin Dashboard</a>
+        <a href="{{ admin_url() }}" class="back-link">← Back to Admin Dashboard</a>
         
         <div class="header">
             <h1>📊 Camp Power-Up Metrics</h1>
             <p>Session Analytics & Comparison Dashboard</p>
+            <p>Showing {{ selected_session if selected_session != 'all' else 'all saved sessions and imported history' }}.</p>
         </div>
 
         <!-- Overall Stats -->
@@ -233,7 +235,7 @@
             <div class="stat-card">
                 <div class="icon">👥</div>
                 <div class="value">{{ total_campers }}</div>
-                <div class="label">Total Campers (All Time)</div>
+                <div class="label">Registrations in this view</div>
             </div>
             <div class="stat-card">
                 <div class="icon">🔄</div>
@@ -248,8 +250,11 @@
             <div class="stat-card">
                 <div class="icon">💰</div>
                 <div class="value">${{ total_revenue }}</div>
-                <div class="label">Estimated Revenue</div>
+                <div class="label">Estimated fees for known pricing</div>
             </div>
+            {% if unpriced_registrations %}
+            <p class="admin-notice">{{ unpriced_registrations }} registrations have no saved session pricing and are excluded from fee estimates. These estimates are not payments collected.</p>
+            {% endif %}
         </div>
 
         <!-- Session Comparison -->
@@ -275,20 +280,21 @@
                 </div>
                 <div class="metric">
                     <span class="metric-label">Est. Revenue</span>
-                    <span class="metric-value">${{ session.revenue }}</span>
+                    <span class="metric-value">{{ '$' ~ session.revenue if session.revenue is not none else 'Pricing unavailable' }}</span>
                 </div>
             </div>
             {% endfor %}
         </div>
 
         <!-- Charts -->
+        <p class="admin-notice" id="chartStatus" role="status" hidden>Charts could not load. Session totals and registration details are still available on this page.</p>
         <div class="charts-grid">
             <div class="chart-card">
                 <h3>📈 Registrations by Session</h3>
                 <canvas id="registrationsChart"></canvas>
             </div>
             <div class="chart-card">
-                <h3>🎂 Age Distribution (All Sessions)</h3>
+                <h3>🎂 Age Distribution (This View)</h3>
                 <canvas id="ageChart"></canvas>
             </div>
             <div class="chart-card">
@@ -303,7 +309,7 @@
 
         <!-- Recent Registrations Table -->
         <div class="chart-card">
-            <h3>📋 {{ config.camp_name }} Registrations</h3>
+            <h3>📋 {{ selected_session if selected_session != 'all' else 'All sessions' }} registrations</h3>
             {% if current_registrations %}
             <table class="data-table">
                 <thead>
@@ -334,12 +340,16 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="color: #94a3b8; text-align: center; padding: 40px;">No registrations for {{ config.camp_name }} yet.</p>
+            <p style="color: #485065; text-align: center; padding: 40px;">No registrations for this selection.</p>
             {% endif %}
         </div>
     </div>
 
     <script>
+        if (typeof Chart === 'undefined') {
+            document.getElementById('chartStatus').hidden = false;
+            document.querySelector('.charts-grid').hidden = true;
+        } else {
         // Chart.js configuration
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
@@ -348,10 +358,10 @@
         new Chart(document.getElementById('registrationsChart'), {
             type: 'bar',
             data: {
-                labels: {{ session_labels | safe }},
+                labels: {{ session_labels | tojson }},
                 datasets: [{
                     label: 'Registrations',
-                    data: {{ session_counts | safe }},
+                    data: {{ session_counts | tojson }},
                     backgroundColor: [
                         'rgba(102, 126, 234, 0.8)',
                         'rgba(118, 75, 162, 0.8)',
@@ -383,9 +393,9 @@
         new Chart(document.getElementById('ageChart'), {
             type: 'doughnut',
             data: {
-                labels: {{ age_labels | safe }},
+                labels: {{ age_labels | tojson }},
                 datasets: [{
-                    data: {{ age_counts | safe }},
+                    data: {{ age_counts | tojson }},
                     backgroundColor: [
                         'rgba(102, 126, 234, 0.8)',
                         'rgba(118, 75, 162, 0.8)',
@@ -409,10 +419,10 @@
         new Chart(document.getElementById('gradeChart'), {
             type: 'bar',
             data: {
-                labels: {{ grade_labels | safe }},
+                labels: {{ grade_labels | tojson }},
                 datasets: [{
                     label: 'Campers',
-                    data: {{ grade_counts | safe }},
+                    data: {{ grade_counts | tojson }},
                     backgroundColor: 'rgba(118, 75, 162, 0.8)',
                     borderColor: 'rgb(118, 75, 162)',
                     borderWidth: 2,
@@ -449,6 +459,7 @@
                 }
             }
         });
+        }
     </script>
 </body>
 </html>
