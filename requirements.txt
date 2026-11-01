@@ -4,7 +4,7 @@ Werkzeug==2.3.7
 gunicorn==21.2.0
 
 # Database - PostgreSQL for Railway
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.10
 
 # Data processing - Python 3.13 compatible versions
 pandas>=2.2.0
