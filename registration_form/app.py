@@ -7,17 +7,24 @@ Ultra-minimal version to get registration working immediately
 
 import os
 import re
+import secrets
 import sqlite3
 import uuid
+from contextlib import closing
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session, g, has_request_context
 from functools import wraps
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 
 # Import the registration app's config in package deployments and direct runs.
 if __package__:
+    from .admin_support import (
+        ConfigurationConflict, configuration_revision, is_checked,
+        load_configurations, normalize_registration, registration_identity_error, registration_summary,
+        save_configuration, validate_configuration_update,
+    )
     from .camp_config import (
         CAMP_CONFIG,
         SESSIONS,
@@ -30,6 +37,11 @@ if __package__:
         get_pricing_text_for,
     )
 else:
+    from admin_support import (
+        ConfigurationConflict, configuration_revision, is_checked,
+        load_configurations, normalize_registration, registration_identity_error, registration_summary,
+        save_configuration, validate_configuration_update,
+    )
     from camp_config import (
         CAMP_CONFIG,
         SESSIONS,
@@ -60,14 +72,88 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
 })
 
 
+@app.before_request
+def load_request_configuration():
+    """Read settings per request so every worker uses the same saved configuration."""
+    try:
+        g.active_camp_configs, g.stored_camp_configs = load_configurations(get_database_path())
+    except (sqlite3.Error, ValueError, OSError):
+        app.logger.exception("Unable to load saved camp configuration")
+        return "Camp settings could not be loaded. Please try again or contact the camp administrator.", 503
+
+
+def get_active_config(session_id=None):
+    """Resolve an offered session using saved settings or its code defaults."""
+    session_id = session_id or DEFAULT_SESSION_ID
+    if has_request_context():
+        saved = getattr(g, "active_camp_configs", {}).get(session_id)
+        if saved is not None:
+            return saved
+    return get_session_config(session_id)
+
+
 def get_config_for_stored_session(camp_session_label):
     """Resolve a stored `camp_session` label to a known session config."""
     if not camp_session_label:
         return None
+    if has_request_context():
+        saved = getattr(g, "stored_camp_configs", {}).get(camp_session_label)
+        if saved is not None:
+            return saved
     for config in SESSIONS.values():
         if get_session_label(config) == camp_session_label:
             return config
     return None
+
+
+def selected_session():
+    """Preserve explicit session labels without merging similarly named camps."""
+    return request.args.get("session") or "all"
+
+
+def read_registrations(session_filter="all"):
+    """Read non-historical registrations, optionally scoped to an exact session."""
+    query = "SELECT * FROM registrations WHERE submission_id NOT GLOB 'HIST_*'"
+    parameters = ()
+    if session_filter != "all":
+        query += " AND camp_session = ?"
+        parameters = (session_filter,)
+    with closing(sqlite3.connect(get_database_path())) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(query + " ORDER BY timestamp DESC", parameters).fetchall()
+    return [dict(row) for row in rows]
+
+
+def admin_url(endpoint="admin_dashboard", **values):
+    """Keep the selected session when moving between related admin pages."""
+    values.setdefault("session", selected_session())
+    return url_for(endpoint, **values)
+
+
+def admin_csrf_token():
+    """Create the session-bound token used by admin mutation forms."""
+    if "admin_csrf_token" not in session:
+        session["admin_csrf_token"] = secrets.token_urlsafe(32)
+    return session["admin_csrf_token"]
+
+
+@app.context_processor
+def admin_template_helpers():
+    return {"admin_url": admin_url, "admin_csrf_token": admin_csrf_token}
+
+
+def require_admin_csrf(function):
+    """Reject admin writes without the token issued to the signed-in browser."""
+    @wraps(function)
+    def protected(*args, **kwargs):
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            supplied = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token", "")
+            expected = session.get("admin_csrf_token", "")
+            if not expected or not secrets.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8")):
+                app.logger.warning("Rejected admin write with an invalid CSRF token")
+                return jsonify(success=False, error="Your form expired. Reload the page and try again."), 400
+        return function(*args, **kwargs)
+    return protected
 
 # Railway-aware database setup for persistent data  
 def get_database_path():
@@ -290,8 +376,8 @@ def init_db_with_logging():
                                         emergency_contact_phone, has_allergies, allergies_description,
                                         has_medical_conditions, medical_conditions_description,
                                         is_returning_camper, returning_years, bringing_own_switch,
-                                        how_heard_about_camp, additional_comments
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        how_heard_about_camp, additional_comments, camp_session, payment_status
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 """, (
                                     reg.get('submission_id'), reg.get('timestamp'),
                                     reg.get('child_first_name'), reg.get('child_last_name'),
@@ -303,7 +389,8 @@ def init_db_with_logging():
                                     reg.get('has_medical_conditions'), reg.get('medical_conditions_description'),
                                     reg.get('is_returning_camper'), reg.get('returning_years'),
                                     reg.get('bringing_own_switch'), reg.get('how_heard_about_camp'),
-                                    reg.get('additional_comments')
+                                    reg.get('additional_comments'), reg.get('camp_session'),
+                                    reg.get('payment_status') or 'pending'
                                 ))
                                 restored_count += 1
                             except Exception as restore_error:
@@ -387,7 +474,7 @@ def send_parent_confirmation_email(registration_data):
         print(f"💰 Email pricing debug - converted to: {is_returning} (type: {type(is_returning)})")
         
         session_id = registration_data.get('camp_session_id') or DEFAULT_SESSION_ID
-        session_cfg = get_session_config(session_id) or CAMP_CONFIG
+        session_cfg = get_active_config(session_id) or get_active_config()
         tier_key = 'returning_camper' if is_returning else 'new_camper'
         tier = session_cfg['pricing'][tier_key]
         deposit = f"${tier['deposit']}"
@@ -657,6 +744,8 @@ def require_admin_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
+            if request.is_json or request.accept_mimetypes.best == "application/json":
+                return jsonify(success=False, error="Your admin session expired. Sign in again."), 401
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -697,36 +786,29 @@ def home():
     """Main registration form."""
     try:
         # Use dynamic pricing from camp_config
-        pricing = get_pricing_text()
+        config = get_active_config()
+        pricing = get_pricing_text_for(config)
         
         # Use dynamic camp config
         camp_config = {
-            'camp_name': get_camp_title(),
-            'camp_dates': CAMP_CONFIG.get('camp_dates', ''),
-            'camp_times': CAMP_CONFIG.get('daily_hours', ''),
-            'pricing': CAMP_CONFIG.get('pricing', {})
+            'camp_name': config['camp_name'],
+            'camp_dates': config.get('camp_dates', ''),
+            'camp_times': config.get('daily_hours', ''),
+            'pricing': config.get('pricing', {})
         }
         
         return render_template('registration_form.html', 
                              camp_config=camp_config,
-                             config=CAMP_CONFIG,
-                             camp_title=get_camp_title() + ' Registration',
-                             camp_subtitle=f"Nintendo Switch Gaming Camp - {CAMP_CONFIG.get('camp_dates', '')}",
+                             config=config,
+                             camp_title=config['camp_name'] + ' Registration',
+                             camp_subtitle=f"Nintendo Switch Gaming Camp - {config.get('camp_dates', '')}",
                              pricing_text='Registration fees listed below',
                              pricing=pricing,
                              camp_session_id=DEFAULT_SESSION_ID,
-                             deposit_amount=CAMP_CONFIG.get('pricing', {}).get('new_camper', {}).get('deposit', 50))
+                             deposit_amount=config['pricing']['new_camper']['deposit'])
     except Exception as e:
-        # Fallback if template fails
-        return f'''
-        <html><head><title>Camp Power-Up Registration</title></head>
-        <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
-        <h1>🏕️ Camp Power-Up Registration</h1>
-        <p><strong>Template Error:</strong> {str(e)}</p>
-        <p>Please contact support. Error loading registration form template.</p>
-        <p><a href="/test-db">Test Database</a></p>
-        </body></html>
-        '''
+        app.logger.exception("Unable to load the registration form")
+        return "The registration form could not be loaded. Please try again or contact the camp administrator.", 500
 
 
 @app.route('/session/july-2026')
@@ -737,7 +819,7 @@ def july_2026_registration():
 @app.route('/faq')
 def faq():
     """Display the FAQ page."""
-    return render_template('faq.html', config=CAMP_CONFIG)
+    return render_template('faq.html', config=get_active_config())
 
 @app.route('/test-template')
 @require_admin_auth
@@ -1142,9 +1224,17 @@ def submit():
     """Handle registration - accepts JSON data."""
     try:
         # Get JSON data from request
-        json_data = request.get_json()
-        if not json_data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+        json_data = request.get_json(silent=True)
+        if not isinstance(json_data, dict) or not json_data:
+            return jsonify({"success": False, "error": "A registration JSON object is required."}), 400
+        session_id = json_data.get('camp_session_id') or json_data.get('campSessionId') or DEFAULT_SESSION_ID
+        if not isinstance(session_id, str):
+            return jsonify(success=False, error="Choose a valid camp session."), 400
+        session_cfg = get_active_config(session_id)
+        if session_cfg is None:
+            return jsonify(success=False, error="This camp session is not available for registration."), 400
+        if not session_cfg.get("registration_open", True):
+            return jsonify(success=False, error="Registration is closed for this camp session."), 409
         
         # Generate ID
         submission_id = f"REG_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
@@ -1162,29 +1252,44 @@ def submit():
             'emergency_contact_name': json_data.get('emergency_contact_name') or json_data.get('emergencyContactName', ''),
             'emergency_contact_phone': json_data.get('emergency_contact_phone') or json_data.get('emergencyContactPhone', ''),
             'has_allergies': json_data.get('has_allergies', json_data.get('hasAllergies', False)),
-            'allergies_description': json_data.get('allergies_description') or json_data.get('allergiesDescription', ''),
-            'has_medical_conditions': json_data.get('has_medical_conditions', json_data.get('hasMedicalConditions', False)),
-            'medical_conditions_description': json_data.get('medical_conditions_description') or json_data.get('medicalConditionsDescription', ''),
+            'allergies_description': json_data.get('allergies_description') or json_data.get('allergiesDescription') or json_data.get('allergy_details', ''),
+            'has_medical_conditions': json_data.get('has_medical_conditions', json_data.get('hasMedicalConditions', json_data.get('has_sensory_issues', False))),
+            'medical_conditions_description': json_data.get('medical_conditions_description') or json_data.get('medicalConditionsDescription') or json_data.get('sensory_details', ''),
             'is_returning_camper': json_data.get('is_returning_camper', json_data.get('isReturningCamper', False)),
-            'returning_years': json_data.get('returning_years') or json_data.get('returningYears', ''),
+            'returning_years': json_data.get('returning_years') or json_data.get('returningYears') or json_data.get('previous_year', ''),
             'bringing_own_switch': json_data.get('bringing_own_switch', json_data.get('bringingOwnSwitch', False)),
             'how_heard_about_camp': json_data.get('how_heard_about_camp') or json_data.get('howHeardAboutCamp', ''),
-            'additional_comments': json_data.get('additional_comments') or json_data.get('additionalComments', '')
+            'additional_comments': json_data.get('additional_comments') or json_data.get('additionalComments') or json_data.get('additional_notes', '')
         }
-        
-        # Convert string "true"/"false" to boolean for is_returning_camper
-        if isinstance(data['is_returning_camper'], str):
-            data['is_returning_camper'] = data['is_returning_camper'].lower() in ['true', '1', 'yes']
-        
-        # Convert to integer for database (SQLite uses 0/1 for boolean)
-        data['is_returning_camper'] = 1 if data['is_returning_camper'] else 0
-        
-        # Debug logging
-        print(f"📝 Form data received:")
-        print(f"   child_first_name: '{data['child_first_name']}'")
-        print(f"   child_last_name: '{data['child_last_name']}'")
-        print(f"   parent_email: '{data['parent_email']}'")
-        print(f"   is_returning_camper: {data['is_returning_camper']}")
+        boolean_fields = {'is_returning_camper', 'bringing_own_switch', 'has_allergies', 'has_medical_conditions'}
+        for field, value in data.items():
+            if field in boolean_fields:
+                data[field] = int(is_checked(value))
+            elif field != 'child_age':
+                if not isinstance(value, str) or len(value) > 10000:
+                    return jsonify(success=False, error=f"Invalid {field.replace('_', ' ')}."), 400
+                data[field] = value.strip()
+        identity_error = registration_identity_error(data)
+        if identity_error:
+            return jsonify(success=False, error=identity_error), 400
+        data['child_age'] = int(data['child_age'])
+        notes = [data['additional_comments']] if data['additional_comments'] else []
+        for field, label in (
+            ('child_gender', 'Gender'), ('previous_instructor', 'Previous instructors'),
+            ('returning_camper_details', 'Previous camp experience'),
+            ('gaming_behavior', 'Gaming behavior'), ('game_restrictions', 'Game restrictions'),
+            ('favorite_games', 'Favorite games'), ('games_owned', 'Games owned'),
+            ('console_experience', 'Console experience'),
+        ):
+            value = json_data.get(field, '')
+            if not isinstance(value, str) or len(value) > 10000:
+                return jsonify(success=False, error=f"Invalid {label.lower()}."), 400
+            if value.strip():
+                notes.append(f"{label}: {value.strip()}")
+        for field, label in (('photo_permission', 'Photo permission'), ('marketing_permission', 'Future event updates')):
+            if field in json_data:
+                notes.append(f"{label}: {'Yes' if is_checked(json_data[field]) else 'No'}")
+        data['additional_comments'] = '\n'.join(notes)
         
         # Save to database - get fresh path for Railway compatibility
         db_file = get_database_path()
@@ -1202,43 +1307,8 @@ def submit():
         # Initialize database if it doesn't exist
         if not os.path.exists(db_file):
             print(f"🆕 Database doesn't exist, initializing: {db_file}")
-            try:
-                # Create and initialize the database
-                conn = sqlite3.connect(db_file)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS registrations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        submission_id TEXT UNIQUE,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        child_first_name TEXT,
-                        child_last_name TEXT,
-                        child_age INTEGER,
-                        child_grade TEXT,
-                        parent_first_name TEXT,
-                        parent_last_name TEXT,
-                        parent_email TEXT,
-                        parent_phone TEXT,
-                        emergency_contact_name TEXT,
-                        emergency_contact_phone TEXT,
-                        has_allergies BOOLEAN DEFAULT 0,
-                        allergies_description TEXT,
-                        has_medical_conditions BOOLEAN DEFAULT 0,
-                        medical_conditions_description TEXT,
-                        is_returning_camper BOOLEAN DEFAULT 0,
-                        returning_years TEXT,
-                        bringing_own_switch BOOLEAN DEFAULT 0,
-                        how_heard_about_camp TEXT,
-                        additional_comments TEXT,
-                        payment_status TEXT DEFAULT 'pending'
-                    )
-                """)
-                conn.commit()
-                conn.close()
-                print(f"✅ Database initialized successfully: {db_file}")
-            except Exception as init_error:
-                print(f"❌ Database initialization failed: {init_error}")
-                raise init_error
+            if not init_db_with_logging():
+                return jsonify(success=False, error="Registration storage is unavailable. Please try again."), 503
         
         # Connect to database
         conn = sqlite3.connect(db_file)
@@ -1247,8 +1317,6 @@ def submit():
         # Determine which camp session this registration is for. The form
         # posts a hidden `camp_session_id` field; fall back to the current
         # default session.
-        session_id = json_data.get('camp_session_id') or json_data.get('campSessionId') or DEFAULT_SESSION_ID
-        session_cfg = get_session_config(session_id) or CAMP_CONFIG
         current_session = get_session_label(session_cfg)
         print(f"📅 Registration session: {session_id} -> {current_session}")
         
@@ -1361,193 +1429,31 @@ def submit():
         })
         
     except Exception as e:
-        # Enhanced error logging for debugging submission failures
-        import traceback
-        # Get fresh database path for error reporting
-        current_db_file = get_database_path()
-        error_details = {
-            "success": False, 
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "traceback": traceback.format_exc(),
-            "database_file": current_db_file,
-            "cached_db_file": DB_FILE,
-            "submission_id": submission_id if 'submission_id' in locals() else 'not_generated',
-            "database_exists": os.path.exists(current_db_file),
-            "railway_env": os.environ.get('RAILWAY_ENVIRONMENT', 'Not set'),
-            "working_directory": os.getcwd()
-        }
-        print(f"❌ Registration submission error: {error_details}")
-        return jsonify(error_details), 500
+        app.logger.exception("Registration could not be saved")
+        return jsonify(success=False, error="Registration could not be saved. Please try again or contact the camp administrator."), 500
 
 @app.route('/confirmation/<submission_id>')
 def confirmation(submission_id):
     """Show professional confirmation page with registration details."""
     try:
-        # Fetch registration details from database - use fresh path for Railway compatibility
-        db_file = get_database_path()
-        print(f"🔍 Confirmation page using database: {db_file}")
-        print(f"🔍 Looking for submission_id: {submission_id}")
-        conn = sqlite3.connect(db_file)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # First check if the registration exists
-        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id = ?", (submission_id,))
-        count = cursor.fetchone()[0]
-        print(f"🔍 Found {count} matching registrations")
-        
-        cursor.execute("SELECT * FROM registrations WHERE submission_id = ?", (submission_id,))
-        registration = cursor.fetchone()
-        
-        if registration:
-            print(f"✅ Registration found!")
-            print(f"   child_first_name: '{registration['child_first_name']}'")
-            print(f"   child_last_name: '{registration['child_last_name']}'")
-            print(f"   child_age: '{registration['child_age']}'")
-            print(f"   parent_email: '{registration['parent_email']}'")
-        else:
-            print(f"❌ No registration found for {submission_id}")
-        
+        with closing(sqlite3.connect(get_database_path())) as connection:
+            connection.row_factory = sqlite3.Row
+            registration = connection.execute(
+                "SELECT * FROM registrations WHERE submission_id = ?", (submission_id,)
+            ).fetchone()
         if not registration:
-            conn.close()
-            
-            # Check if this is Railway without persistent volume (all registrations affected)
-            is_railway_ephemeral = os.environ.get('RAILWAY_ENVIRONMENT') and not os.path.exists('/data')
-            
-            if is_railway_ephemeral:
-                # Professional explanation for Railway data loss issue
-                return f'''
-                <html>
-                <head>
-                    <title>Registration Confirmed - {CAMP_CONFIG['camp_name']}</title>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            max-width: 800px;
-                            margin: 0 auto;
-                            padding: 20px;
-                            line-height: 1.6;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            min-height: 100vh;
-                        }}
-                        .container {{
-                            background: white;
-                            padding: 40px;
-                            border-radius: 15px;
-                            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-                        }}
-                        .header {{ text-align: center; margin-bottom: 30px; }}
-                        .success-icon {{ font-size: 4em; color: #28a745; margin-bottom: 20px; }}
-                        .alert {{ background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 10px; margin: 20px 0; }}
-                        .payment-info {{ background: #e8f5e8; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 5px solid #28a745; }}
-                        .contact-info {{ background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; }}
-                        h1 {{ color: #2c3e50; margin: 0; }}
-                        h2 {{ color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
-                        .btn {{ display: inline-block; padding: 12px 30px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }}
-                        .btn:hover {{ background: #0056b3; }}
-                        strong {{ color: #2c3e50; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <div class="success-icon">✅</div>
-                            <h1>Registration Confirmed!</h1>
-                            <p><strong>Confirmation ID:</strong> {submission_id}</p>
-                        </div>
-                        
-                        <div class="alert">
-                            <h3>🔧 Technical Notice</h3>
-                            <p><strong>Your registration was successfully submitted and is confirmed!</strong></p>
-                            <p>Due to a server configuration issue with data persistence, the detailed registration information 
-                            is temporarily not displayed. However, <strong>your camp spot is secured</strong> and your registration is valid.</p>
-                            <p>We're upgrading our data storage system to prevent this issue. Your registration will be honored regardless.</p>
-                            <p><strong>Next step:</strong> Please complete your $50 deposit payment using the information below.</p>
-                        </div>
-
-                        <div class="payment-info">
-                            <h2>💳 Payment Information</h2>
-                            <p><strong>Deposit Required:</strong> $50</p>
-                            <p><strong>Payment Methods:</strong></p>
-                            <ul>
-                                <li><strong>CashApp:</strong> camppowerup2025@gmail.com</li>
-                                <li><strong>Venmo:</strong> camppowerup2025@gmail.com</li>
-                            </ul>
-                            <p><strong>⚠️ Important:</strong> Include your confirmation ID <code>{submission_id}</code> in the payment memo</p>
-                            <p><strong>Final Payment:</strong> Due before {CAMP_CONFIG['final_payment_due']}</p>
-                        </div>
-
-                        <div class="contact-info">
-                            <h2>📞 Camp Information</h2>
-                            <p><strong>Camp Dates:</strong> {CAMP_CONFIG['camp_dates']}</p>
-                            <p><strong>Camp Times:</strong> {CAMP_CONFIG['daily_hours']} daily</p>
-                            <p><strong>Questions?</strong> Email camppowerup2025@gmail.com</p>
-                            <p><strong>Your confirmation ID:</strong> <code>{submission_id}</code></p>
-                        </div>
-
-                        <div style="text-align: center; margin-top: 30px;">
-                            <a href="/" class="btn">Register Another Camper</a>
-                            <a href="/admin" class="btn">Admin Dashboard</a>
-                        </div>
-                        
-                        <p style="text-align: center; color: #6c757d; margin-top: 30px;">
-                            <small>{CAMP_CONFIG['camp_name']} • Nintendo Switch Gaming Camp</small>
-                        </p>
-                    </div>
-                </body>
-                </html>
-                '''
-            else:
-                # Generic fallback for other cases
-                mock_registration = {
-                    'submission_id': submission_id,
-                    'child_first_name': 'Registration',
-                    'child_last_name': 'Confirmed', 
-                    'child_age': '',
-                    'child_grade': 'Not specified',
-                    'parent_email': '',
-                    'is_returning_camper': False,
-                    'bringing_own_switch': False,
-                    'has_allergies': False,
-                    'has_medical_conditions': False,
-                    'allergies_description': '',
-                    'medical_conditions_description': '',
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    '_is_fallback': True
-                }
-                
-                return render_template('confirmation.html', registration=mock_registration, config=CAMP_CONFIG)
-            
-        conn.close()
-        
-        # Convert to dictionary for template
-        registration_data = dict(registration)
+            app.logger.warning("A confirmation was requested for a missing registration")
+            return "Registration not found. Check your confirmation link or contact the camp administrator before submitting again.", 404
+        registration_data = normalize_registration(registration)
         stored_session_config = get_config_for_stored_session(registration_data.get('camp_session'))
-        confirmation_config = stored_session_config or CAMP_CONFIG
-
-        return render_template('confirmation.html', registration=registration_data, config=confirmation_config)
-        
-    except Exception as e:
-        # Fallback to basic confirmation if there's an error
-        return f'''
-        <html><head><title>Registration Confirmed</title></head>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">
-        <h1>✅ Registration Confirmed!</h1>
-        <p><strong>Submission ID:</strong> {submission_id}</p>
-        <p>Thank you for registering for Camp Power-Up!</p>
-        <div style="background: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3>Payment Information:</h3>
-            <p><strong>Deposit:</strong> $50 (due now)</p>
-            <p><strong>Payment:</strong> CashApp or Venmo to camppowerup2025@gmail.com</p>
-            <p><strong>Include child's name in payment memo</strong></p>
-        </div>
-        <p><a href="/">Register Another Camper</a></p>
-        <p><small>Error loading full details: {str(e)}</small></p>
-        </body></html>
-        '''
+        return render_template(
+            'confirmation.html', registration=registration_data,
+            config=stored_session_config or get_active_config(),
+            session_config_known=stored_session_config is not None,
+        )
+    except Exception:
+        app.logger.exception("Unable to load a registration confirmation")
+        return "Your registration details could not be loaded. Please try again or contact the camp administrator.", 500
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -1583,7 +1489,8 @@ def admin_dashboard():
             flash('⚠️ STORAGE WARNING: Railway production has no persistent volume configured. Registration data will be lost on deployment. Configure persistent volume at /data to fix this issue.', 'warning')
         
         # Get session filter from query string
-        session_filter = request.args.get('session', 'all')
+        session_filter = selected_session()
+        config = get_active_config()
         
         # Use fresh database path for Railway compatibility
         db_file = get_database_path()
@@ -1595,120 +1502,80 @@ def admin_dashboard():
         # Get list of all unique sessions for the filter dropdown
         cursor.execute('''
             SELECT DISTINCT camp_session FROM registrations 
-            WHERE camp_session IS NOT NULL AND camp_session != '' AND submission_id NOT LIKE 'HIST_%'
+            WHERE camp_session IS NOT NULL AND camp_session != '' AND submission_id NOT GLOB 'HIST_*'
             ORDER BY camp_session DESC
         ''')
         available_sessions = [row['camp_session'] for row in cursor.fetchall()]
         
         # Current session from config
-        current_session = f"{CAMP_CONFIG.get('camp_name', 'Camp Power-Up')} - {CAMP_CONFIG.get('camp_dates', 'Unknown')}"
+        current_session = get_session_label(config)
         
         # Add current session if not in list
         if current_session not in available_sessions:
             available_sessions.insert(0, current_session)
         
-        # Filter registrations by session if specified (exclude HIST_ historical records)
-        if session_filter and session_filter != 'all':
-            cursor.execute('''
-                SELECT * FROM registrations 
-                WHERE camp_session = ? AND submission_id NOT LIKE 'HIST_%'
-                ORDER BY timestamp DESC
-            ''', (session_filter,))
-        else:
-            cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
-        
-        registrations = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        
-        # Calculate statistics
-        total_registrations = len(registrations)
-        returning_campers = len([r for r in registrations if r.get('is_returning_camper')])
-        new_campers = total_registrations - returning_campers
-        
-        # Calculate additional statistics for template
-        from datetime import datetime, timedelta
-        today = datetime.now()
-        week_ago = today - timedelta(days=7)
-        
-        todays_count = 0
-        weeks_count = 0
-        bringing_switch = 0
-        has_allergies = 0
-        has_sensory_issues = 0
-        
+        if session_filter != "all" and session_filter not in available_sessions:
+            available_sessions.insert(0, session_filter)
+        registrations = [normalize_registration(row) for row in read_registrations(session_filter)]
         for reg in registrations:
-            # Count today's registrations
-            try:
-                reg_date = datetime.fromisoformat(reg.get('timestamp', '').replace('Z', '+00:00'))
-                if reg_date.date() == today.date():
-                    todays_count += 1
-                if reg_date >= week_ago:
-                    weeks_count += 1
-            except:
-                pass
-            
-            # Count other statistics
-            if reg.get('has_allergies'):
-                has_allergies += 1
-            if reg.get('has_medical_conditions'):
-                has_sensory_issues += 1
-        
-        # Calculate age groups
-        age_groups = {}
-        for reg in registrations:
-            age = reg.get('child_age', 0)
-            try:
-                age = int(age)
-                if age <= 6:
-                    age_range = "5-6 years"
-                elif age <= 8:
-                    age_range = "7-8 years"
-                elif age <= 10:
-                    age_range = "9-10 years"
-                elif age <= 12:
-                    age_range = "11-12 years"
-                else:
-                    age_range = "13+ years"
-                
-                age_groups[age_range] = age_groups.get(age_range, 0) + 1
-            except (ValueError, TypeError):
-                age_groups["Unknown"] = age_groups.get("Unknown", 0) + 1
-        
-        # Mock camp config for template - use dynamic config
+            stored_config = get_config_for_stored_session(reg.get("camp_session"))
+            reg["session_pricing"] = stored_config["pricing"] if stored_config else None
+        session_stats = registration_summary(registrations)
+        if session_stats["invalid_dates"]:
+            app.logger.warning("Dashboard omitted %d invalid registration dates from date summaries", session_stats["invalid_dates"])
+            flash("Some registration dates are missing or invalid and are excluded from date totals.", "warning")
         camp_config = {
-            'camp_name': get_camp_title(),
-            'camp_dates': CAMP_CONFIG.get('camp_dates', ''),
-            'camp_times': CAMP_CONFIG.get('daily_hours', '')
-        }
-        
-        session_stats = {
-            'total_registrations': total_registrations,
-            'todays_count': todays_count,
-            'weeks_count': weeks_count,
-            'returning_campers': returning_campers,
-            'new_campers': new_campers,
-            'bringing_switch': bringing_switch,
-            'has_allergies': has_allergies,
-            'has_sensory_issues': has_sensory_issues,
-            'paid_count': 0,  # Basic version doesn't track payments yet
-            'pending_payment': total_registrations,
-            'last_registration': registrations[0]['timestamp'] if registrations else 'None',
-            'registration_rate': f"{total_registrations} total",
-            'age_groups': age_groups
+            'camp_name': config['camp_name'],
+            'camp_dates': config.get('camp_dates', ''),
+            'camp_times': config.get('daily_hours', '')
         }
         
         return render_template('admin_dashboard.html', 
                              registrations=registrations,
                              session_stats=session_stats,
                              camp_config=camp_config,
-                             config=CAMP_CONFIG,
+                             config=config,
                              available_sessions=available_sessions,
                              current_session=current_session,
                              selected_session=session_filter)
                              
     except Exception as e:
+        app.logger.exception("Unable to load the admin dashboard")
         flash(f'Error loading dashboard: {str(e)}', 'error')
-        return redirect(url_for('admin_login'))
+        return "The registration dashboard could not be loaded. Please try again.", 500
+
+
+@app.route('/admin/config')
+@require_admin_auth
+def admin_config():
+    """Edit settings shared by all application workers."""
+    config = get_active_config()
+    return render_template(
+        "admin_config.html", config=config, config_revision=configuration_revision(config)
+    )
+
+
+@app.route('/admin/update-config', methods=['POST'])
+@require_admin_auth
+@require_admin_csrf
+def update_config():
+    """Save validated settings without rewriting source files or registrations."""
+    data = request.get_json(silent=True)
+    try:
+        current = get_active_config()
+        updated = validate_configuration_update(current, data)
+        save_configuration(
+            get_database_path(), DEFAULT_SESSION_ID, current, updated, data.get("config_revision")
+        )
+    except ConfigurationConflict as error:
+        return jsonify(success=False, error=str(error)), 409
+    except ValueError as error:
+        return jsonify(success=False, error=str(error)), 400
+    except (sqlite3.Error, OSError):
+        app.logger.exception("Unable to save camp configuration")
+        return jsonify(success=False, error="Settings were not saved. Please try again."), 500
+    return jsonify(success=True, message="Settings saved. Existing registration sessions were not changed.")
 
 @app.route('/admin/historical')
 @require_admin_auth
@@ -1727,24 +1594,17 @@ def admin_historical():
         print(f"🔍 Total records in database: {total_all}")
         
         # Debug: Check HIST_ records
-        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id GLOB 'HIST_*'")
         total_hist = cursor.fetchone()[0]
         print(f"🔍 Records with HIST_ prefix: {total_hist}")
-        
-        # Debug: Check submission_id patterns
-        cursor.execute("SELECT submission_id, child_first_name, child_last_name FROM registrations LIMIT 10")
-        sample = cursor.fetchall()
-        print(f"🔍 Sample records:")
-        for s in sample:
-            print(f"   - {s[0]}: {s[1]} {s[2]}")
         
         # Get only historical records (those with HIST_ prefix)
         cursor.execute("""
             SELECT * FROM registrations 
-            WHERE submission_id LIKE 'HIST_%'
+            WHERE submission_id GLOB 'HIST_*'
             ORDER BY timestamp DESC
         """)
-        historical_registrations = [dict(row) for row in cursor.fetchall()]
+        historical_registrations = [normalize_registration(row) for row in cursor.fetchall()]
         
         # Get statistics
         total_historical = len(historical_registrations)
@@ -1784,6 +1644,7 @@ def admin_historical():
         flash(f'Error loading historical data: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/analytics')
 @app.route('/admin/metrics')
 @require_admin_auth
 def admin_metrics():
@@ -1799,16 +1660,15 @@ def admin_metrics():
         total_new = 0
         total_returning = 0
         
-        # --- Load 2025 Historical Data from CSV ---
-        csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'Camp_Power_Up_past_forms - Sheet1.csv')
+        # Imported history comes from the same database, not a second count of the CSV.
         historical_2025 = []
-        
-        if os.path.exists(csv_path):
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    historical_2025.append(row)
-            
+        if selected_session() == "all":
+            with closing(sqlite3.connect(get_database_path())) as history_connection:
+                history_connection.row_factory = sqlite3.Row
+                historical_2025 = [normalize_registration(row) for row in history_connection.execute(
+                    "SELECT * FROM registrations WHERE submission_id GLOB 'HIST_*'"
+                )]
+        if historical_2025:
             # Parse 2025 data
             ages_2025 = []
             grades_2025 = []
@@ -1817,19 +1677,19 @@ def admin_metrics():
             
             for row in historical_2025:
                 # Get age
-                age_str = row.get('Age?', '').strip()
+                age_str = str(row.get('child_age') or '').strip()
                 if age_str and age_str.isdigit():
                     ages_2025.append(int(age_str))
                     all_ages.append(int(age_str))
                 
                 # Get grade
-                grade = row.get('Grade?', '').strip()
+                grade = str(row.get('child_grade') or '').strip()
                 if grade:
                     grades_2025.append(grade)
                     all_grades.append(grade)
                 
                 # Check returning status
-                is_returning = row.get('Has your Child attended Camp Power-Up before?', '').lower() == 'yes'
+                is_returning = row['is_returning_camper']
                 if is_returning:
                     returning_2025 += 1
                     total_returning += 1
@@ -1837,37 +1697,22 @@ def admin_metrics():
                     new_2025 += 1
                     total_new += 1
             
-            # Calculate revenue for 2025 (old pricing: $80 returning, $100 new)
-            revenue_2025 = (returning_2025 * 80) + (new_2025 * 100)
-            
             sessions.append({
-                'name': '2025 Sessions (Historical)',
+                'name': 'Imported historical records',
                 'total': len(historical_2025),
                 'new_campers': new_2025,
                 'returning_campers': returning_2025,
                 'avg_age': round(sum(ages_2025) / len(ages_2025), 1) if ages_2025 else 0,
-                'revenue': revenue_2025
+                'revenue': None
             })
         
         # --- Load current registrations from Database ---
-        db_file = get_database_path()
-        conn = sqlite3.connect(db_file)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Get all current registrations (non-historical)
-        cursor.execute("""
-            SELECT * FROM registrations 
-            WHERE submission_id NOT LIKE 'HIST_%'
-            ORDER BY timestamp DESC
-        """)
-        current_registrations = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        current_registrations = [normalize_registration(row) for row in read_registrations(selected_session())]
 
         # Parse current registrations by stored camp_session label
         grouped_sessions = {}
         for reg in current_registrations:
-            session_label = reg.get('camp_session') or get_session_label(CAMP_CONFIG)
+            session_label = reg.get('camp_session') or 'Unassigned session'
             if session_label not in grouped_sessions:
                 grouped_sessions[session_label] = {
                     'label': session_label,
@@ -1912,10 +1757,12 @@ def admin_metrics():
                 total_new += 1
 
         for session_label, group in grouped_sessions.items():
-            session_cfg = get_config_for_stored_session(session_label) or CAMP_CONFIG
-            returning_price = session_cfg['pricing']['returning_camper']['total']
-            new_price = session_cfg['pricing']['new_camper']['total']
-            revenue = (group['returning'] * returning_price) + (group['new'] * new_price)
+            session_cfg = get_config_for_stored_session(session_label)
+            revenue = None
+            if session_cfg is not None:
+                returning_price = session_cfg['pricing']['returning_camper']['total']
+                new_price = session_cfg['pricing']['new_camper']['total']
+                revenue = (group['returning'] * returning_price) + (group['new'] * new_price)
 
             sessions.append({
                 'name': session_label,
@@ -1928,7 +1775,8 @@ def admin_metrics():
         
         # --- Calculate Aggregated Stats ---
         total_campers = len(historical_2025) + len(current_registrations)
-        total_revenue = sum(s['revenue'] for s in sessions)
+        total_revenue = sum(s['revenue'] for s in sessions if s['revenue'] is not None)
+        unpriced_registrations = sum(s['total'] for s in sessions if s['revenue'] is None)
         returning_rate = round((total_returning / total_campers * 100), 1) if total_campers > 0 else 0
         
         # Age distribution
@@ -1986,13 +1834,15 @@ def admin_metrics():
             total_revenue=total_revenue,
             sessions=sessions,
             current_registrations=current_registrations,
-            config=CAMP_CONFIG,
-            session_labels=json.dumps(session_labels),
-            session_counts=json.dumps(session_counts),
-            age_labels=json.dumps(age_labels),
-            age_counts=json.dumps(age_counts),
-            grade_labels=json.dumps(grade_labels),
-            grade_counts=json.dumps(grade_counts),
+            config=get_active_config(),
+            selected_session=selected_session(),
+            unpriced_registrations=unpriced_registrations,
+            session_labels=session_labels,
+            session_counts=session_counts,
+            age_labels=age_labels,
+            age_counts=age_counts,
+            grade_labels=grade_labels,
+            grade_counts=grade_counts,
             total_new=total_new,
             total_returning=total_returning
         )
@@ -2001,7 +1851,7 @@ def admin_metrics():
         import traceback
         traceback.print_exc()
         flash(f'Error loading metrics: {str(e)}', 'error')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(admin_url())
 
 @app.route('/admin/verify-returning-campers')
 @require_admin_auth
@@ -2014,20 +1864,13 @@ def verify_returning_campers():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get current registrations that claim to be returning campers
-        cursor.execute("""
-            SELECT * FROM registrations 
-            WHERE submission_id NOT LIKE 'HIST_%'
-            AND is_returning_camper = 1
-            ORDER BY timestamp DESC
-        """)
-        claimed_returning = [dict(row) for row in cursor.fetchall()]
+        claimed_returning = [row for row in read_registrations(selected_session()) if is_checked(row.get('is_returning_camper'))]
         
         # Get all historical campers for lookup
         cursor.execute("""
             SELECT child_first_name, child_last_name, parent_email, timestamp
             FROM registrations 
-            WHERE submission_id LIKE 'HIST_%'
+            WHERE submission_id GLOB 'HIST_*'
         """)
         historical_campers = [dict(row) for row in cursor.fetchall()]
         
@@ -2037,18 +1880,19 @@ def verify_returning_campers():
         historical_lookup = set()
         for h in historical_campers:
             key = (
-                h['child_first_name'].lower().strip(),
-                h['child_last_name'].lower().strip(),
-                h['parent_email'].lower().strip()
+                str(h['child_first_name'] or '').casefold().strip(),
+                str(h['child_last_name'] or '').casefold().strip(),
+                str(h['parent_email'] or '').casefold().strip()
             )
-            historical_lookup.add(key)
+            if all(key):
+                historical_lookup.add(key)
         
         # Verify each claimed returning camper
         verified_results = []
         for claim in claimed_returning:
-            child_first = claim.get('child_first_name', '').lower().strip()
-            child_last = claim.get('child_last_name', '').lower().strip()
-            parent_email = claim.get('parent_email', '').lower().strip()
+            child_first = str(claim.get('child_first_name') or '').casefold().strip()
+            child_last = str(claim.get('child_last_name') or '').casefold().strip()
+            parent_email = str(claim.get('parent_email') or '').casefold().strip()
             
             key = (child_first, child_last, parent_email)
             is_verified = key in historical_lookup
@@ -2078,7 +1922,8 @@ def verify_returning_campers():
         
         return render_template('verify_returning_campers.html',
                              results=verified_results,
-                             stats=stats)
+                             stats=stats,
+                             selected_session=selected_session())
                              
     except Exception as e:
         flash(f'Error verifying returning campers: {str(e)}', 'error')
@@ -2089,39 +1934,35 @@ def verify_returning_campers():
 def admin_export_json():
     """Export all registrations as JSON for migration."""
     try:
-        db_file = get_database_path()
-        print(f"💾 Export JSON using database: {db_file}")
-        conn = sqlite3.connect(db_file)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        # Only export current registrations (exclude HIST_ historical records)
-        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp ASC")
-        registrations = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        registrations = read_registrations(selected_session())
         
         return jsonify({
             "success": True,
             "count": len(registrations),
             "exported_at": datetime.now().isoformat(),
-            "source_database": db_file,
-            "cached_db_file": DB_FILE,
+            "selected_session": selected_session(),
             "registrations": registrations
         })
     except Exception as e:
+        app.logger.exception("Registration JSON export failed")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/admin/import-json', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def admin_import_json():
     """Import registrations from JSON for migration."""
     try:
-        data = request.get_json()
-        if not data or 'registrations' not in data:
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get('registrations'), list):
             return jsonify({"success": False, "error": "Invalid JSON format"}), 400
         
         registrations = data['registrations']
+        if not all(isinstance(row, dict) and isinstance(row.get('submission_id'), str) and row['submission_id'].strip() for row in registrations):
+            return jsonify(success=False, error="Every registration must have a submission ID."), 400
         imported_count = 0
         skipped_count = 0
+        error_count = 0
         
         db_file = get_database_path()
         print(f"💾 Import JSON using database: {db_file}")
@@ -2144,8 +1985,9 @@ def admin_import_json():
                         emergency_contact_name, emergency_contact_phone,
                         has_allergies, allergies_description, has_medical_conditions, 
                         medical_conditions_description, is_returning_camper, returning_years,
-                        bringing_own_switch, how_heard_about_camp, additional_comments
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        bringing_own_switch, how_heard_about_camp, additional_comments,
+                        camp_session, payment_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     reg.get('submission_id'), reg.get('timestamp'), 
                     reg.get('child_first_name'), reg.get('child_last_name'),
@@ -2157,12 +1999,17 @@ def admin_import_json():
                     reg.get('has_medical_conditions'), reg.get('medical_conditions_description'),
                     reg.get('is_returning_camper'), reg.get('returning_years'),
                     reg.get('bringing_own_switch'), reg.get('how_heard_about_camp'),
-                    reg.get('additional_comments')
+                    reg.get('additional_comments'), reg.get('camp_session'),
+                    reg.get('payment_status') or 'pending'
                 ))
                 imported_count += 1
             except Exception as e:
-                print(f"Error importing registration {reg.get('submission_id', 'unknown')}: {e}")
-                continue
+                app.logger.exception("Invalid row in registration import")
+                error_count += 1
+        if error_count:
+            conn.rollback()
+            conn.close()
+            return jsonify(success=False, error=f"Import rolled back: {error_count} invalid rows. No records were imported."), 400
         
         conn.commit()
         conn.close()
@@ -2187,19 +2034,11 @@ def admin_export():
         import csv
         from flask import make_response
         
-        db_file = get_database_path()
-        print(f"💾 Export CSV using database: {db_file}")
-        conn = sqlite3.connect(db_file)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        # Only export current registrations (exclude HIST_ historical records)
-        cursor.execute("SELECT * FROM registrations WHERE submission_id NOT LIKE 'HIST_%' ORDER BY timestamp DESC")
-        registrations = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        registrations = read_registrations(selected_session())
         
         if not registrations:
             flash('No registrations to export', 'error')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(admin_url())
             
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=registrations[0].keys())
@@ -2216,10 +2055,11 @@ def admin_export():
         
     except Exception as e:
         flash(f'Export error: {str(e)}', 'error')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(admin_url())
 
 @app.route('/admin/edit/<int:registration_id>', methods=['GET', 'POST'])
 @require_admin_auth
+@require_admin_csrf
 def admin_edit(registration_id):
     """Edit a specific registration."""
     db_file = get_database_path()
@@ -2228,7 +2068,20 @@ def admin_edit(registration_id):
         try:
             print(f"✏️ Edit registration {registration_id} using database: {db_file}")
             conn = sqlite3.connect(db_file)
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            existing = cursor.execute("SELECT * FROM registrations WHERE id = ?", (registration_id,)).fetchone()
+            if not existing:
+                conn.close()
+                return "Registration not found.", 404
+            identity_error = registration_identity_error(request.form)
+            if identity_error:
+                conn.close()
+                flash(identity_error, "error")
+                return render_template(
+                    "edit_registration.html",
+                    registration=normalize_registration({**dict(existing), **request.form.to_dict()}),
+                ), 400
             
             # Update the registration
             cursor.execute("""
@@ -2280,11 +2133,11 @@ def admin_edit(registration_id):
             conn.close()
             
             flash('Registration updated successfully', 'success')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(admin_url())
             
         except Exception as e:
             flash(f'Update error: {str(e)}', 'error')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(admin_url())
     
     # GET request - show edit form
     try:
@@ -2300,7 +2153,7 @@ def admin_edit(registration_id):
             flash('Registration not found', 'error')
             return redirect(url_for('admin_dashboard'))
         
-        return render_template('edit_registration.html', registration=registration)
+        return render_template('edit_registration.html', registration=normalize_registration(registration))
         
     except Exception as e:
         flash(f'Error loading registration: {str(e)}', 'error')
@@ -2308,6 +2161,7 @@ def admin_edit(registration_id):
 
 @app.route('/admin/import-historical', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def import_historical_data():
     """Import historical camper data from CSV file."""
     try:
@@ -2358,7 +2212,8 @@ def import_historical_data():
                     # Check if already imported (by email + child name)
                     cursor.execute("""
                         SELECT id FROM registrations 
-                        WHERE child_first_name = ? AND child_last_name = ? AND parent_email = ?
+                        WHERE submission_id GLOB 'HIST_*'
+                        AND child_first_name = ? AND child_last_name = ? AND parent_email = ?
                     """, (child_first_name, child_last_name, parent_email))
                     
                     if cursor.fetchone():
@@ -2432,8 +2287,8 @@ def import_historical_data():
         conn.close()
         
         print(f"📊 Import results - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
-        flash(f'✅ Import complete! Imported: {imported_count}, Skipped (duplicates): {skipped_count}, Errors: {error_count}', 'success')
-        return redirect(url_for('admin_historical'))
+        flash(f'Import results: {imported_count} imported, {skipped_count} skipped, {error_count} errors.', 'warning' if error_count else 'success')
+        return redirect(admin_url('admin_historical'))
         
     except Exception as e:
         flash(f'Import error: {str(e)}', 'error')
@@ -2441,6 +2296,7 @@ def import_historical_data():
 
 @app.route('/admin/upload-historical', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def upload_historical_data():
     """Upload and import historical camper data from CSV file upload."""
     try:
@@ -2489,7 +2345,8 @@ def upload_historical_data():
                 # Check if already imported (by email + child name)
                 cursor.execute("""
                     SELECT id FROM registrations 
-                    WHERE child_first_name = ? AND child_last_name = ? AND parent_email = ?
+                    WHERE submission_id GLOB 'HIST_*'
+                    AND child_first_name = ? AND child_last_name = ? AND parent_email = ?
                 """, (child_first_name, child_last_name, parent_email))
                 
                 if cursor.fetchone():
@@ -2563,8 +2420,8 @@ def upload_historical_data():
         conn.close()
         
         print(f"📊 Upload results - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
-        flash(f'✅ Import complete! Imported: {imported_count}, Skipped (duplicates): {skipped_count}, Errors: {error_count}', 'success')
-        return redirect(url_for('admin_historical'))
+        flash(f'Import results: {imported_count} imported, {skipped_count} skipped, {error_count} errors.', 'warning' if error_count else 'success')
+        return redirect(admin_url('admin_historical'))
         
     except Exception as e:
         flash(f'Upload error: {str(e)}', 'error')
@@ -2572,6 +2429,7 @@ def upload_historical_data():
 
 @app.route('/admin/clear-historical', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def clear_historical_data():
     """Clear all historical (HIST_) records from the database."""
     try:
@@ -2580,11 +2438,11 @@ def clear_historical_data():
         cursor = conn.cursor()
         
         # Count records to delete
-        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        cursor.execute("SELECT COUNT(*) FROM registrations WHERE submission_id GLOB 'HIST_*'")
         count = cursor.fetchone()[0]
         
         # Delete historical records
-        cursor.execute("DELETE FROM registrations WHERE submission_id LIKE 'HIST_%'")
+        cursor.execute("DELETE FROM registrations WHERE submission_id GLOB 'HIST_*'")
         conn.commit()
         conn.close()
         
@@ -2598,6 +2456,7 @@ def clear_historical_data():
 
 @app.route('/admin/fix-historical-records', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def fix_historical_records():
     """One-time fix: Add HIST_ prefix to imported historical records by matching against CSV."""
     try:
@@ -2628,8 +2487,9 @@ def fix_historical_records():
                 first_name = row.get('Childs First Name?', '').strip()
                 last_name = row.get('Childs Last Name?', '').strip()
                 email = row.get('Email Address', '').strip()
-                if first_name and last_name:
-                    historical_campers.add((first_name.lower(), last_name.lower(), email.lower()))
+                timestamp = row.get('Timestamp', '').strip()
+                if first_name and last_name and email and timestamp:
+                    historical_campers.add((first_name.casefold(), last_name.casefold(), email.casefold(), timestamp))
         
         db_file = get_database_path()
         print(f"🔧 Fixing historical records in database: {db_file}")
@@ -2638,11 +2498,13 @@ def fix_historical_records():
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         
-        # Find ALL records without HIST_ prefix
+        # Only unassigned legacy imports can be repaired; never relabel a submitted registration.
         cursor.execute("""
-            SELECT id, submission_id, child_first_name, child_last_name, parent_email
+            SELECT id, submission_id, child_first_name, child_last_name, parent_email, timestamp
             FROM registrations 
-            WHERE submission_id NOT LIKE 'HIST_%'
+            WHERE submission_id NOT GLOB 'HIST_*'
+              AND submission_id NOT GLOB 'REG_*'
+              AND (camp_session IS NULL OR camp_session = '')
         """)
         
         all_records = cursor.fetchall()
@@ -2650,10 +2512,10 @@ def fix_historical_records():
         updated_count = 0
         
         for record in all_records:
-            record_id, old_submission_id, first_name, last_name, email = record
+            record_id, old_submission_id, first_name, last_name, email, timestamp = record
             
             # Check if this record matches a historical camper from CSV
-            key = (first_name.lower(), last_name.lower(), email.lower())
+            key = tuple(str(value or '').strip().casefold() for value in (first_name, last_name, email)) + (str(timestamp or '').strip(),)
             if key in historical_campers:
                 # Generate new HIST_ ID
                 new_submission_id = f"HIST_{datetime.now().strftime('%Y%m%d')}_{str(uuid.uuid4())[:8].upper()}"
@@ -2665,14 +2527,13 @@ def fix_historical_records():
                 """, (new_submission_id, record_id))
                 
                 updated_count += 1
-                print(f"✅ Updated: {first_name} {last_name} ({email}) - {old_submission_id} → {new_submission_id}")
         
         conn.commit()
         conn.close()
         
         print(f"✅ Successfully updated {updated_count} records with HIST_ prefix")
-        flash(f'✅ Fixed {updated_count} historical records with HIST_ prefix', 'success')
-        return redirect(url_for('admin_historical'))
+        flash(f'Repaired {updated_count} unassigned legacy records with exact CSV matches. Current session registrations were not changed.', 'success')
+        return redirect(admin_url('admin_historical'))
         
     except Exception as e:
         flash(f'Fix error: {str(e)}', 'error')
@@ -2680,6 +2541,7 @@ def fix_historical_records():
 
 @app.route('/admin/delete/<int:registration_id>', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def admin_delete(registration_id):
     """Delete a specific registration."""
     try:
@@ -2692,23 +2554,25 @@ def admin_delete(registration_id):
         cursor.execute("SELECT id FROM registrations WHERE id = ?", (registration_id,))
         if not cursor.fetchone():
             conn.close()
-            flash('Registration not found', 'error')
-            return redirect(url_for('admin_dashboard'))
+            return jsonify(success=False, error="Registration not found."), 404
             
         # Delete the registration
         cursor.execute("DELETE FROM registrations WHERE id = ?", (registration_id,))
         conn.commit()
         conn.close()
         
+        if request.accept_mimetypes.best == "application/json":
+            return jsonify(success=True, message="Registration deleted.")
         flash('Registration deleted successfully', 'success')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(admin_url())
         
     except Exception as e:
-        flash(f'Delete error: {str(e)}', 'error')
-        return redirect(url_for('admin_dashboard'))
+        app.logger.exception("Registration deletion failed")
+        return jsonify(success=False, error="Registration could not be deleted."), 500
 
 @app.route('/admin/mark-paid/<submission_id>', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def mark_paid(submission_id):
     """Mark a registration as paid."""
     try:
@@ -2721,13 +2585,48 @@ def mark_paid(submission_id):
             SET payment_status = 'paid' 
             WHERE submission_id = ?
         """, (submission_id,))
-        
+        changed = cursor.rowcount
         conn.commit()
         conn.close()
+        if not changed:
+            return jsonify(success=False, error="Registration not found."), 404
         
         return jsonify({'success': True, 'message': 'Payment status updated'})
     except Exception as e:
+        app.logger.exception("Payment status update failed")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/send-reminder/<submission_id>', methods=['POST'])
+@require_admin_auth
+@require_admin_csrf
+def send_payment_reminder(submission_id):
+    """Send a reminder only when a stored registration has known session pricing."""
+    try:
+        with closing(sqlite3.connect(get_database_path())) as connection:
+            connection.row_factory = sqlite3.Row
+            row = connection.execute(
+                "SELECT * FROM registrations WHERE submission_id = ?", (submission_id,)
+            ).fetchone()
+        if row is None:
+            return jsonify(success=False, error="Registration not found."), 404
+        registration = normalize_registration(row)
+        if registration["payment_status"] == "paid":
+            return jsonify(success=False, error="This registration is already marked paid."), 409
+        config = get_config_for_stored_session(registration.get("camp_session"))
+        if config is None:
+            return jsonify(success=False, error="Pricing for this session is unavailable. No reminder was sent."), 409
+        if not registration.get("parent_email"):
+            return jsonify(success=False, error="This registration has no parent email address."), 400
+        html = render_template("payment_reminder.html", registration=registration, config=config)
+        if not send_email_notification(
+            registration["parent_email"], f"Payment reminder - {config['camp_name']}", html
+        ):
+            return jsonify(success=False, error="The email provider did not confirm delivery. Check email configuration before trying again."), 502
+        return jsonify(success=True, message="Payment reminder sent.")
+    except Exception:
+        app.logger.exception("Payment reminder failed")
+        return jsonify(success=False, error="The reminder could not be sent. Check its status before trying again."), 500
 
 @app.route('/admin/attendance')
 @require_admin_auth
@@ -2742,14 +2641,17 @@ def attendance():
         # Get all active registrations (not historical)
         cursor.execute("""
             SELECT * FROM registrations 
-            WHERE submission_id NOT LIKE 'HIST_%'
+            WHERE submission_id NOT GLOB 'HIST_*'
             ORDER BY child_last_name, child_first_name
         """)
         
-        registrations = [dict(row) for row in cursor.fetchall()]
+        registrations = [normalize_registration(row) for row in cursor.fetchall()]
         conn.close()
         
         # Get today's date to highlight current day
+        for registration in registrations:
+            stored_config = get_config_for_stored_session(registration.get("camp_session"))
+            registration["session_pricing"] = stored_config["pricing"] if stored_config else None
         from datetime import datetime
         today = datetime.now().strftime('%Y-%m-%d')
         
@@ -2763,17 +2665,32 @@ def attendance():
 
 @app.route('/admin/attendance/check-in', methods=['POST'])
 @require_admin_auth
+@require_admin_csrf
 def check_in():
     """Record attendance check-in."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(success=False, error="Attendance must be a JSON object."), 400
         submission_id = data.get('submission_id')
         date = data.get('date')
         status = data.get('status', 'present')  # present, absent, late
+        if not isinstance(submission_id, str) or status not in ('present', 'absent', 'late'):
+            return jsonify(success=False, error="Choose a valid registration and attendance status."), 400
+        try:
+            date = datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d")
+        except (TypeError, ValueError):
+            return jsonify(success=False, error="Choose a valid attendance date."), 400
         
         db_file = get_database_path()
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
+        if not cursor.execute(
+            "SELECT 1 FROM registrations WHERE submission_id = ? AND submission_id NOT GLOB 'HIST_*'",
+            (submission_id,),
+        ).fetchone():
+            conn.close()
+            return jsonify(success=False, error="Registration not found."), 404
         
         # Create attendance table if it doesn't exist
         cursor.execute("""
@@ -2811,7 +2728,11 @@ def get_attendance_status(date):
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+        if not cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'attendance'"
+        ).fetchone():
+            conn.close()
+            return jsonify({})
         cursor.execute("""
             SELECT submission_id, status, checked_in_at
             FROM attendance

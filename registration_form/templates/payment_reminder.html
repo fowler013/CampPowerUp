@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Camp payment reminder</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6;">
+    <h1>Payment reminder</h1>
+    <p>Hello,</p>
+    <p>This is a reminder about {{ registration.child_first_name }} {{ registration.child_last_name }}'s registration for {{ config.camp_name }} ({{ config.camp_dates }}).</p>
+    {% set pricing = config.pricing.returning_camper if registration.is_returning_camper else config.pricing.new_camper %}
+    <p>The session fee is ${{ pricing.total }}: a ${{ pricing.deposit }} deposit and a ${{ pricing.final_payment }} final payment, due {{ config.final_payment_due }}.</p>
+    <p>This registration has not been marked fully paid in our records. If you have already paid, please contact the camp administrator so the record can be updated. Do not pay again.</p>
+    <p>Use the payment instructions from your original confirmation. Reference: {{ registration.submission_id }}.</p>
+</body>
+</html>

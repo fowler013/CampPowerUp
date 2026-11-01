@@ -211,6 +211,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
     <div class="header">
@@ -218,28 +219,9 @@
         <p>Camper Verification Database</p>
     </div>
 
-    <div class="nav-bar">
-        <div class="nav-links">
-            <a href="/admin">📊 Current Registrations</a>
-            <a href="/admin/historical">📚 Historical Data</a>
-            <a href="/admin/verify-returning-campers">🔍 Verify Returning Campers</a>
-            <a href="/admin/config">⚙️ Configuration</a>
-            <a href="/admin/logout" class="logout-btn">🚪 Logout</a>
-        </div>
-    </div>
+    {% include 'admin_navigation.html' %}
 
     <div class="container">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash-message {{ category }}" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; {% if category == 'success' %}background: #d4edda; border: 1px solid #28a745; color: #155724;{% elif category == 'error' %}background: #f8d7da; border: 1px solid #dc3545; color: #721c24;{% else %}background: #d1ecf1; border: 1px solid #17a2b8; color: #0c5460;{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-number">{{ historical_data|length }}</div>
@@ -264,6 +246,7 @@
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <form action="/admin/upload-historical" method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
                         <input type="file" name="csv_file" accept=".csv" required 
                                style="padding: 8px; border: 2px solid #667eea; border-radius: 8px; background: white;">
                         <button type="submit" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
@@ -271,6 +254,7 @@
                         </button>
                     </form>
                     <form action="/admin/clear-historical" method="POST" onsubmit="return confirm('⚠️ This will delete all historical (HIST_) records. Are you sure?');">
+                        <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
                         <button type="submit" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                             🗑️ Clear Historical
                         </button>

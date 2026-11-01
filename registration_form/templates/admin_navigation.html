@@ -1,0 +1,31 @@
+<nav class="nav-bar" aria-label="Camp administration">
+    <div class="nav-links admin-nav-links">
+        <a href="{{ admin_url() }}" {% if request.endpoint == 'admin_dashboard' %}aria-current="page"{% endif %}>Registrations</a>
+        <a href="{{ admin_url('admin_metrics') }}" {% if request.endpoint == 'admin_metrics' %}aria-current="page"{% endif %}>Metrics</a>
+        <a href="{{ admin_url('admin_historical') }}" {% if request.endpoint == 'admin_historical' %}aria-current="page"{% endif %}>Historical data</a>
+        <a href="{{ admin_url('verify_returning_campers') }}" {% if request.endpoint == 'verify_returning_campers' %}aria-current="page"{% endif %}>Verify returning campers</a>
+        <a href="{{ admin_url('admin_config') }}" {% if request.endpoint == 'admin_config' %}aria-current="page"{% endif %}>Configuration</a>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">Log out</a>
+    </div>
+    {% if request.endpoint in ('admin_dashboard', 'admin_historical') %}
+    <details class="admin-maintenance">
+        <summary>Historical data tools</summary>
+        <p>Use a trusted historical CSV. Repair only relabels unassigned legacy records with exact name, email and timestamp matches; submitted registrations are left unchanged.</p>
+        <div class="maintenance-actions">
+            <form method="post" action="{{ admin_url('import_historical_data') }}" onsubmit="return confirm('Import the configured historical CSV into the historical records?');">
+                <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+                <button type="submit" class="btn btn-primary">Import historical CSV</button>
+            </form>
+            <form method="post" action="{{ admin_url('fix_historical_records') }}" onsubmit="return confirm('Repair exact matches for unassigned legacy records? Back up your database first.');">
+                <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+                <button type="submit" class="btn btn-warning">Repair legacy records</button>
+            </form>
+        </div>
+    </details>
+    {% endif %}
+</nav>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="admin-notice {{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}

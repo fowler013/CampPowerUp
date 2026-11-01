@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="admin-csrf-token" content="{{ admin_csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camp Attendance - Camp Power-Up Thanksgiving 2026</title>
@@ -266,8 +267,12 @@
         
         <div class="header">
             <h1>📋 Daily Attendance</h1>
-            <p>Camp Power-Up Thanksgiving 2026 - November 23-24</p>
+            <p>All registered sessions. Attendance is recorded for the date you select.</p>
         </div>
+        <p><label for="attendanceDate">Attendance date</label>
+            <input id="attendanceDate" type="date" value="{{ today if today in camp_dates else camp_dates[0] }}" onchange="selectDate(this.value)" required>
+        </p>
+        <p id="attendanceStatus" role="alert"></p>
         
         <div class="date-tabs">
             <div class="date-tab" data-date="2026-11-23" onclick="selectDate('2026-11-23')">
@@ -293,7 +298,7 @@
             </div>
             <div class="stat-card absent">
                 <div class="stat-number" id="absent-count">0</div>
-                <div class="stat-label">Not Checked In</div>
+                <div class="stat-label">Absent / Not Checked In</div>
             </div>
         </div>
         
@@ -307,19 +312,23 @@
                 <div class="camper-name">{{ reg.child_first_name }} {{ reg.child_last_name }}</div>
                 <div class="camper-info">
                     Age: {{ reg.child_age }} | Grade: {{ reg.child_grade }}<br>
-                    {% if reg.is_returning_camper %}🔄 Returning ($80){% else %}🆕 New ($100){% endif %}
+                    {% if reg.is_returning_camper %}🔄 Returning{% else %}🆕 New{% endif %}
+                    {% if reg.session_pricing %}
+                    (${{ reg.session_pricing.returning_camper.total if reg.is_returning_camper else reg.session_pricing.new_camper.total }})
+                    {% else %}(Fee not configured){% endif %}
                     {% if reg.bringing_own_switch %}| 🎮 Own Switch{% endif %}<br>
+                    {{ reg.camp_session or 'Unassigned session' }}<br>
                     <span class="payment-badge {{ 'paid' if reg.payment_status == 'paid' else 'pending' }}">
                         {% if reg.payment_status == 'paid' %}✅ Paid{% else %}💳 Payment Pending{% endif %}
                     </span>
                 </div>
                 <div class="status-buttons">
-                    <button class="status-btn present" onclick="checkIn('{{ reg.submission_id }}', 'present')">✅ Present</button>
-                    <button class="status-btn late" onclick="checkIn('{{ reg.submission_id }}', 'late')">⏰ Late</button>
-                    <button class="status-btn absent" onclick="checkIn('{{ reg.submission_id }}', 'absent')">❌ Absent</button>
+                    <button class="status-btn present" onclick='checkIn({{ reg.submission_id|tojson }}, "present")'>✅ Present</button>
+                    <button class="status-btn late" onclick='checkIn({{ reg.submission_id|tojson }}, "late")'>⏰ Late</button>
+                    <button class="status-btn absent" onclick='checkIn({{ reg.submission_id|tojson }}, "absent")'>❌ Absent</button>
                 </div>
                 <div class="payment-actions" style="margin-top: 10px;">
-                    <button class="payment-btn" onclick="markPaid('{{ reg.submission_id }}')">💰 Mark Paid</button>
+                    <button class="payment-btn" onclick='markPaid({{ reg.submission_id|tojson }})' {% if reg.payment_status == 'paid' %}disabled{% endif %}>{{ 'Paid' if reg.payment_status == 'paid' else 'Mark fully paid' }}</button>
                 </div>
                 <div class="check-time"></div>
             </div>
@@ -328,33 +337,33 @@
     </div>
     
     <script>
-        let currentDate = '{{ today }}';
+        let currentDate = document.getElementById('attendanceDate').value;
+        const csrfToken = document.querySelector('meta[name="admin-csrf-token"]').content;
         
         // Initialize with today's date
         window.onload = function() {
-            const todayTab = document.querySelector(`.date-tab[data-date="${currentDate}"]`);
-            if (todayTab) {
-                todayTab.classList.add('active');
-            } else {
-                // Default to first camp day if not today
-                selectDate('2026-11-23');
-            }
-            loadAttendance(currentDate);
+            selectDate(currentDate);
         };
         
         function selectDate(date) {
             currentDate = date;
+            document.getElementById('attendanceDate').value = date;
             document.querySelectorAll('.date-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelector(`.date-tab[data-date="${date}"]`).classList.add('active');
+            document.querySelector(`.date-tab[data-date="${CSS.escape(date)}"]`)?.classList.add('active');
             loadAttendance(date);
         }
         
         function loadAttendance(date) {
             fetch(`/admin/attendance/status/${date}`)
-                .then(response => response.json())
+                .then(async response => {
+                    if (!response.ok || response.redirected) throw new Error('Attendance could not be loaded. Sign in again if your session expired.');
+                    return response.json();
+                })
                 .then(attendance => {
+                    if (date !== currentDate) return;
+                    document.getElementById('attendanceStatus').textContent = '';
                     // Reset all cards
                     document.querySelectorAll('.camper-card').forEach(card => {
                         card.classList.remove('checked-in', 'absent', 'late');
@@ -363,7 +372,7 @@
                     
                     // Apply attendance status
                     Object.keys(attendance).forEach(submissionId => {
-                        const card = document.querySelector(`.camper-card[data-id="${submissionId}"]`);
+                        const card = document.querySelector(`.camper-card[data-id="${CSS.escape(submissionId)}"]`);
                         if (card) {
                             const status = attendance[submissionId].status;
                             card.classList.add(status === 'present' ? 'checked-in' : status);
@@ -373,6 +382,9 @@
                     });
                     
                     updateStats();
+                })
+                .catch(error => {
+                    document.getElementById('attendanceStatus').textContent = error.message;
                 });
         }
         
@@ -380,7 +392,9 @@
             fetch('/admin/attendance/check-in', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
                     submission_id: submissionId,
@@ -395,7 +409,8 @@
                 } else {
                     alert('Error checking in: ' + data.error);
                 }
-            });
+            })
+            .catch(() => alert('Attendance could not be confirmed. Reload to check its status before trying again.'));
         }
         
         function updateStats() {
@@ -422,17 +437,19 @@
         }
         
         function markPaid(submissionId) {
-            const card = document.querySelector(`.camper-card[data-id="${submissionId}"]`);
+            const card = document.querySelector(`.camper-card[data-id="${CSS.escape(submissionId)}"]`);
             const button = card.querySelector('.payment-btn');
             
             if (confirm('Mark this registration as paid?')) {
                 button.disabled = true;
                 button.textContent = '⏳ Processing...';
                 
-                fetch(`/admin/mark-paid/${submissionId}`, {
+                fetch(`/admin/mark-paid/${encodeURIComponent(submissionId)}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-Token': csrfToken,
                     }
                 })
                 .then(response => response.json())
