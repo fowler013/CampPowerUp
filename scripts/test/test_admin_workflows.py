@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import pytest
 
 from registration_form import app as registration_app
+from registration_form import discord_attendance
 from registration_form.admin_support import (
     configuration_revision, load_configurations, normalize_registration, registration_summary,
 )
@@ -76,6 +77,23 @@ def scoped(path="/admin", label=CURRENT):
     return path + "?" + urlencode({"session": label})
 
 
+def enable_discord_attendance(camp, monkeypatch):
+    monkeypatch.setenv("DISCORD_ATTENDANCE_ENABLED", "true")
+    monkeypatch.setenv("DISCORD_ATTENDANCE_PARENT_TOKEN", "synthetic-parent-token-000000000000")
+    monkeypatch.setenv("DISCORD_ATTENDANCE_STAFF_TOKEN", "synthetic-staff-token-0000000000000")
+    monkeypatch.setenv("DISCORD_ATTENDANCE_GUILD_ID", "100")
+    monkeypatch.setenv("DISCORD_ATTENDANCE_STAFF_IDS", '["900"]')
+    monkeypatch.setenv("DISCORD_ATTENDANCE_SESSIONS", json.dumps({
+        "thanksgiving-2026": {"label": CURRENT, "dates": ["2026-11-23"]},
+    }))
+    monkeypatch.setenv("DISCORD_ATTENDANCE_DATABASE_PATH", str(camp.database))
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+    monkeypatch.setattr(registration_app.app, "secret_key", "synthetic-session-signing-key-with-32-bytes")
+    with camp.client.session_transaction() as browser:
+        browser["admin_logged_in"] = True
+        browser["admin_csrf_token"] = TOKEN
+
+
 def test_session_timestamp_index_supports_dashboard_query(camp):
     with closing(sqlite3.connect(camp.database)) as connection:
         plan = connection.execute("""
@@ -125,6 +143,133 @@ def test_linked_admin_pages_render_with_empty_database(camp, path):
     response = camp.client.get(scoped(path))
     assert response.status_code == 200
     assert b"Traceback" not in response.data
+
+
+def test_discord_attendance_admin_page_requires_admin_and_is_private(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    camp.add("REG_ATTENDANCE_PAGE", parent_email="private@example.test", parent_phone="555-0100")
+    page = camp.client.get("/admin/discord-attendance")
+    html = page.get_data(as_text=True)
+    assert page.status_code == 200
+    assert page.headers["Cache-Control"] == "no-store"
+    assert "Discord attendance" in html
+    assert "private@example.test" not in html
+    assert "555-0100" not in html
+
+    anonymous = registration_app.app.test_client().get("/admin/discord-attendance")
+    assert anonymous.status_code == 302
+    assert "/admin/login" in anonymous.headers["Location"]
+
+
+def test_discord_attendance_disabled_page_reports_safe_state(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    monkeypatch.delenv("DISCORD_ATTENDANCE_ENABLED")
+    page = camp.client.get("/admin/discord-attendance")
+    assert page.status_code == 200
+    assert "Loading Discord attendance records" in page.get_data(as_text=True)
+    roster = camp.client.get("/admin/discord-attendance/roster")
+    assert roster.status_code == 503
+    assert roster.json == {"error": {"code": "attendance_disabled"}}
+    script = camp.client.get("/static/js/admin_discord_attendance.js")
+    assert b"Discord attendance is off." in script.data
+    assert b"Discord attendance is unavailable or misconfigured." in script.data
+
+
+def test_discord_attendance_roster_lists_only_matching_eligible_fields(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    current_id = camp.add("REG_ATTENDANCE_CURRENT", child_first_name="Avery",
+                          child_last_name="Quinn", parent_email="private@example.test",
+                          parent_phone="555-0100")
+    camp.add("HIST_ATTENDANCE_OLD", child_first_name="Historical",
+             child_last_name="Camper", camp_session=CURRENT)
+    camp.add("REG_ATTENDANCE_OTHER", child_first_name="Other",
+             child_last_name="Session", camp_session=OTHER)
+    linked = camp.client.post("/admin/discord-attendance/links", json={
+        "registration_id": current_id, "session_id": "thanksgiving-2026",
+        "discord_user_id": "10101010101010101", "active": True,
+        "verification_reference": "verified-parent-01",
+    }, headers=HEADERS)
+    assert linked.status_code == 200
+
+    response = camp.client.get("/admin/discord-attendance/roster")
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    sessions = response.json["sessions"]
+    assert [item["session_id"] for item in sessions] == ["thanksgiving-2026"]
+    registrations = sessions[0]["registrations"]
+    assert [item["submission_id"] for item in registrations] == ["REG_ATTENDANCE_CURRENT"]
+    camper = registrations[0]
+    assert camper["child_first_name"] == "Avery"
+    assert camper["child_last_initial"] == "Q"
+    assert camper["links"] == [{"discord_user_id": "10101010101010101", "active": 1}]
+    assert "parent_email" not in response.get_data(as_text=True)
+    assert "parent_phone" not in response.get_data(as_text=True)
+    assert "private@example.test" not in response.get_data(as_text=True)
+    assert "555-0100" not in response.get_data(as_text=True)
+
+
+def test_discord_attendance_link_and_pickup_mutations_use_audited_endpoints(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    registration_id = camp.add("REG_ATTENDANCE_ROUNDTRIP")
+    link_url = "/admin/discord-attendance/links"
+    link_body = {
+        "registration_id": registration_id, "session_id": "thanksgiving-2026",
+        "discord_user_id": "10101010101010101", "active": True,
+        "verification_reference": "verified-parent-02",
+    }
+    assert camp.client.post(link_url, json=link_body, headers=HEADERS).status_code == 200
+    camper = camp.client.get("/admin/discord-attendance/roster").json["sessions"][0]["registrations"][0]
+    assert camper["links"] == [{"discord_user_id": "10101010101010101", "active": 1}]
+
+    link_body["active"] = False
+    assert camp.client.post(link_url, json=link_body, headers=HEADERS).status_code == 200
+    roster_url = "/admin/discord-attendance/pickup-roster"
+    pickup_body = {
+        "camper_id": camper["camper_id"], "session_id": "thanksgiving-2026",
+        "parent_confirmation_reference": "parent-confirmed-02",
+        "active": True, "display_name": "Aunt Sam",
+    }
+    added = camp.client.post(roster_url, json=pickup_body, headers=HEADERS)
+    assert added.status_code == 200
+    pickup_id = added.json["pickup_id"]
+    current = camp.client.get("/admin/discord-attendance/roster").json["sessions"][0]["registrations"][0]
+    assert current["pickups"] == [{"pickup_id": pickup_id, "display_name": "Aunt Sam"}]
+
+    revoked = camp.client.post(roster_url, json={
+        "camper_id": camper["camper_id"], "session_id": "thanksgiving-2026",
+        "parent_confirmation_reference": "parent-revoked-02",
+        "active": False, "pickup_id": pickup_id,
+    }, headers=HEADERS)
+    assert revoked.status_code == 200
+    assert camp.client.get("/admin/discord-attendance/roster").json["sessions"][0]["registrations"][0]["pickups"] == []
+    with closing(sqlite3.connect(camp.database)) as connection:
+        actions = [row[0] for row in connection.execute(
+            "SELECT action FROM discord_attendance_audit ORDER BY rowid"
+        )]
+    assert actions == ["link_approved", "link_revoked", "pickup_added", "pickup_revoked"]
+
+
+def test_discord_attendance_admin_rejects_bad_ids_missing_references_and_csrf(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    registration_id = camp.add("REG_ATTENDANCE_INVALID")
+    url = "/admin/discord-attendance/links"
+    body = {
+        "registration_id": registration_id, "session_id": "thanksgiving-2026",
+        "discord_user_id": "123456", "active": True,
+        "verification_reference": "verified-parent-03",
+    }
+    assert camp.client.post(url, json=body, headers=HEADERS).status_code == 400
+    body["discord_user_id"] = "10101010101010101"
+    del body["verification_reference"]
+    assert camp.client.post(url, json=body, headers=HEADERS).status_code == 400
+    body["verification_reference"] = "verified-parent-03"
+    assert camp.client.post(url, json=body).status_code == 400
+
+    camper = camp.client.post(url, json=body, headers=HEADERS).json["camper_id"]
+    assert camp.client.post("/admin/discord-attendance/pickup-roster", json={
+        "camper_id": camper, "session_id": "thanksgiving-2026",
+        "active": True, "display_name": "Aunt Sam",
+    }, headers=HEADERS).status_code == 400
 
 
 def test_exact_session_counts_and_exports(camp):

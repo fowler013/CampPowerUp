@@ -90,7 +90,7 @@ def admin(camp, route, data):
                             headers={"X-CSRF-Token": "synthetic-csrf"})
 
 
-def link(camp, registration=1, user="101", active=True):
+def link(camp, registration=1, user="10101010101010101", active=True):
     return admin(camp, "/links", {
         "registration_id": registration, "session_id": "thanksgiving-2026",
         "discord_user_id": user, "active": active,
@@ -182,6 +182,20 @@ def test_no_self_linking_no_family_leak_and_revocation(camp):
 
 def test_admin_csrf_and_secure_signing_key(camp):
     assert camp.client.post(attendance.ADMIN_PREFIX + "/links", json={}).status_code == 400
+    assert admin(camp, "/links", {
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": "12345", "active": True,
+        "verification_reference": "manual-record-001",
+    }).status_code == 400
+    assert admin(camp, "/links", {
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": "10101010101010101", "active": True,
+    }).status_code == 400
+    assert camp.client.post(attendance.ADMIN_PREFIX + "/links", json={
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": "10101010101010101", "active": True,
+        "verification_reference": "manual-record-001",
+    }).status_code == 400
     camp.app.secret_key = "dev-key-change-in-production"
     with camp.client.session_transaction() as browser:
         browser["admin_logged_in"] = True
@@ -223,7 +237,7 @@ def test_full_flow_requires_explicit_staff_and_current_pickup_roster(camp):
 
 def test_roster_must_match_camper_and_not_be_revoked(camp):
     first = camper_id(camp)
-    second = link(camp, registration=2, user="202").json["camper_id"]
+    second = link(camp, registration=2, user="20202020202020202").json["camper_id"]
     pickup = roster(camp, second).json["pickup_id"]
     assert post(camp, payload(first, expected_version=0), staff=True).status_code == 200
     release = payload(first, "release", expected_version=1, pickup_id=pickup, roster_verified=True)

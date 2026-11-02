@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="admin-csrf-token" content="{{ admin_csrf_token() }}">
+    <title>Discord attendance - {{ config.camp_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .attendance-page { max-width: 1100px; margin: auto; padding: 20px; }
+        .attendance-intro, .attendance-session, .attendance-card { background: white; border: 1px solid #dfe3ed; border-radius: 8px; padding: 18px; margin-block: 14px; }
+        .attendance-intro p, .attendance-session p { line-height: 1.5; margin-block: 8px; }
+        .attendance-card { margin-block: 12px; }
+        .attendance-card h3 { margin-block-end: 6px; }
+        .attendance-submission { font-family: monospace; margin-block-end: 14px; }
+        .attendance-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 12px; }
+        .attendance-group { min-width: 0; background: #f8f9fa; border-radius: 6px; padding: 14px; }
+        .attendance-group h4 { margin-block-end: 10px; }
+        .attendance-group ul { padding-inline-start: 22px; margin-block-end: 12px; }
+        .attendance-group li { margin-block: 6px; overflow-wrap: anywhere; }
+        .attendance-form { display: grid; gap: 8px; margin-block-start: 10px; }
+        .attendance-form label { font-weight: 600; }
+        .attendance-form input { width: 100%; padding: 9px; border: 1px solid #788296; border-radius: 6px; }
+        .attendance-form .btn { justify-self: start; }
+        .attendance-revoke { margin-inline-start: 8px; min-height: 36px; }
+        .attendance-result { min-height: 1.5em; margin-block-start: 8px; }
+        .attendance-result.error, .attendance-state.error { color: #842029; }
+        .attendance-state { padding: 12px; background: #edf1f8; border-radius: 6px; }
+        .attendance-warning { border-inline-start: 4px solid #d39e00; padding-inline-start: 12px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Discord attendance</h1>
+        <p>Manage verified parent links and authorized pickups</p>
+    </header>
+    {% include 'admin_navigation.html' %}
+    <main class="attendance-page">
+        <section class="attendance-intro">
+            <p>Parent links require manual verification of the parent's Discord account. Record the verification reference when linking or revoking access.</p>
+            <p class="attendance-warning"><strong>Authorized pickups are separate:</strong> emergency contacts are not automatically authorized pickups. Add someone to the roster only after receiving parent confirmation.</p>
+        </section>
+        <p id="attendanceState" class="attendance-state" role="status" aria-live="polite">Loading Discord attendance records…</p>
+        <div id="attendanceSessions"></div>
+        <noscript><p class="attendance-state error">JavaScript is required to load and update Discord attendance records.</p></noscript>
+    </main>
+    <template id="attendanceSessionTemplate">
+        <section class="attendance-session">
+            <h2 data-session-label></h2>
+            <div data-registrations></div>
+        </section>
+    </template>
+    <template id="attendanceRegistrationTemplate">
+        <article class="attendance-card">
+            <h3 data-camper-name></h3>
+            <p class="attendance-submission" data-submission-id></p>
+            <div class="attendance-columns">
+                <section class="attendance-group">
+                    <h4>Parent Discord links</h4>
+                    <ul data-links></ul>
+                    <form class="attendance-form" data-action="link">
+                        <label data-user-label>Discord user ID (17–20 digits)
+                            <input name="discord_user_id" inputmode="numeric" pattern="[0-9]{17,20}" minlength="17" maxlength="20" required>
+                        </label>
+                        <label>Verification reference
+                            <input name="verification_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" required>
+                        </label>
+                        <button class="btn btn-primary" type="submit">Add or reactivate link</button>
+                    </form>
+                </section>
+                <section class="attendance-group">
+                    <h4>Authorized pickups</h4>
+                    <ul data-pickups></ul>
+                    <form class="attendance-form" data-action="pickup">
+                        <label>Pickup name
+                            <input name="display_name" maxlength="100" required>
+                        </label>
+                        <label>Parent confirmation reference
+                            <input name="parent_confirmation_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" required>
+                        </label>
+                        <button class="btn btn-primary" type="submit">Add authorized pickup</button>
+                    </form>
+                </section>
+            </div>
+            <p class="attendance-result" role="status" aria-live="polite"></p>
+        </article>
+    </template>
+    <script src="{{ url_for('static', filename='js/admin_discord_attendance.js') }}" defer></script>
+</body>
+</html>
