@@ -75,6 +75,9 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
 @app.before_request
 def load_request_configuration():
     """Read settings per request so every worker uses the same saved configuration."""
+    if request.path.startswith((DISCORD_ATTENDANCE_PREFIX, DISCORD_ATTENDANCE_ADMIN_PREFIX)):
+        # This API authenticates before opening its database and owns its session scope.
+        return None
     try:
         g.active_camp_configs, g.stored_camp_configs = load_configurations(get_database_path())
     except (sqlite3.Error, ValueError, OSError):
@@ -3350,6 +3353,24 @@ def remove_signup(signup_id):
 
     return jsonify({'success': True, 'queues': fetch_signup_queues()})
 
+
+if __package__:
+    from .discord_attendance import (
+        PREFIX as DISCORD_ATTENDANCE_PREFIX,
+        ADMIN_PREFIX as DISCORD_ATTENDANCE_ADMIN_PREFIX,
+        register_discord_attendance,
+    )
+else:
+    from discord_attendance import (
+        PREFIX as DISCORD_ATTENDANCE_PREFIX,
+        ADMIN_PREFIX as DISCORD_ATTENDANCE_ADMIN_PREFIX,
+        register_discord_attendance,
+    )
+
+register_discord_attendance(
+    app, lambda: get_database_path(), require_admin_auth, require_admin_csrf,
+    lambda: ADMIN_USERNAME,
+)
 
 # Initialize database on module load (Railway compatibility)
 print("🔧 Initializing database on startup...")
