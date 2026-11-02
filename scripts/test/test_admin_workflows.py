@@ -76,6 +76,18 @@ def scoped(path="/admin", label=CURRENT):
     return path + "?" + urlencode({"session": label})
 
 
+def test_session_timestamp_index_supports_dashboard_query(camp):
+    with closing(sqlite3.connect(camp.database)) as connection:
+        plan = connection.execute("""
+            EXPLAIN QUERY PLAN
+            SELECT * FROM registrations
+            WHERE submission_id NOT GLOB 'HIST_*' AND camp_session = ?
+            ORDER BY timestamp DESC
+        """, (CURRENT,)).fetchall()
+
+    assert any("idx_registrations_camp_session_timestamp" in row[3] for row in plan)
+
+
 def update_values(**overrides):
     return {
         "config_revision": configuration_revision(CAMP_CONFIG),
