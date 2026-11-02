@@ -87,6 +87,33 @@ both registrations and saved configuration; JSON registration exports do not inc
 configuration. Do not redeploy an ephemeral database without first preserving its
 data. These code changes do not configure production storage or reset passwords.
 
+### Session signing key (`SECRET_KEY`) rollout
+
+`registration_form\app.py` still falls back to a public development key when
+`SECRET_KEY` is unset, which lets anyone forge an admin session. Roll out a real key
+in stages, without making a missing key fatal before one is configured:
+
+1. **Deploy safe startup output first.** `wsgi_railway.py` no longer prints the Flask
+   configuration or import exception messages. It prints only a value-free status
+   line such as `SECRET_KEY status: not set - ...` or `SECRET_KEY status: set (32+
+   characters)`. Admin diagnostics (`/railway-status`, `/find-volumes`) report
+   environment variable names, plus `RAILWAY_VOLUME_*` paths, not other values.
+   Confirm the deployed logs show the new status line before adding a key.
+2. **Set the key.** Generate it on a trusted machine, for example
+   `python -c "import secrets; print(secrets.token_urlsafe(48))"`, and paste it
+   directly into Railway Variables. Use at least 32 cryptographically random
+   characters, keep it persistent and identical for all workers, and never commit,
+   share or log it.
+3. **Expect sign-out.** Setting or rotating `SECRET_KEY` invalidates every existing
+   signed session, so administrators must sign in again. Rotate it again if it is
+   ever exposed.
+4. **Verify.** After redeploying, startup logs should report `set (32+ characters)`
+   and admin sign-in should work.
+
+Still required afterward: make a missing or short `SECRET_KEY` a startup failure in
+production (remove the development fallback) once the key is confirmed, and keep
+attendance disabled until that configuration is verified.
+
 ### Isolated registration checks
 
 Run from the repository root with its Python dependencies and `pytest` installed:

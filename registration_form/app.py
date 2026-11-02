@@ -1105,9 +1105,8 @@ def railway_status():
             except Exception as e:
                 bind_mount_contents.append({"error": str(e)})
         
-        # Get all environment variables related to volumes
-        volume_env_vars = {k: v for k, v in os.environ.items() 
-                          if any(word in k.lower() for word in ['volume', 'mount', 'data', 'persist'])}
+        # Only Railway volume variables are non-secret paths; others (e.g. DATABASE_URL) may hold credentials.
+        volume_env_vars = {k: v for k, v in os.environ.items() if k.startswith('RAILWAY_VOLUME_')}
         
         # Determine if using persistent storage
         is_persistent = '/app' not in current_db_path
@@ -1220,12 +1219,13 @@ def find_volumes():
         
         results["volume_write_tests"] = test_locations
         
-        # Method 6: All environment variables
-        results["all_env_vars"] = dict(os.environ)
+        # Method 6: Environment variable names only; values may be secrets.
+        results["env_var_names"] = sorted(os.environ)
         
         return jsonify(results)
-    except Exception as e:
-        return jsonify({"error": str(e), "traceback": str(e.__traceback__)}), 500
+    except Exception:
+        app.logger.exception("Volume search failed")
+        return jsonify({"error": "Volume search failed"}), 500
 
 @app.route('/submit', methods=['POST'])
 def submit():
