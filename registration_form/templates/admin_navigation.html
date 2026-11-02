@@ -1,13 +1,16 @@
 <nav class="nav-bar" aria-label="Camp administration">
+    {% if compact_admin_nav %}<details class="attendance-admin-menu"><summary>Administration menu</summary>{% endif %}
     <div class="nav-links admin-nav-links">
         <a href="{{ admin_url() }}" {% if request.endpoint == 'admin_dashboard' %}aria-current="page"{% endif %}>Registrations</a>
         <a href="{{ admin_url('admin_metrics') }}" {% if request.endpoint == 'admin_metrics' %}aria-current="page"{% endif %}>Metrics</a>
         <a href="{{ admin_url('admin_historical') }}" {% if request.endpoint == 'admin_historical' %}aria-current="page"{% endif %}>Historical data</a>
         <a href="{{ admin_url('verify_returning_campers') }}" {% if request.endpoint == 'verify_returning_campers' %}aria-current="page"{% endif %}>Verify returning campers</a>
         <a href="{{ url_for('admin_discord_attendance') }}" {% if request.endpoint == 'admin_discord_attendance' %}aria-current="page"{% endif %}>Discord attendance</a>
+        <a href="{{ url_for('admin_camp_day') }}" {% if request.endpoint == 'admin_camp_day' %}aria-current="page"{% endif %}>Camp-day check-in &amp; pickup</a>
         <a href="{{ admin_url('admin_config') }}" {% if request.endpoint == 'admin_config' %}aria-current="page"{% endif %}>Configuration</a>
         <a href="{{ url_for('admin_logout') }}" class="logout-btn">Log out</a>
     </div>
+    {% if compact_admin_nav %}</details>{% endif %}
     {% if request.endpoint in ('admin_dashboard', 'admin_historical') %}
     <details class="admin-maintenance">
         <summary>Historical data tools</summary>

@@ -75,7 +75,8 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
 @app.before_request
 def load_request_configuration():
     """Read settings per request so every worker uses the same saved configuration."""
-    if request.path.startswith((DISCORD_ATTENDANCE_PREFIX, DISCORD_ATTENDANCE_ADMIN_PREFIX)):
+    if request.path.startswith((DISCORD_ATTENDANCE_PREFIX, DISCORD_ATTENDANCE_ADMIN_PREFIX,
+                                DISCORD_ATTENDANCE_CAMP_DAY_PREFIX)):
         # This API authenticates before opening its database and owns its session scope.
         return None
     try:
@@ -3358,12 +3359,14 @@ if __package__:
     from .discord_attendance import (
         PREFIX as DISCORD_ATTENDANCE_PREFIX,
         ADMIN_PREFIX as DISCORD_ATTENDANCE_ADMIN_PREFIX,
+        CAMP_DAY_PREFIX as DISCORD_ATTENDANCE_CAMP_DAY_PREFIX,
         register_discord_attendance,
     )
 else:
     from discord_attendance import (
         PREFIX as DISCORD_ATTENDANCE_PREFIX,
         ADMIN_PREFIX as DISCORD_ATTENDANCE_ADMIN_PREFIX,
+        CAMP_DAY_PREFIX as DISCORD_ATTENDANCE_CAMP_DAY_PREFIX,
         register_discord_attendance,
     )
 

@@ -127,6 +127,97 @@ is not permission to release. Never release based only on what the requester
 says. `roster_verified:true` is the acting staff member's explicit attestation
 of this manual check, not an automated verification result.
 
+## Private access and pickup setup page
+
+Signed-in administrators can use `/admin/discord-attendance` to search the
+minimal camper name or registration ID, filter by link/pickup setup state, and
+expand a camper row to manage its exact configured session. This is setup,
+not camp-day roll call; its counts do not measure physical attendance or
+whether Kit is enabled. No additional contact or medical fields are exposed.
+
+Discord is optional. A family never needs a Discord account for their camper
+to attend or be picked up. An unlinked camper is a normal, valid state, not
+incomplete setup. Staff handle in-person check-in and pickup for families
+who do not use Discord. Offer account/interface help only if the family wants it.
+
+Pickup entries work for every eligible registration without a Discord link.
+When no camper handle exists, the add endpoint accepts `registration_id` instead
+of `camper_id` and creates the exact-session handle atomically with the pickup
+and audit record. Never supply both identifiers. Existing handle-based adds and
+revokes are unchanged; revokes still require `camper_id`. Manual parent
+verification, separate pickup authorization and staff confirmation of physical
+release still apply. A reference such as `parent-check-014` or `pickup-ok-014`
+points to a private record; typing it does not itself verify identity.
+
+Refresh preserves search, disclosures and unsaved form values in this tab.
+Revoke controls require explicit disclosure and a reference. Successful saves
+remain acknowledged even if refreshing the roster fails. An unconfirmed save
+is never automatically retried: refresh and inspect the records before deciding
+whether to submit again. Drafts are not stored in browser persistent storage.
+
+## Staff website check-in and pickup
+
+`/admin/camp-day` is the mobile-first staff physical-state screen for **every**
+eligible registration, including families without Discord. The shared admin
+navigation links to it. `/admin/attendance` remains a separate legacy roll-call
+page; this new screen does not read or write that legacy ledger.
+
+The page and its JSON endpoints use the existing admin login, deployment
+enablement, strong signing-secret requirement, exact database pin and private
+no-store responses. `GET /admin/camp-day/roster?session_id=<configured slug>`
+returns the minimal camper name/registration ID, current physical state/version,
+and active authorized pickups for that exact configured session. Without an
+explicit session, today's offered session is preferred. Reads do not create
+camper handles, parent links or attendance events. No contact or medical fields
+are added. Requests originating from Discord are clearly labeled as requests.
+
+On today's configured date in `America/Chicago`, staff can confirm arrival from
+`not_arrived` or `arrival_requested`, and release from `present` or
+`pickup_requested`. Before/after configured camp dates the page is read-only
+and identifies the preview date or ended session. It does not bypass the backend
+Central-day guard; a page left open across midnight can be rejected and refreshed.
+
+`POST /admin/camp-day/confirmations` requires `X-CSRF-Token`,
+`Idempotency-Key` (the same bounded identifier format as the Discord endpoints)
+and this explicit JSON body:
+
+```json
+{
+  "registration_id": 123,
+  "session_id": "thanksgiving-2026",
+  "date": "2026-11-23",
+  "action": "arrival",
+  "expected_version": 0
+}
+```
+
+For `action: "release"`, additionally provide an active `pickup_id` belonging to
+that camper and `roster_verified: true`. Staff must select a pickup and explicitly
+attest they checked the person physically collecting the camper against the
+current list. With no authorized pickup, release is blocked: contact the parent
+and deliberately add their approved pickup on the setup page first. There is no
+free-text release and emergency contacts are never auto-authorized.
+
+Website confirmations reuse the **same transition engine, attendance table,
+compare-and-swap versions, idempotency storage and atomic audit** as Kit's
+confirmations. Registration-based actions create/reuse the same exact-session
+camper handle used by pickup setup and any later verified Discord parent link.
+No fake Discord account, allowlisted staff impersonation or bot credential is
+needed in the browser. Linking later exposes only that parent's approved camper
+and its existing physical history.
+
+Audit events use `actor_type: "admin_web"` and `actor_id:
+"admin:<configured admin username>"`. The current shared-password login identifies
+an admin account, **not an individual staff member**. This limitation is shown
+on the page; no per-person identity is inferred.
+
+Double submissions are blocked. A stale version refreshes the record and asks
+staff to re-check; a changed version, date or pickup roster clears any prior
+pickup attestation. Unknown save outcomes trigger a read-only refresh, never
+a mutation retry. Confirmed saves stay acknowledged when the subsequent refresh
+fails, and further confirmations stay disabled until a fresh roster is obtained.
+Search and state filters persist across refreshes.
+
 ## Kit API contract
 
 Prefix: `/api/discord/attendance/v1`. Query strings and JSON use exact session

@@ -4,84 +4,123 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="admin-csrf-token" content="{{ admin_csrf_token() }}">
-    <title>Discord attendance - {{ config.camp_name }}</title>
+    <title>Parent access &amp; pickup setup - {{ config.camp_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-    <style>
-        .attendance-page { max-width: 1100px; margin: auto; padding: 20px; }
-        .attendance-intro, .attendance-session, .attendance-card { background: white; border: 1px solid #dfe3ed; border-radius: 8px; padding: 18px; margin-block: 14px; }
-        .attendance-intro p, .attendance-session p { line-height: 1.5; margin-block: 8px; }
-        .attendance-card { margin-block: 12px; }
-        .attendance-card h3 { margin-block-end: 6px; }
-        .attendance-submission { font-family: monospace; margin-block-end: 14px; }
-        .attendance-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 12px; }
-        .attendance-group { min-width: 0; background: #f8f9fa; border-radius: 6px; padding: 14px; }
-        .attendance-group h4 { margin-block-end: 10px; }
-        .attendance-group ul { padding-inline-start: 22px; margin-block-end: 12px; }
-        .attendance-group li { margin-block: 6px; overflow-wrap: anywhere; }
-        .attendance-form { display: grid; gap: 8px; margin-block-start: 10px; }
-        .attendance-form label { font-weight: 600; }
-        .attendance-form input { width: 100%; padding: 9px; border: 1px solid #788296; border-radius: 6px; }
-        .attendance-form .btn { justify-self: start; }
-        .attendance-revoke { margin-inline-start: 8px; min-height: 36px; }
-        .attendance-result { min-height: 1.5em; margin-block-start: 8px; }
-        .attendance-result.error, .attendance-state.error { color: #842029; }
-        .attendance-state { padding: 12px; background: #edf1f8; border-radius: 6px; }
-        .attendance-warning { border-inline-start: 4px solid #d39e00; padding-inline-start: 12px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_discord_attendance.css') }}">
 </head>
 <body>
     <header class="header">
-        <h1>Discord attendance</h1>
-        <p>Manage verified parent links and authorized pickups</p>
+        <h1>Parent access &amp; pickup setup</h1>
+        <p>Discord attendance administration · {{ config.camp_name }}</p>
     </header>
-    {% include 'admin_navigation.html' %}
+    {% with compact_admin_nav=true %}{% include 'admin_navigation.html' %}{% endwith %}
     <main class="attendance-page">
-        <section class="attendance-intro">
-            <p>Parent links require manual verification of the parent's Discord account. Record the verification reference when linking or revoking access.</p>
-            <p class="attendance-warning"><strong>Authorized pickups are separate:</strong> emergency contacts are not automatically authorized pickups. Add someone to the roster only after receiving parent confirmation.</p>
+        <section class="attendance-intro" aria-labelledby="setupHeading">
+            <h2 id="setupHeading">Set up access before camp day</h2>
+            <p><strong>Discord is optional.</strong> Parents do not need a Discord account for their child to attend camp or be picked up. Staff handle check-in and pickup in person for families who do not use Discord.</p>
+            <ol class="attendance-steps">
+                <li><strong>Verify the parent.</strong> Use the trusted registration/contact process, then separately verify their exact Discord account.</li>
+                <li><strong>Link Discord if the family chooses.</strong> A verified link grants access only to that parent's camper, not permission to pick up. No link is a normal, valid choice.</li>
+                <li><strong>Authorize pickups separately.</strong> Get parent confirmation for each person, including the linked parent. Emergency contacts are not automatically authorized.</li>
+            </ol>
+            <p>This page does not record physical attendance or show whether Kit is enabled. CampPowerUp holds the records; Kit is a private interface. Use <a href="{{ url_for('admin_camp_day') }}">Camp-day check-in &amp; pickup</a> to confirm physical arrival and release for every camper.</p>
+            <details class="attendance-help">
+                <summary>Helping a parent who is new to Discord</summary>
+                <p>Offer help only if the family wants to use Discord. Let the parent create and control their own account; never request their password. Guide them through using the private interface, then manually verify the parent and exact account before linking. If they prefer not to sign up, continue with in-person staff check-in and pickup.</p>
+            </details>
+            <details class="attendance-help">
+                <summary>What goes in a verification reference?</summary>
+                <p>Enter a nonsecret reference to the private verification record, such as <code>parent-check-014</code> or <code>pickup-ok-014</code>. Use letters, numbers, hyphens or underscores (up to 128 characters). Do not enter contact details, conversations or secrets. Typing a reference does not verify identity: complete the manual checks first.</p>
+            </details>
         </section>
-        <p id="attendanceState" class="attendance-state" role="status" aria-live="polite">Loading Discord attendance records…</p>
+        <div class="attendance-toolbar" aria-label="Find campers">
+            <div class="attendance-search">
+                <label for="attendanceSearch">Find a camper</label>
+                <input type="search" id="attendanceSearch" placeholder="Camper name or registration ID" aria-controls="attendanceSessions">
+            </div>
+            <div>
+                <label for="attendanceSessionFilter">Camp session</label>
+                <select id="attendanceSessionFilter" aria-controls="attendanceSessions"><option value="">All configured sessions</option></select>
+            </div>
+            <div>
+                <label for="attendanceFilter">Setup filter</label>
+                <select id="attendanceFilter" aria-controls="attendanceSessions">
+                    <option value="all">All campers</option>
+                    <option value="unlinked">No Discord link (optional)</option>
+                    <option value="no-pickups">No authorized pickups</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-info" id="attendanceClear">Clear filters</button>
+            <button type="button" class="btn btn-info" id="attendanceRefresh" disabled>Refresh records</button>
+        </div>
+        <p id="attendanceState" class="attendance-state" role="status" aria-live="polite">Loading Discord attendance records for access setup...</p>
+        <p id="attendanceCount" class="attendance-count" role="status" aria-live="polite"></p>
+        <p id="attendanceEmpty" class="attendance-state" hidden>No campers match these filters. Clear filters to see the full setup roster.</p>
         <div id="attendanceSessions"></div>
         <noscript><p class="attendance-state error">JavaScript is required to load and update Discord attendance records.</p></noscript>
     </main>
     <template id="attendanceSessionTemplate">
         <section class="attendance-session">
-            <h2 data-session-label></h2>
+            <header class="attendance-session-heading">
+                <h2 data-session-label></h2>
+                <p data-session-count></p>
+            </header>
             <div data-registrations></div>
         </section>
     </template>
     <template id="attendanceRegistrationTemplate">
         <article class="attendance-card">
-            <h3 data-camper-name></h3>
-            <p class="attendance-submission" data-submission-id></p>
+            <details data-state-key="editor">
+                <summary class="attendance-row">
+                    <span class="attendance-identity">
+                        <strong data-camper-name></strong>
+                        <span class="attendance-submission" data-submission-id></span>
+                    </span>
+                    <span class="attendance-badges">
+                        <span class="attendance-badge" data-link-status></span>
+                        <span class="attendance-badge" data-pickup-status></span>
+                    </span>
+                    <span class="attendance-row-action">Manage setup</span>
+                </summary>
             <div class="attendance-columns">
                 <section class="attendance-group">
-                    <h4>Parent Discord links</h4>
+                    <h3>Parent Discord links</h3>
+                    <p class="attendance-hint">Only manually verified parents. This does not authorize pickup.</p>
                     <ul data-links></ul>
+                    <details data-state-key="add-link" class="attendance-edit">
+                        <summary>Link or reactivate a parent account</summary>
                     <form class="attendance-form" data-action="link">
                         <label data-user-label>Discord user ID (17–20 digits)
                             <input name="discord_user_id" inputmode="numeric" pattern="[0-9]{17,20}" minlength="17" maxlength="20" required>
                         </label>
                         <label>Verification reference
-                            <input name="verification_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" required>
+                            <input name="verification_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" placeholder="parent-check-014" required>
                         </label>
+                        <p class="attendance-hint">Verify the parent and exact Discord account first. Record only a nonsecret reference; a typed reference is not identity verification.</p>
                         <button class="btn btn-primary" type="submit">Add or reactivate link</button>
                     </form>
+                    </details>
                 </section>
                 <section class="attendance-group">
-                    <h4>Authorized pickups</h4>
+                    <h3>Authorized pickups</h3>
+                    <p class="attendance-hint">Separately approved by the parent, even for the linked parent. No Discord account or link is required.</p>
                     <ul data-pickups></ul>
+                    <details data-state-key="add-pickup" class="attendance-edit">
+                        <summary>Add an authorized pickup</summary>
                     <form class="attendance-form" data-action="pickup">
                         <label>Pickup name
                             <input name="display_name" maxlength="100" required>
                         </label>
                         <label>Parent confirmation reference
-                            <input name="parent_confirmation_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" required>
+                            <input name="parent_confirmation_reference" maxlength="128" pattern="[A-Za-z0-9_-]{1,128}" placeholder="pickup-ok-014" required>
                         </label>
+                        <p class="attendance-hint">Obtain parent authorization through the trusted private process first. Record only a nonsecret reference.</p>
                         <button class="btn btn-primary" type="submit">Add authorized pickup</button>
                     </form>
+                    </details>
                 </section>
             </div>
+            </details>
             <p class="attendance-result" role="status" aria-live="polite"></p>
         </article>
     </template>
