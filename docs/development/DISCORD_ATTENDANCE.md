@@ -81,7 +81,7 @@ asserted user to be in the backend allowlist. Discord roles may narrow access
 further but cannot grant backend access or establish family identity.
 
 Use private DMs or ephemeral interaction responses only, including errors,
-pending lists, opaque handles and pickup names. No channel announcements,
+pending lists, opaque handles, camper names and pickup names. No channel announcements,
 public followups, or public fallback on DM failure. Kit must enforce this;
 the HTTP backend cannot determine the visibility of a Discord message.
 
@@ -246,7 +246,7 @@ data. Request bodies are explicit bounded JSON objects (4096 bytes maximum).
 
 | Method and suffix | Scope | Input / response |
 |---|---|---|
-| `GET /campers` | Parent | Query `session_id`; `{"campers":[{"camper_id":"..."}]}` for caller's active links only |
+| `GET /campers` | Parent | Query `session_id`; `{"campers":[{"camper_id":"...","display_name":"Synthetic Camper"}]}` for caller's active links only |
 | `GET /status` | Parent | Query `camper_id,session_id,date`; status object below |
 | `POST /requests` | Parent | JSON `camper_id,session_id,date,action`; action `arrival` or `pickup`; status object |
 | `GET /staff-status` | Staff | Same query and response as `/status`, any camper in configured session |
@@ -259,6 +259,7 @@ Successful attendance status object (HTTP 200):
 ```json
 {
   "camper_id": "<opaque UUID>",
+  "display_name": "Synthetic Camper",
   "session_id": "thanksgiving-2026",
   "date": "2026-11-23",
   "state": "arrival_requested",
@@ -268,8 +269,23 @@ Successful attendance status object (HTTP 200):
 ```
 
 An unrecorded day has `state:not_arrived`, `version:0`, `updated_at:null`.
-No camper names, registration IDs, contact, medical, or other full registration
-data are returned. Kit must obtain opaque handles from approved links or
+`display_name` is the canonical registration's `child_first_name` and
+`child_last_name`, with outer whitespace removed from each part and a single
+space between nonblank parts. One missing part uses the other; both missing or
+blank produces JSON `null`. This is display-only, never an authorization or action
+key. Parent names are returned only for the caller's active exact-session links;
+staff names retain the staff credential, allowlist and exact-session restrictions.
+No registration IDs, contact, medical, or other full registration data are
+returned. Names must remain private and must not be logged by Kit.
+
+This additive field is present in `/campers` items and all shared status objects,
+including `/status`, `/staff-status`, `/pending` items, `/requests` and
+`/confirmations` responses. No database migration or registration backfill is
+required. Kit should accept older responses without the field, show an explicit
+unnamed-camper fallback for missing/null names, and keep opaque `camper_id` values
+in selectors and action payloads. Deploying this backend makes names available;
+Kit must separately render them in its private UI. Existing ID-based clients
+remain compatible. Kit must obtain opaque handles from approved links or
 private staff workflows, not guess IDs. If more than one camper is linked,
 require an explicit private selection; do not silently choose the first.
 
@@ -278,6 +294,9 @@ interaction ID, ASCII letters/digits/underscore/hyphen, maximum 128). Preserve
 the same body/key for a transport retry. Keys are bound to actor, endpoint and
 canonical body. Successful retries return the original result, which may be
 older than current state: fetch fresh status before the next confirmation.
+The display name is refreshed from the authorized registration on each retry,
+including retries of responses stored before this field existed; names are not
+stored in audit or idempotency records.
 Changed body under the same key is rejected. Revoked links/removed staff
 cannot retrieve cached results. Different interactions requesting the same
 already-requested state are no-ops, not additional attendance events.

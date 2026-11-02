@@ -185,14 +185,28 @@ def camper(connection, config: dict, camper_id, session_id: str, actor: str = No
     return row
 
 
+def registered_display_name(row: sqlite3.Row | None) -> str | None:
+    """Combine canonical registration names, explicitly marking unnamed records."""
+    if row is None:
+        return None
+    parts = (row["child_first_name"] or "", row["child_last_name"] or "")
+    return " ".join(part.strip() for part in parts if part.strip()) or None
+
+
 def status(connection, camper_id: str | None, session_id: str, day: str) -> dict:
-    """Return only the opaque camper handle and attendance state."""
-    row = connection.execute("SELECT * FROM discord_attendance WHERE camper_id=? AND date=?",
-                             (camper_id, day)).fetchone()
+    """Return minimal attendance data after the caller has authorized the camper."""
+    row = connection.execute("""
+        SELECT a.state, a.version, a.updated_at, r.child_first_name, r.child_last_name
+        FROM discord_campers c JOIN registrations r ON r.id=c.registration_id
+        LEFT JOIN discord_attendance a ON a.camper_id=c.camper_id AND a.date=?
+        WHERE c.camper_id=? AND c.session_id=? AND r.camp_session=c.session_label
+        AND r.submission_id NOT GLOB 'HIST_*'
+        """, (day, camper_id, session_id)).fetchone()
     return {
-        "camper_id": camper_id, "session_id": session_id, "date": day,
-        "state": row["state"] if row else "not_arrived",
-        "version": row["version"] if row else 0,
+        "camper_id": camper_id, "display_name": registered_display_name(row),
+        "session_id": session_id, "date": day,
+        "state": row["state"] if row and row["state"] else "not_arrived",
+        "version": row["version"] if row and row["version"] is not None else 0,
         "updated_at": row["updated_at"] if row else None,
     }
 
@@ -323,14 +337,15 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
         if session_id not in config["sessions"]:
             fail("not_found", 404)
         rows = connection.execute("""
-            SELECT c.camper_id FROM discord_campers c
+            SELECT c.camper_id, r.child_first_name, r.child_last_name FROM discord_campers c
             JOIN discord_parent_links l ON l.camper_id=c.camper_id
             JOIN registrations r ON r.id=c.registration_id
             WHERE l.discord_user_id=? AND l.active=1 AND c.session_id=?
             AND c.session_label=? AND r.camp_session=c.session_label
             AND r.submission_id NOT GLOB 'HIST_*' ORDER BY c.camper_id
             """, (actor, session_id, config["sessions"][session_id]["label"])).fetchall()
-        return jsonify(campers=[{"camper_id": row["camper_id"]} for row in rows])
+        return jsonify(campers=[{"camper_id": row["camper_id"],
+                                 "display_name": registered_display_name(row)} for row in rows])
 
     @app.get(PREFIX + "/status")
     @guarded()
@@ -364,7 +379,9 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
         if prior:
             if prior["fingerprint"] != fingerprint:
                 fail("idempotency_conflict", 409)
-            return jsonify(json.loads(prior["response"]))
+            result = json.loads(prior["response"])
+            result["display_name"] = status(connection, camper_id, session_id, day)["display_name"]
+            return jsonify(result)
         current = status(connection, camper_id, session_id, day)
         action = data["action"]
         if not isinstance(action, str):
@@ -407,7 +424,9 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
                   day, current["state"], target)
         result = status(connection, camper_id, session_id, day)
         connection.execute("INSERT INTO discord_attendance_idempotency VALUES (?,?,?,?)",
-                           (actor, key, fingerprint, json.dumps(result, sort_keys=True)))
+                           (actor, key, fingerprint, json.dumps(
+                               {key: value for key, value in result.items() if key != "display_name"},
+                               sort_keys=True)))
         return jsonify(result)
 
     @app.post(PREFIX + "/requests")
