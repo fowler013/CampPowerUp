@@ -5,6 +5,25 @@ Discord interface. A request never confirms physical arrival or release.
 No photo-ID collection, WhatsApp integration, public attendance messages,
 automatic family matching, or production activation is included.
 
+## Dashboard and manual check-in scope
+
+The registration dashboard (`GET /admin`) opens on the configured current camp's
+exact session label. Explicit **All sessions** and other saved session selections
+remain available. Summary/metrics and export links carry that selection; opening
+metrics, verification, or exports directly without a session still uses all sessions.
+Imported `HIST_*` records remain separate from the registration dashboard and exports.
+
+Manual attendance (`/admin/attendance`, its check-in endpoint, and its status
+endpoint) is always limited to non-historical registrations with the exact current
+camp label, regardless of dashboard selection. Similarly named camps are not merged,
+and changing the current configuration does not relabel old registrations or erase
+their saved attendance. The manual page's preset dates remain unchanged.
+
+Dashboard filters and manual check-in **do not control
+`DISCORD_ATTENDANCE_ENABLED`**. Discord attendance has its own explicit activation
+gate and session/date configuration below; changing a dashboard selection does not
+enable it or change its scope.
+
 ## Deployment gate and trust boundary
 
 Disabled by default. Do not enable until an operator has verified the deployment's

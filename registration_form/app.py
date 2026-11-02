@@ -110,8 +110,11 @@ def get_config_for_stored_session(camp_session_label):
 
 
 def selected_session():
-    """Preserve explicit session labels without merging similarly named camps."""
-    return request.args.get("session") or "all"
+    """Default only the dashboard to the current camp; preserve explicit labels."""
+    selection = request.args.get("session")
+    if not selection and request.endpoint == "admin_dashboard":
+        return get_session_label(get_active_config())
+    return selection or "all"
 
 
 def read_registrations(session_filter="all"):
@@ -2639,19 +2642,19 @@ def send_payment_reminder(submission_id):
 @app.route('/admin/attendance')
 @require_admin_auth
 def attendance():
-    """Daily attendance check-in page."""
+    """Daily attendance check-in page for the exact current camp."""
     try:
+        current_session = get_session_label(get_active_config())
         db_file = get_database_path()
         conn = sqlite3.connect(db_file)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get all active registrations (not historical)
         cursor.execute("""
             SELECT * FROM registrations 
-            WHERE submission_id NOT GLOB 'HIST_*'
+            WHERE submission_id NOT GLOB 'HIST_*' AND camp_session = ?
             ORDER BY child_last_name, child_first_name
-        """)
+        """, (current_session,))
         
         registrations = [normalize_registration(row) for row in cursor.fetchall()]
         conn.close()
@@ -2665,6 +2668,7 @@ def attendance():
         
         return render_template('attendance.html', 
                              registrations=registrations,
+                             current_session=current_session,
                              today=today,
                              camp_dates=['2026-11-23', '2026-11-24'])
     except Exception as e:
@@ -2694,8 +2698,10 @@ def check_in():
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         if not cursor.execute(
-            "SELECT 1 FROM registrations WHERE submission_id = ? AND submission_id NOT GLOB 'HIST_*'",
-            (submission_id,),
+            """SELECT 1 FROM registrations
+               WHERE submission_id = ? AND submission_id NOT GLOB 'HIST_*'
+                 AND camp_session = ?""",
+            (submission_id, get_session_label(get_active_config())),
         ).fetchone():
             conn.close()
             return jsonify(success=False, error="Registration not found."), 404
@@ -2742,10 +2748,12 @@ def get_attendance_status(date):
             conn.close()
             return jsonify({})
         cursor.execute("""
-            SELECT submission_id, status, checked_in_at
-            FROM attendance
-            WHERE date = ?
-        """, (date,))
+            SELECT a.submission_id, a.status, a.checked_in_at
+            FROM attendance AS a
+            JOIN registrations AS r ON r.submission_id = a.submission_id
+            WHERE a.date = ? AND r.camp_session = ?
+              AND r.submission_id NOT GLOB 'HIST_*'
+        """, (date, get_session_label(get_active_config())))
         
         attendance = {row['submission_id']: {
             'status': row['status'],

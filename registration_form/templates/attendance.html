@@ -4,7 +4,7 @@
     <meta name="admin-csrf-token" content="{{ admin_csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camp Attendance - Camp Power-Up Thanksgiving 2026</title>
+    <title>Camp Attendance - {{ current_session }}</title>
     <style>
         * {
             margin: 0;
@@ -267,7 +267,8 @@
         
         <div class="header">
             <h1>📋 Daily Attendance</h1>
-            <p>All registered sessions. Attendance is recorded for the date you select.</p>
+            <p><strong>Showing:</strong> {{ current_session }} (current camp only).</p>
+            <p>Attendance is recorded for the date you select. Dashboard session filters do not change this roster.</p>
         </div>
         <p><label for="attendanceDate">Attendance date</label>
             <input id="attendanceDate" type="date" value="{{ today if today in camp_dates else camp_dates[0] }}" onchange="selectDate(this.value)" required>
@@ -332,6 +333,8 @@
                 </div>
                 <div class="check-time"></div>
             </div>
+            {% else %}
+            <p>No registrations were found for the current camp.</p>
             {% endfor %}
         </div>
     </div>
