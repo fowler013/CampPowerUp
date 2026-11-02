@@ -70,6 +70,7 @@
             </form>
             <p id="sessionScope"><strong>Showing:</strong> {{ selected_session if selected_session != 'all' else 'All sessions' }}.
                 Summary and export use this exact selection. Imported historical records are kept separately.</p>
+            <p>Manual attendance always uses the current camp. Discord attendance is enabled separately.</p>
         </section>
         <section class="stats-bar" aria-label="Registration summary">
             {% for key, label, identifier in [('total_registrations', 'Total registrations', 'totalRegistrations'), ('paid_count', 'Marked fully paid', 'paidRegistrations'), ('pending_payment', 'Not marked fully paid', 'pendingRegistrations'), ('returning_campers', 'Returning campers', 'returningCampers')] %}
@@ -105,7 +106,7 @@
                 <div class="view-actions">
                     <a href="{{ url_for('home') }}" class="btn btn-success">New registration</a>
                     <a href="{{ admin_url('admin_export') }}" class="btn btn-primary">Export this view</a>
-                    <a href="{{ url_for('attendance') }}" class="btn btn-info">Attendance (all sessions)</a>
+                    <a href="{{ url_for('attendance') }}" class="btn btn-info">Attendance (current camp)</a>
                 </div>
             </div>
             <p class="search-status" id="searchStatus" role="status" aria-live="polite">{{ registrations|length }} registrations in this selection.</p>

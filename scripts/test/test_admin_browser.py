@@ -8,7 +8,7 @@ import pytest
 from werkzeug.serving import make_server
 
 playwright = pytest.importorskip("playwright.sync_api")
-from test_admin_workflows import CURRENT, OTHER, camp, scoped
+from test_admin_workflows import CURRENT, OTHER, assert_scoped_link, camp, scoped
 from registration_form import app as registration_app
 from registration_form.camp_config import DEFAULT_SESSION_ID
 
@@ -70,9 +70,10 @@ def test_dashboard_layout_search_scope_and_actions(camp, browser_page):
     for number in range(3):
         camp.add(f"REG_OTHER_{number}", camp_session=OTHER)
     login(page, base)
-    page.goto(base + scoped())
     expect = playwright.expect
+    expect(page.locator("#sessionFilter")).to_have_value(CURRENT)
     expect(page.locator("#totalRegistrations")).to_have_text("13")
+    assert_scoped_link(page.content(), "/admin/export")
     for width in (1280, 656, 360):
         page.set_viewport_size({"width": width, "height": 900})
         assert_no_overflow(page)
@@ -86,6 +87,13 @@ def test_dashboard_layout_search_scope_and_actions(camp, browser_page):
     page.get_by_role("button", name="Clear", exact=True).click()
     expect(page.locator(".registration-card:visible")).to_have_count(13)
 
+    page.select_option("#sessionFilter", "all")
+    with page.expect_navigation():
+        page.get_by_role("button", name="Apply session").click()
+    expect(page.locator("#sessionFilter")).to_have_value("all")
+    expect(page.locator("#totalRegistrations")).to_have_text("16")
+    expect(page.locator(".registration-card")).to_have_count(16)
+    assert_scoped_link(page.content(), "/admin/export", "all")
     page.select_option("#sessionFilter", OTHER)
     with page.expect_navigation():
         page.get_by_role("button", name="Apply session").click()
@@ -186,8 +194,17 @@ def test_public_form_reports_server_errors_without_false_confirmation(camp, brow
 def test_attendance_and_payment_controls_persist(camp, browser_page):
     page, base = browser_page
     camp.add()
+    camp.add("REG_OTHER", camp_session=OTHER)
+    camp.add("HIST_IMPORTED", camp_session=CURRENT)
     login(page, base)
-    page.goto(base + "/admin/attendance")
+    page.goto(base + scoped(label="all"))
+    page.get_by_role("link", name="Attendance (current camp)", exact=True).click()
+    playwright.expect(page.locator(".camper-card")).to_have_count(1)
+    playwright.expect(page.locator("#total-count")).to_have_text("1")
+    playwright.expect(page.locator(".header")).to_contain_text(CURRENT + " (current camp only)")
+    playwright.expect(page.locator('[data-id="REG_OTHER"]')).to_have_count(0)
+    playwright.expect(page.locator('[data-id="HIST_IMPORTED"]')).to_have_count(0)
+    snapshot(page, "camp-current-attendance.png")
     page.locator("button.status-btn.present").click()
     playwright.expect(page.locator("#present-count")).to_have_text("1")
     page.locator(".payment-btn").click()

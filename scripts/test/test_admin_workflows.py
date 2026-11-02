@@ -1,8 +1,10 @@
 import csv
 from contextlib import closing
 from datetime import datetime, timezone
+from html import unescape
 from io import BytesIO, StringIO
 import json
+import re
 import sqlite3
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -75,6 +77,13 @@ def camp(tmp_path, monkeypatch):
 
 def scoped(path="/admin", label=CURRENT):
     return path + "?" + urlencode({"session": label})
+
+
+def assert_scoped_link(html, path, label=CURRENT):
+    links = [urlparse(unescape(href)) for href in re.findall(r'href="([^"]+)"', html)]
+    matching = [link for link in links if link.path == path]
+    assert matching, f"No link to {path}"
+    assert all(parse_qs(link.query) == {"session": [label]} for link in matching)
 
 
 def enable_discord_attendance(camp, monkeypatch):
@@ -311,6 +320,78 @@ def test_exact_session_counts_and_exports(camp):
     assert {row["camp_session"] for row in csv_rows} == {CURRENT}
     assert camp.client.get("/admin/export-json").get_json()["count"] == 16
     assert camp.client.get(scoped("/admin/export-json", OTHER)).get_json()["count"] == 3
+
+
+@pytest.mark.parametrize("path", ["/admin", "/admin?session="])
+def test_dashboard_defaults_to_current_camp_with_scoped_links(camp, path):
+    camp.add("REG_CURRENT", payment_status="paid", is_returning_camper="true")
+    camp.add("REG_OTHER", camp_session=OTHER)
+    camp.add("REG_UNASSIGNED", camp_session=None)
+    camp.add("HIST_IMPORTED", camp_session=CURRENT)
+    before = camp.rows()
+
+    response = camp.client.get(path)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert f'<option value="{CURRENT}" selected>' in html
+    assert 'id="totalRegistrations">1<' in html
+    assert 'id="paidRegistrations">1<' in html
+    assert 'id="returningCampers">1<' in html
+    assert html.count('class="registration-card"') == 1
+    assert "REG_CURRENT" in html
+    assert all(value not in html for value in ("REG_OTHER", "REG_UNASSIGNED", "HIST_IMPORTED"))
+    for endpoint in ("/admin/export", "/admin/metrics", "/admin/config"):
+        assert_scoped_link(html, endpoint)
+    assert camp.rows() == before
+
+
+@pytest.mark.parametrize("selection,expected", [
+    ("all", {"REG_CURRENT", "REG_OTHER", "REG_UNASSIGNED"}),
+    (OTHER, {"REG_OTHER"}),
+    (CURRENT, {"REG_CURRENT"}),
+])
+def test_dashboard_preserves_explicit_selection_and_export_scope(camp, selection, expected):
+    camp.add("REG_CURRENT")
+    camp.add("REG_OTHER", camp_session=OTHER)
+    camp.add("REG_UNASSIGNED", camp_session=None)
+    camp.add("HIST_IMPORTED", camp_session=CURRENT)
+    before = camp.rows()
+
+    html = camp.client.get(scoped(label=selection)).get_data(as_text=True)
+    assert f'<option value="{selection}" selected>' in html
+    assert f'id="totalRegistrations">{len(expected)}<' in html
+    assert html.count('class="registration-card"') == len(expected)
+    assert "HIST_IMPORTED" not in html
+    for submission_id in ("REG_CURRENT", "REG_OTHER", "REG_UNASSIGNED"):
+        assert (submission_id in html) == (submission_id in expected)
+    assert_scoped_link(html, "/admin/export", selection)
+    assert_scoped_link(html, "/admin/metrics", selection)
+    exported = camp.client.get(scoped("/admin/export-json", selection)).get_json()
+    assert {row["submission_id"] for row in exported["registrations"]} == expected
+    csv_rows = csv.DictReader(StringIO(
+        camp.client.get(scoped("/admin/export", selection)).get_data(as_text=True)
+    ))
+    assert {row["submission_id"] for row in csv_rows} == expected
+    assert camp.rows() == before
+
+
+def test_dashboard_default_follows_saved_current_config_even_when_empty(camp):
+    camp.add("REG_PREVIOUS")
+    camp.add("REG_OTHER", camp_session=OTHER)
+    before = camp.rows()
+    values = update_values(camp_name="Camp Power-Up Winter 2026", camp_dates="December 1-2, 2026")
+    assert camp.client.post("/admin/update-config", json=values, headers=HEADERS).status_code == 200
+    current = get_session_label(values)
+
+    html = camp.client.get("/admin").get_data(as_text=True)
+    assert f'<option value="{current}" selected>' in html
+    assert 'id="totalRegistrations">0<' in html
+    assert "No registrations were found for this exact session" in html
+    assert "REG_PREVIOUS" not in html and "REG_OTHER" not in html
+    assert camp.rows() == before
+    assert "REG_PREVIOUS" in camp.client.get(scoped(label=CURRENT)).get_data(as_text=True)
+    camp.add("REG_NEW_CURRENT", camp_session=current)
+    assert "REG_NEW_CURRENT" in camp.client.get("/admin").get_data(as_text=True)
 
 
 def test_empty_selection_stays_empty_and_export_keeps_scope(camp):
@@ -631,6 +712,104 @@ def test_attendance_starts_empty_and_saves_valid_checkins(camp):
     assert camp.client.post("/admin/attendance/check-in", json=payload, headers=HEADERS).status_code == 200
     assert camp.client.get("/admin/attendance/status/2026-11-23").get_json()["REG_TEST"]["status"] == "late"
     assert camp.client.get("/admin/attendance/status/2026-11-24").get_json() == {}
+
+
+@pytest.mark.parametrize("selection", ["all", OTHER, CURRENT])
+def test_manual_attendance_roster_ignores_dashboard_selection(camp, selection):
+    camp.add("REG_CURRENT")
+    camp.add("REG_OTHER", camp_session=OTHER)
+    camp.add("REG_UNASSIGNED", camp_session=None)
+    camp.add("HIST_IMPORTED", camp_session=CURRENT)
+    before = camp.rows()
+
+    response = camp.client.get(scoped("/admin/attendance", selection))
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert f"{CURRENT} (current camp only)" in html
+    assert 'id="total-count">1<' in html
+    assert html.count('class="camper-card"') == 1
+    assert 'data-id="REG_CURRENT"' in html
+    assert all(value not in html for value in ("REG_OTHER", "REG_UNASSIGNED", "HIST_IMPORTED"))
+    assert camp.rows() == before
+
+
+@pytest.mark.parametrize("prefix,label", [
+    ("REG_OTHER", OTHER), ("REG_UNASSIGNED", None), ("HIST_IMPORTED", CURRENT),
+])
+def test_manual_attendance_rejects_out_of_scope_writes_and_filters_status(camp, prefix, label):
+    camp.add("REG_CURRENT")
+    camp.add(f"{prefix}_EXISTING", camp_session=label)
+    camp.add(f"{prefix}_NEW", camp_session=label)
+    registrations_before = camp.rows()
+    payload = {"submission_id": "REG_CURRENT", "date": "2026-11-23", "status": "present"}
+    assert camp.client.post("/admin/attendance/check-in", json=payload, headers=HEADERS).status_code == 200
+    with closing(sqlite3.connect(camp.database)) as connection, connection:
+        connection.executemany(
+            "INSERT INTO attendance (submission_id, date, status) VALUES (?, ?, ?)",
+            [(f"{prefix}_EXISTING", "2026-11-23", "absent"),
+             ("REG_NO_LONGER_EXISTS", "2026-11-23", "late")],
+        )
+        attendance_before = connection.execute("SELECT * FROM attendance ORDER BY id").fetchall()
+
+    for suffix in ("EXISTING", "NEW"):
+        for selection in ("all", label or "all"):
+            rejected = camp.client.post(scoped("/admin/attendance/check-in", selection), json={
+                **payload, "submission_id": f"{prefix}_{suffix}", "camp_session": CURRENT,
+            }, headers=HEADERS)
+            assert rejected.status_code == 404
+            assert rejected.get_json()["success"] is False
+    for selection in ("all", label or "all"):
+        visible = camp.client.get(scoped("/admin/attendance/status/2026-11-23", selection)).get_json()
+        assert set(visible) == {"REG_CURRENT"}
+        assert visible["REG_CURRENT"]["status"] == "present"
+    with closing(sqlite3.connect(camp.database)) as connection:
+        assert connection.execute("SELECT * FROM attendance ORDER BY id").fetchall() == attendance_before
+    assert camp.rows() == registrations_before
+
+
+def test_manual_attendance_follows_saved_current_config_without_rewriting_history(camp):
+    camp.add("REG_PREVIOUS")
+    payload = {"submission_id": "REG_PREVIOUS", "date": "2026-11-23", "status": "present"}
+    assert camp.client.post("/admin/attendance/check-in", json=payload, headers=HEADERS).status_code == 200
+    values = update_values(camp_name="Camp Power-Up Winter 2026", camp_dates="December 1-2, 2026")
+    assert camp.client.post("/admin/update-config", json=values, headers=HEADERS).status_code == 200
+    current = get_session_label(values)
+    html = camp.client.get("/admin/attendance").get_data(as_text=True)
+    assert f"{current} (current camp only)" in html
+    assert "No registrations were found for the current camp." in html
+    assert 'data-id="REG_PREVIOUS"' not in html
+    assert camp.client.get("/admin/attendance/status/2026-11-23").get_json() == {}
+    assert camp.client.post("/admin/attendance/check-in", json={
+        **payload, "status": "absent",
+    }, headers=HEADERS).status_code == 404
+
+    camp.add("REG_CURRENT", camp_session=current)
+    assert 'data-id="REG_CURRENT"' in camp.client.get("/admin/attendance").get_data(as_text=True)
+    assert camp.client.post("/admin/attendance/check-in", json={
+        "submission_id": "REG_CURRENT", "date": "2026-12-01", "status": "present",
+    }, headers=HEADERS).status_code == 200
+    assert set(camp.client.get("/admin/attendance/status/2026-12-01").get_json()) == {"REG_CURRENT"}
+    with closing(sqlite3.connect(camp.database)) as connection:
+        assert connection.execute(
+            "SELECT status FROM attendance WHERE submission_id = 'REG_PREVIOUS'"
+        ).fetchone() == ("present",)
+    assert camp.rows()[0]["camp_session"] == CURRENT
+
+
+def test_dashboard_scope_and_manual_checkin_do_not_enable_discord_attendance(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    monkeypatch.setenv("DISCORD_ATTENDANCE_ENABLED", "false")
+    camp.add()
+    for path in ("/admin", scoped(label="all"), scoped(label=OTHER), "/admin/attendance"):
+        assert camp.client.get(path).status_code == 200
+        response = camp.client.get("/admin/discord-attendance/roster")
+        assert response.status_code == 503
+        assert response.get_json() == {"error": {"code": "attendance_disabled"}}
+    payload = {"submission_id": "REG_TEST", "date": "2026-11-23", "status": "present"}
+    assert camp.client.post("/admin/attendance/check-in", json=payload, headers=HEADERS).status_code == 200
+    assert camp.client.get("/admin/discord-attendance/roster").get_json() == {
+        "error": {"code": "attendance_disabled"},
+    }
 
 
 @pytest.mark.parametrize("values,status", [
