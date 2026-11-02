@@ -15,6 +15,7 @@ from registration_form import discord_attendance as attendance
 
 DAY = "2026-11-23"
 LABEL = "Camp Power-Up Thanksgiving 2026 - November 23-24, 2026"
+PARENT_ID = "10101010101010101"
 PARENT = "1" * 32
 STAFF = "2" * 32
 
@@ -78,7 +79,7 @@ def camp(tmp_path, monkeypatch):
 
 def headers(staff=False, user=None, key=None):
     result = {"Authorization": "Bearer " + (STAFF if staff else PARENT),
-              "X-Discord-User-ID": user or ("900" if staff else "101"),
+              "X-Discord-User-ID": user or ("900" if staff else PARENT_ID),
               "X-Discord-Guild-ID": "100"}
     if key:
         result["Idempotency-Key"] = key
@@ -90,7 +91,7 @@ def admin(camp, route, data):
                             headers={"X-CSRF-Token": "synthetic-csrf"})
 
 
-def link(camp, registration=1, user="101", active=True):
+def link(camp, registration=1, user=PARENT_ID, active=True):
     return admin(camp, "/links", {
         "registration_id": registration, "session_id": "thanksgiving-2026",
         "discord_user_id": user, "active": active,
@@ -151,7 +152,7 @@ def test_credentials_scopes_guild_staff_allowlist(camp):
     ]:
         assert camp.client.get(attendance.PREFIX + "/status",
             query_string=query(camper), headers={**headers(), **changed}).status_code == expected
-    assert post(camp, payload(camper), staff=True, user="101").status_code == 403
+    assert post(camp, payload(camper), staff=True, user=PARENT_ID).status_code == 403
     assert camp.client.post(attendance.PREFIX + "/confirmations",
         json=payload(camper, expected_version=0), headers=headers(key="x")).status_code == 401
     assert camp.client.post(attendance.PREFIX + "/requests",
@@ -182,6 +183,20 @@ def test_no_self_linking_no_family_leak_and_revocation(camp):
 
 def test_admin_csrf_and_secure_signing_key(camp):
     assert camp.client.post(attendance.ADMIN_PREFIX + "/links", json={}).status_code == 400
+    assert admin(camp, "/links", {
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": "12345", "active": True,
+        "verification_reference": "manual-record-001",
+    }).status_code == 400
+    assert admin(camp, "/links", {
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": PARENT_ID, "active": True,
+    }).status_code == 400
+    assert camp.client.post(attendance.ADMIN_PREFIX + "/links", json={
+        "registration_id": 1, "session_id": "thanksgiving-2026",
+        "discord_user_id": PARENT_ID, "active": True,
+        "verification_reference": "manual-record-001",
+    }).status_code == 400
     camp.app.secret_key = "dev-key-change-in-production"
     with camp.client.session_transaction() as browser:
         browser["admin_logged_in"] = True
@@ -214,7 +229,7 @@ def test_full_flow_requires_explicit_staff_and_current_pickup_roster(camp):
     assert post(camp, payload(camper), key="after-release").status_code == 409
     events = read(camp, "SELECT actor_id,action,before_state,after_state,occurred_at FROM discord_attendance_audit WHERE date IS NOT NULL")
     assert [row[1] for row in events] == ["arrival", "arrival", "pickup", "release"]
-    assert [row[0] for row in events] == ["101", "900", "101", "900"]
+    assert [row[0] for row in events] == [PARENT_ID, "900", PARENT_ID, "900"]
     assert all(row[4].endswith("+00:00") for row in events)
     assert read(camp, "SELECT * FROM attendance") == [("REG_ONE", DAY, "present", "legacy")]
     assert not any(word in released.get_data(as_text=True) for word in ["Secret", "example.test", "Synthetic authorized"])
@@ -223,7 +238,7 @@ def test_full_flow_requires_explicit_staff_and_current_pickup_roster(camp):
 
 def test_roster_must_match_camper_and_not_be_revoked(camp):
     first = camper_id(camp)
-    second = link(camp, registration=2, user="202").json["camper_id"]
+    second = link(camp, registration=2, user="20202020202020202").json["camper_id"]
     pickup = roster(camp, second).json["pickup_id"]
     assert post(camp, payload(first, expected_version=0), staff=True).status_code == 200
     release = payload(first, "release", expected_version=1, pickup_id=pickup, roster_verified=True)
@@ -390,7 +405,7 @@ def test_actual_registration_app_wiring_uses_same_database(camp, monkeypatch, tm
         browser["admin_csrf_token"] = "synthetic-csrf"
     response = client.post(attendance.ADMIN_PREFIX + "/links", json={
         "registration_id": 1, "session_id": "thanksgiving-2026",
-        "discord_user_id": "101", "active": True,
+        "discord_user_id": PARENT_ID, "active": True,
         "verification_reference": "verified-manually-001",
     }, headers={"X-CSRF-Token": "synthetic-csrf"})
     assert response.status_code == 200

@@ -4,6 +4,7 @@
         <a href="{{ admin_url('admin_metrics') }}" {% if request.endpoint == 'admin_metrics' %}aria-current="page"{% endif %}>Metrics</a>
         <a href="{{ admin_url('admin_historical') }}" {% if request.endpoint == 'admin_historical' %}aria-current="page"{% endif %}>Historical data</a>
         <a href="{{ admin_url('verify_returning_campers') }}" {% if request.endpoint == 'verify_returning_campers' %}aria-current="page"{% endif %}>Verify returning campers</a>
+        <a href="{{ url_for('admin_discord_attendance') }}" {% if request.endpoint == 'admin_discord_attendance' %}aria-current="page"{% endif %}>Discord attendance</a>
         <a href="{{ admin_url('admin_config') }}" {% if request.endpoint == 'admin_config' %}aria-current="page"{% endif %}>Configuration</a>
         <a href="{{ url_for('admin_logout') }}" class="logout-btn">Log out</a>
     </div>

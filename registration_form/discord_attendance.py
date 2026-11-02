@@ -20,6 +20,7 @@ PREFIX = "/api/discord/attendance/v1"
 ADMIN_PREFIX = "/admin/discord-attendance"
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 SNOWFLAKE = re.compile(r"[0-9]{1,20}\Z")
+DISCORD_USER_ID = re.compile(r"[0-9]{17,20}\Z")
 SCHEMA_VERSION = 1
 SCHEMA = (
     """CREATE TABLE IF NOT EXISTS discord_attendance_schema (
@@ -381,6 +382,51 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
             WHERE camper_id=? AND active=1 ORDER BY pickup_id""", (row["camper_id"],)).fetchall()
         return jsonify(entries=[dict(entry) for entry in rows])
 
+    @app.get(ADMIN_PREFIX + "/roster")
+    @admin_auth
+    @guarded(admin=True)
+    def admin_roster(connection, config, actor):
+        sessions = []
+        for session_id, session_config in config["sessions"].items():
+            registrations = connection.execute("""
+                SELECT r.id, r.submission_id, r.child_first_name, r.child_last_name,
+                       c.camper_id
+                FROM registrations r
+                LEFT JOIN discord_campers c
+                    ON c.registration_id=r.id AND c.session_id=? AND c.session_label=?
+                WHERE r.camp_session=? AND r.submission_id NOT GLOB 'HIST_*'
+                ORDER BY r.child_first_name, r.child_last_name, r.id
+                """, (session_id, session_config["label"], session_config["label"])).fetchall()
+            items = []
+            for registration in registrations:
+                links = []
+                pickups = []
+                if registration["camper_id"]:
+                    links = [dict(row) for row in connection.execute("""
+                        SELECT discord_user_id, active FROM discord_parent_links
+                        WHERE camper_id=? ORDER BY discord_user_id
+                        """, (registration["camper_id"],)).fetchall()]
+                    pickups = [dict(row) for row in connection.execute("""
+                        SELECT pickup_id, display_name FROM discord_pickup_roster
+                        WHERE camper_id=? AND active=1 ORDER BY display_name, pickup_id
+                        """, (registration["camper_id"],)).fetchall()]
+                last_name = registration["child_last_name"] or ""
+                items.append({
+                    "registration_id": registration["id"],
+                    "camper_id": registration["camper_id"],
+                    "submission_id": registration["submission_id"],
+                    "child_first_name": registration["child_first_name"] or "",
+                    "child_last_initial": last_name[:1],
+                    "links": links,
+                    "pickups": pickups,
+                })
+            sessions.append({
+                "session_id": session_id,
+                "label": session_config["label"],
+                "registrations": items,
+            })
+        return jsonify(sessions=sessions)
+
     @app.post(ADMIN_PREFIX + "/links")
     @admin_auth
     @admin_csrf
@@ -388,7 +434,7 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
     def approve_link(connection, config, actor):
         data = body({"registration_id", "session_id", "discord_user_id", "active", "verification_reference"})
         session_id = text(data["session_id"])
-        user_id = text(data["discord_user_id"], SNOWFLAKE)
+        user_id = text(data["discord_user_id"], DISCORD_USER_ID)
         reference = text(data["verification_reference"])
         if (session_id not in config["sessions"] or type(data["registration_id"]) is not int
                 or type(data["active"]) is not bool):

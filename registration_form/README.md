@@ -44,6 +44,19 @@ python3 app.py
    - **Admin Dashboard**: http://127.0.0.1:5001/admin
    - **🛡️ Fraud Verification**: http://127.0.0.1:5001/admin/verify-returning-campers
    - **📊 Registration Stats**: http://127.0.0.1:5001/admin/registration-stats
+   - **Discord attendance**: http://127.0.0.1:5001/admin/discord-attendance
+
+   ### Discord attendance administration
+
+   When Discord attendance is enabled and its database is available, admins can use
+   the **Discord attendance** page to link a registration to a parent's Discord user
+   ID and maintain the camper's authorized-pickup roster. Manually verify the
+   parent's Discord account before creating a link and record the verification
+   reference. Emergency contacts are not automatically authorized pickups; add a
+   pickup only after receiving parent confirmation. Revocations also require a
+   reference and are recorded in the attendance audit log. The page shows only the
+   child's first name and last initial, submission ID, linked Discord IDs, and
+   active pickup names.
 
 ## 📋 Form Fields
 

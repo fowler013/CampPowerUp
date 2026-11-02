@@ -3372,6 +3372,12 @@ register_discord_attendance(
     lambda: ADMIN_USERNAME,
 )
 
+@app.route(DISCORD_ATTENDANCE_ADMIN_PREFIX, methods=["GET"])
+@require_admin_auth
+def admin_discord_attendance():
+    """Render the private parent-link and authorized-pickup administration page."""
+    return render_template("admin_discord_attendance.html", config=get_active_config())
+
 # Initialize database on module load (Railway compatibility)
 print("🔧 Initializing database on startup...")
 init_db_with_logging()
