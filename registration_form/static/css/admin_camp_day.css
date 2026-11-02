@@ -1,0 +1,33 @@
+.camp-day-intro { max-width: 75ch; margin-bottom: 20px; }
+.camp-day-intro p + p { margin-top: 8px; }
+.camp-day-page .attendance-toolbar { align-items: end; }
+.camp-day-page .attendance-toolbar > div { flex-basis: 240px; }
+.camp-day-roster { background: white; border: 1px solid #dfe3ed; border-radius: 8px; }
+.camp-day-roster:empty { display: none; }
+.camp-day-row { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(240px, 1.5fr); gap: 12px 24px; padding: 20px; border-bottom: 1px solid #dfe3ed; }
+.camp-day-row:last-child { border-bottom: 0; }
+.camp-day-row > * { min-width: 0; }
+.camp-day-identity h2 { font-size: 1.1rem; }
+.camp-day-status .attendance-badge { display: inline-block; }
+.camp-day-status .attendance-hint:not(:empty) { margin-top: 8px; }
+.camp-day-status [data-state="present"] { background: #d4edda; color: #155724; }
+.camp-day-status [data-state="arrival_requested"],
+.camp-day-status [data-state="pickup_requested"] { background: #fff3cd; color: #664d03; }
+.camp-day-release-toggle { min-height: 48px; border: 1px solid #788296; border-radius: 6px; padding: 12px; color: #263f6b; font-weight: 600; }
+.camp-day-release-toggle:hover { background: #edf1f8; }
+.camp-day-actions .btn { min-height: 48px; width: 100%; }
+.camp-day-actions select { display: block; width: 100%; min-height: 48px; margin-top: 6px; padding: 10px; border: 1px solid #788296; border-radius: 6px; background: white; color: #273145; }
+.camp-day-attestation { display: flex; align-items: start; gap: 12px; padding-block: 8px; cursor: pointer; }
+.camp-day-attestation input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; margin: 0; accent-color: #4658aa; }
+.camp-day-blocked { background: #fff3cd; color: #664d03; border-radius: 6px; padding: 12px; }
+.camp-day-blocked a { color: #533f08; text-underline-offset: 3px; }
+.camp-day-result { grid-column: 1 / -1; }
+.camp-day-result:empty { display: none; }
+.camp-day-page #campDayScope { font-weight: 600; }
+@media (max-width: 760px) {
+    .camp-day-row { grid-template-columns: 1fr; gap: 12px; padding: 16px 12px; }
+    .camp-day-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .camp-day-status .attendance-hint:not(:empty) { margin: 0; }
+    .camp-day-page .attendance-toolbar > div { flex-basis: 100%; }
+    .camp-day-page .attendance-toolbar .btn { flex: 1 1 120px; }
+}

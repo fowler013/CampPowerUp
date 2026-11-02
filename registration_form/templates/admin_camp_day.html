@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="admin-csrf-token" content="{{ admin_csrf_token() }}">
+    <title>Camp-day check-in &amp; pickup - Camp Power-Up</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_discord_attendance.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_camp_day.css') }}">
+</head>
+<body>
+    <header class="header">
+        <h1>Camp-day check-in &amp; pickup</h1>
+        <p>Staff-confirmed arrival and release for every camper</p>
+    </header>
+    {% with compact_admin_nav=true %}{% include 'admin_navigation.html' %}{% endwith %}
+    <main class="attendance-page camp-day-page">
+        <section class="camp-day-intro" aria-label="Staff workflow">
+            <p><strong>No Discord account needed.</strong> Check in every eligible camper here. Discord requests are optional signals, not confirmation of physical arrival or release.</p>
+            <p>Confirm arrival only when the camper is physically here. For release, select an authorized pickup and confirm you checked the person against the list. If uncertain, contact the parent before release.</p>
+            <details class="attendance-help">
+                <summary>Records, refresh and staff identity</summary>
+                <p>This uses the same physical-state ledger as Kit, separate from the legacy roll-call page. Refresh to see other staff changes; stale confirmations are rejected. Actions are audited under the configured shared admin account, not individual staff names.</p>
+            </details>
+        </section>
+        <div class="attendance-toolbar">
+            <div>
+                <label for="campDaySession">Camp session</label>
+                <select id="campDaySession" disabled aria-controls="campDayRoster"><option>Loading sessions...</option></select>
+            </div>
+            <div class="attendance-search">
+                <label for="campDaySearch">Find a camper</label>
+                <input type="search" id="campDaySearch" placeholder="Camper name or registration ID" aria-controls="campDayRoster">
+            </div>
+            <div>
+                <label for="campDayFilter">Physical state</label>
+                <select id="campDayFilter" aria-controls="campDayRoster">
+                    <option value="all">All campers</option>
+                    <option value="not_arrived">Not arrived</option>
+                    <option value="arrival_requested">Arrival requested via Discord</option>
+                    <option value="present">Present</option>
+                    <option value="pickup_requested">Pickup requested via Discord</option>
+                    <option value="released">Released</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-info" id="campDayClear">Clear filters</button>
+            <button type="button" class="btn btn-info" id="campDayRefresh" disabled>Refresh records</button>
+        </div>
+        <p id="campDayScope" class="attendance-state"></p>
+        <p id="campDayState" class="attendance-state" role="status" aria-live="polite">Loading camp-day records...</p>
+        <p id="campDayCount" class="attendance-count" role="status" aria-live="polite"></p>
+        <p id="campDayEmpty" class="attendance-state" hidden></p>
+        <section class="camp-day-roster" id="campDayRoster" aria-label="Camper physical attendance"></section>
+        <noscript><p class="attendance-state error">JavaScript is required to load and confirm camp-day records.</p></noscript>
+    </main>
+    <template id="campDayRowTemplate">
+        <article class="camp-day-row">
+            <div class="camp-day-identity">
+                <h2 data-camper-name></h2>
+                <p class="attendance-submission" data-submission-id></p>
+            </div>
+            <div class="camp-day-status">
+                <strong class="attendance-badge" data-physical-state></strong>
+                <p class="attendance-hint" data-discord-request></p>
+            </div>
+            <div class="camp-day-actions">
+                <button type="button" class="btn btn-primary" data-arrival hidden>Confirm arrival</button>
+                <details data-release hidden>
+                    <summary class="camp-day-release-toggle">Release camper</summary>
+                    <form class="attendance-form" data-release-form>
+                        <label>Authorized pickup
+                            <select name="pickup_id" required><option value="">Select the person collecting this camper</option></select>
+                        </label>
+                        <label class="camp-day-attestation">
+                            <input type="checkbox" name="roster_verified" required>
+                            <span>I checked the person physically collecting this camper against the current authorized pickup list.</span>
+                        </label>
+                        <button type="submit" class="btn btn-success">Confirm physical release</button>
+                    </form>
+                </details>
+                <p class="camp-day-blocked" data-no-pickups hidden><strong>Release blocked: no authorized pickup on file.</strong> Contact the parent and <a data-setup-link>add their approved pickup on the setup page</a> first. Do not release based on a request or a typed name.</p>
+                <p class="attendance-hint" data-released hidden>Release recorded. No further action is available for this camp day.</p>
+            </div>
+            <p class="attendance-result camp-day-result" role="status" aria-live="polite"></p>
+        </article>
+    </template>
+    <script src="{{ url_for('static', filename='js/admin_camp_day.js') }}" defer></script>
+</body>
+</html>

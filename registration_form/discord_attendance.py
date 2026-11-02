@@ -13,11 +13,12 @@ from functools import wraps
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from flask import jsonify, request
+from flask import jsonify, render_template, request
 
 
 PREFIX = "/api/discord/attendance/v1"
 ADMIN_PREFIX = "/admin/discord-attendance"
+CAMP_DAY_PREFIX = "/admin/camp-day"
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 SNOWFLAKE = re.compile(r"[0-9]{1,20}\Z")
 DISCORD_USER_ID = re.compile(r"[0-9]{17,20}\Z")
@@ -184,7 +185,7 @@ def camper(connection, config: dict, camper_id, session_id: str, actor: str = No
     return row
 
 
-def status(connection, camper_id: str, session_id: str, day: str) -> dict:
+def status(connection, camper_id: str | None, session_id: str, day: str) -> dict:
     """Return only the opaque camper handle and attendance state."""
     row = connection.execute("SELECT * FROM discord_attendance WHERE camper_id=? AND date=?",
                              (camper_id, day)).fetchone()
@@ -194,6 +195,62 @@ def status(connection, camper_id: str, session_id: str, day: str) -> dict:
         "version": row["version"] if row else 0,
         "updated_at": row["updated_at"] if row else None,
     }
+
+
+def ensure_camper(connection, config: dict, registration_id, session_id: str):
+    """Create or return a handle only for an exact, eligible registration/session."""
+    if type(registration_id) is not int:
+        fail("invalid_request", 400)
+    if session_id not in config["sessions"]:
+        fail("not_found", 404)
+    label = config["sessions"][session_id]["label"]
+    if not connection.execute("""SELECT 1 FROM registrations WHERE id=? AND camp_session=?
+        AND submission_id NOT GLOB 'HIST_*'""", (registration_id, label)).fetchone():
+        fail("not_found", 404)
+    connection.execute("""INSERT INTO discord_campers VALUES (?,?,?,?)
+        ON CONFLICT(registration_id,session_id) DO NOTHING""",
+                       (str(uuid.uuid4()), registration_id, session_id, label))
+    row = connection.execute("""SELECT * FROM discord_campers
+        WHERE registration_id=? AND session_id=?""", (registration_id, session_id)).fetchone()
+    if row["session_label"] != label:
+        fail("not_found", 404)
+    return row
+
+
+def registration_roster(connection, config: dict, session_id: str) -> list:
+    """Return minimal eligible registrations, including families without Discord."""
+    label = config["sessions"][session_id]["label"]
+    registrations = connection.execute("""
+        SELECT r.id, r.submission_id, r.child_first_name, r.child_last_name, c.camper_id
+        FROM registrations r
+        LEFT JOIN discord_campers c
+            ON c.registration_id=r.id AND c.session_id=? AND c.session_label=?
+        WHERE r.camp_session=? AND r.submission_id NOT GLOB 'HIST_*'
+        ORDER BY r.child_first_name, r.child_last_name, r.id
+        """, (session_id, label, label)).fetchall()
+    items = []
+    for registration in registrations:
+        links = []
+        pickups = []
+        if registration["camper_id"]:
+            links = [dict(row) for row in connection.execute("""
+                SELECT discord_user_id, active FROM discord_parent_links
+                WHERE camper_id=? ORDER BY discord_user_id
+                """, (registration["camper_id"],)).fetchall()]
+            pickups = [dict(row) for row in connection.execute("""
+                SELECT pickup_id, display_name FROM discord_pickup_roster
+                WHERE camper_id=? AND active=1 ORDER BY display_name, pickup_id
+                """, (registration["camper_id"],)).fetchall()]
+        items.append({
+            "registration_id": registration["id"],
+            "camper_id": registration["camper_id"],
+            "submission_id": registration["submission_id"],
+            "child_first_name": registration["child_first_name"] or "",
+            "child_last_initial": (registration["child_last_name"] or "")[:1],
+            "links": links,
+            "pickups": pickups,
+        })
+    return items
 
 
 def audit(connection, actor: str, actor_type: str, camper_id: str, action: str,
@@ -206,6 +263,11 @@ def audit(connection, actor: str, actor_type: str, camper_id: str, action: str,
 
 def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admin_actor) -> None:
     """Install routes without opening a database or enabling the integration."""
+
+    def error_response(code, status_code):
+        if request.endpoint == "admin_camp_day":
+            return render_template("admin_camp_day.html"), status_code
+        return jsonify(error={"code": code}), status_code
 
     def guarded(staff=False, admin=False):
         def decorate(function):
@@ -240,16 +302,16 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
                 except AttendanceError as error:
                     if error.status >= 500:
                         app.logger.error("Discord attendance unavailable: %s", error.code)
-                    return jsonify(error={"code": error.code}), error.status
+                    return error_response(error.code, error.status)
                 except (sqlite3.Error, OSError):
                     app.logger.error("Discord attendance database operation failed")
-                    return jsonify(error={"code": "attendance_unavailable"}), 503
+                    return error_response("attendance_unavailable", 503)
             return wrapped
         return decorate
 
     @app.after_request
     def private_attendance_response(response):
-        if request.path.startswith((PREFIX, ADMIN_PREFIX)):
+        if request.path.startswith((PREFIX, ADMIN_PREFIX, CAMP_DAY_PREFIX)):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
         return response
@@ -284,17 +346,18 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
         row = camper(connection, config, request.args.get("camper_id"), session_id)
         return jsonify(status(connection, row["camper_id"], session_id, day))
 
-    def mutate(connection, config, actor, staff):
-        required = {"camper_id", "session_id", "date", "action"}
+    def mutate(connection, config, actor, staff, admin_web=False):
+        required = {"registration_id" if admin_web else "camper_id", "session_id", "date", "action"}
         if staff:
             required.add("expected_version")
         data = body(required, {"pickup_id", "roster_verified"} if staff else set())
         session_id, day = scope(config, data, write=True)
-        row = camper(connection, config, data["camper_id"], session_id, None if staff else actor)
+        row = (ensure_camper(connection, config, data["registration_id"], session_id)
+               if admin_web else camper(connection, config, data["camper_id"], session_id, None if staff else actor))
         camper_id = row["camper_id"]
         key = text(request.headers.get("Idempotency-Key"))
         fingerprint = hashlib.sha256(json.dumps(
-            {"operation": "confirmation" if staff else "request", "body": data},
+            {"operation": "admin_web_confirmation" if admin_web else "confirmation" if staff else "request", "body": data},
             sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         prior = connection.execute("""SELECT * FROM discord_attendance_idempotency
             WHERE actor_id=? AND idempotency_key=?""", (actor, key)).fetchone()
@@ -340,7 +403,7 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
                 ON CONFLICT(camper_id,date) DO UPDATE SET state=excluded.state,
                 version=excluded.version,updated_at=excluded.updated_at""",
                                (camper_id, day, target, current["version"] + 1, utc_now().isoformat()))
-            audit(connection, actor, "staff" if staff else "parent", camper_id, action, details,
+            audit(connection, actor, "admin_web" if admin_web else "staff" if staff else "parent", camper_id, action, details,
                   day, current["state"], target)
         result = status(connection, camper_id, session_id, day)
         connection.execute("INSERT INTO discord_attendance_idempotency VALUES (?,?,?,?)",
@@ -356,6 +419,42 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
     @guarded(staff=True)
     def staff_confirmation(connection, config, actor):
         return mutate(connection, config, actor, True)
+
+    @app.get(CAMP_DAY_PREFIX)
+    @admin_auth
+    @guarded(admin=True)
+    def admin_camp_day(connection, config, actor):
+        """Render the private staff screen; no Discord account is required."""
+        return render_template("admin_camp_day.html")
+
+    @app.get(CAMP_DAY_PREFIX + "/roster")
+    @admin_auth
+    @guarded(admin=True)
+    def admin_camp_day_roster(connection, config, actor):
+        today = utc_now().astimezone(ZoneInfo("America/Chicago")).date().isoformat()
+        sessions = [{"session_id": key, "label": value["label"], "dates": sorted(value["dates"])}
+                    for key, value in config["sessions"].items()]
+        sessions.sort(key=lambda item: (today not in item["dates"], item["dates"][-1] < today,
+                                        item["dates"][0], item["session_id"]))
+        session_id = request.args.get("session_id", sessions[0]["session_id"])
+        text(session_id)
+        if session_id not in config["sessions"]:
+            fail("not_found", 404)
+        dates = sorted(config["sessions"][session_id]["dates"])
+        day = next((value for value in dates if value >= today), dates[-1])
+        items = registration_roster(connection, config, session_id)
+        for item in items:
+            item.pop("links")
+            item["status"] = status(connection, item["camper_id"], session_id, day)
+        return jsonify(sessions=sessions, session_id=session_id, today=today, date=day,
+                       write_enabled=today in dates, registrations=items)
+
+    @app.post(CAMP_DAY_PREFIX + "/confirmations")
+    @admin_auth
+    @admin_csrf
+    @guarded(admin=True)
+    def admin_web_confirmation(connection, config, actor):
+        return mutate(connection, config, actor, True, admin_web=True)
 
     @app.get(PREFIX + "/pending")
     @guarded(staff=True)
@@ -388,42 +487,10 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
     def admin_roster(connection, config, actor):
         sessions = []
         for session_id, session_config in config["sessions"].items():
-            registrations = connection.execute("""
-                SELECT r.id, r.submission_id, r.child_first_name, r.child_last_name,
-                       c.camper_id
-                FROM registrations r
-                LEFT JOIN discord_campers c
-                    ON c.registration_id=r.id AND c.session_id=? AND c.session_label=?
-                WHERE r.camp_session=? AND r.submission_id NOT GLOB 'HIST_*'
-                ORDER BY r.child_first_name, r.child_last_name, r.id
-                """, (session_id, session_config["label"], session_config["label"])).fetchall()
-            items = []
-            for registration in registrations:
-                links = []
-                pickups = []
-                if registration["camper_id"]:
-                    links = [dict(row) for row in connection.execute("""
-                        SELECT discord_user_id, active FROM discord_parent_links
-                        WHERE camper_id=? ORDER BY discord_user_id
-                        """, (registration["camper_id"],)).fetchall()]
-                    pickups = [dict(row) for row in connection.execute("""
-                        SELECT pickup_id, display_name FROM discord_pickup_roster
-                        WHERE camper_id=? AND active=1 ORDER BY display_name, pickup_id
-                        """, (registration["camper_id"],)).fetchall()]
-                last_name = registration["child_last_name"] or ""
-                items.append({
-                    "registration_id": registration["id"],
-                    "camper_id": registration["camper_id"],
-                    "submission_id": registration["submission_id"],
-                    "child_first_name": registration["child_first_name"] or "",
-                    "child_last_initial": last_name[:1],
-                    "links": links,
-                    "pickups": pickups,
-                })
             sessions.append({
                 "session_id": session_id,
                 "label": session_config["label"],
-                "registrations": items,
+                "registrations": registration_roster(connection, config, session_id),
             })
         return jsonify(sessions=sessions)
 
@@ -439,17 +506,7 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
         if (session_id not in config["sessions"] or type(data["registration_id"]) is not int
                 or type(data["active"]) is not bool):
             fail("invalid_request", 400)
-        label = config["sessions"][session_id]["label"]
-        if not connection.execute("""SELECT 1 FROM registrations WHERE id=? AND camp_session=?
-            AND submission_id NOT GLOB 'HIST_*'""", (data["registration_id"], label)).fetchone():
-            fail("not_found", 404)
-        connection.execute("""INSERT INTO discord_campers VALUES (?,?,?,?)
-            ON CONFLICT(registration_id,session_id) DO NOTHING""",
-                           (str(uuid.uuid4()), data["registration_id"], session_id, label))
-        row = connection.execute("""SELECT * FROM discord_campers
-            WHERE registration_id=? AND session_id=?""", (data["registration_id"], session_id)).fetchone()
-        if row["session_label"] != label:
-            fail("not_found", 404)
+        row = ensure_camper(connection, config, data["registration_id"], session_id)
         connection.execute("""INSERT INTO discord_parent_links VALUES (?,?,?)
             ON CONFLICT(camper_id,discord_user_id) DO UPDATE SET active=excluded.active""",
                            (row["camper_id"], user_id, int(data["active"])))
@@ -462,22 +519,28 @@ def register_discord_attendance(app, database_path, admin_auth, admin_csrf, admi
     @admin_csrf
     @guarded(admin=True)
     def maintain_roster(connection, config, actor):
-        data = body({"camper_id", "session_id", "parent_confirmation_reference", "active"},
-                    {"pickup_id", "display_name"})
+        data = body({"session_id", "parent_confirmation_reference", "active"},
+                    {"camper_id", "registration_id", "pickup_id", "display_name"})
         session_id = text(data["session_id"])
         if session_id not in config["sessions"] or type(data["active"]) is not bool:
             fail("invalid_request", 400)
-        row = camper(connection, config, data["camper_id"], session_id)
         reference = text(data["parent_confirmation_reference"])
+        if ("camper_id" in data) == ("registration_id" in data):
+            fail("invalid_request", 400)
         if data["active"]:
             name = data.get("display_name")
             if (not isinstance(name, str) or not 1 <= len(name.strip()) <= 100
                     or any(ord(char) < 32 for char in name) or "pickup_id" in data):
                 fail("invalid_request", 400)
+            row = (ensure_camper(connection, config, data["registration_id"], session_id)
+                   if "registration_id" in data else camper(connection, config, data["camper_id"], session_id))
             pickup_id = str(uuid.uuid4())
             connection.execute("INSERT INTO discord_pickup_roster VALUES (?,?,?,1)",
                                (pickup_id, row["camper_id"], name.strip()))
         else:
+            if "registration_id" in data:
+                fail("invalid_request", 400)
+            row = camper(connection, config, data["camper_id"], session_id)
             pickup_id = text(data.get("pickup_id"))
             if "display_name" in data:
                 fail("invalid_request", 400)
