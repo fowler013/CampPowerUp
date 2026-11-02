@@ -343,6 +343,11 @@ def init_db_with_logging():
             # Update existing records with a default session
             cursor.execute("UPDATE registrations SET camp_session = 'Camp Power-Up 2025 - November 24th-26th' WHERE camp_session IS NULL")
             print("✅ Migration complete: camp_session column added")
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_registrations_camp_session_timestamp
+            ON registrations (camp_session, timestamp DESC)
+        """)
         
         conn.commit()
         
