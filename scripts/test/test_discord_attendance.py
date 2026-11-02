@@ -26,12 +26,12 @@ def camp(tmp_path, monkeypatch):
     with sqlite3.connect(database) as connection:
         connection.execute("""CREATE TABLE registrations
             (id INTEGER PRIMARY KEY, submission_id TEXT UNIQUE, camp_session TEXT,
-             child_first_name TEXT, parent_email TEXT)""")
-        connection.executemany("INSERT INTO registrations VALUES (?,?,?,?,?)", [
-            (1, "REG_ONE", LABEL, "Secret camper", "secret@example.test"),
-            (2, "REG_TWO", LABEL, "Other family", "other@example.test"),
-            (3, "HIST_OLD", LABEL, "Historical", "old@example.test"),
-            (4, "REG_OTHER", "Other session", "Wrong session", "wrong@example.test"),
+             child_first_name TEXT, child_last_name TEXT, parent_email TEXT)""")
+        connection.executemany("INSERT INTO registrations VALUES (?,?,?,?,?,?)", [
+            (1, "REG_ONE", LABEL, "Synthetic", "Camper", "secret@example.test"),
+            (2, "REG_TWO", LABEL, "Other", "Family", "other@example.test"),
+            (3, "HIST_OLD", LABEL, "Historical", "Camper", "old@example.test"),
+            (4, "REG_OTHER", "Other session", "Wrong", "Session", "wrong@example.test"),
         ])
         connection.execute("""CREATE TABLE attendance
             (submission_id TEXT, date TEXT, status TEXT, checked_in_at TEXT)""")
@@ -181,6 +181,158 @@ def test_no_self_linking_no_family_leak_and_revocation(camp):
     assert link(camp).status_code == 401
 
 
+def test_display_name_contract_preserves_ids_and_minimal_status(camp, caplog):
+    camper = camper_id(camp)
+    link(camp, registration=2, user="20202020202020202")
+    listing = camp.client.get(attendance.PREFIX + "/campers",
+        query_string={"session_id": "thanksgiving-2026"}, headers=headers())
+    assert listing.json == {"campers": [
+        {"camper_id": camper, "display_name": "Synthetic Camper"}]}
+    initial = camp.client.get(attendance.PREFIX + "/status",
+        query_string=query(camper), headers=headers())
+    assert initial.json == {
+        "camper_id": camper, "display_name": "Synthetic Camper",
+        "session_id": "thanksgiving-2026", "date": DAY,
+        "state": "not_arrived", "version": 0, "updated_at": None,
+    }
+    assert read(camp, "SELECT * FROM discord_attendance") == []
+    requested = post(camp, payload(camper))
+    for path in ["/status", "/staff-status"]:
+        response = camp.client.get(attendance.PREFIX + path, query_string=query(camper),
+                                   headers=headers(staff=path == "/staff-status"))
+        assert response.json == requested.json
+        assert response.headers["Cache-Control"] == "no-store"
+    pending = camp.client.get(attendance.PREFIX + "/pending",
+        query_string={"session_id": "thanksgiving-2026", "date": DAY}, headers=headers(staff=True))
+    assert pending.json == {"items": [requested.json]}
+    assert listing.headers["Cache-Control"] == pending.headers["Cache-Control"] == "no-store"
+    assert not any(word in json.dumps([listing.json, requested.json, pending.json])
+                   for word in ["Other Family", "parent_email", "example.test", "medical", "registration_id"])
+    assert post(camp, payload("Synthetic Camper"), key="name-not-key").status_code == 400
+    assert post(camp, payload(camper, display_name="Other Family"), key="extra-name").status_code == 400
+    stored = read(camp, "SELECT response FROM discord_attendance_idempotency")[0][0]
+    assert json.loads(stored) == {
+        key: value for key, value in requested.json.items() if key != "display_name"}
+    assert "Synthetic Camper" not in stored
+    assert "Synthetic Camper" not in str(read(camp, "SELECT * FROM discord_attendance_audit"))
+    assert "Synthetic Camper" not in caplog.text
+
+
+@pytest.mark.parametrize("first,last,expected", [
+    (None, None, None), ("", "", None), (" \t ", "\n ", None),
+    (" Avery ", None, "Avery"), (None, " Example ", "Example"),
+    (" Avery ", " Example-Smith ", "Avery Example-Smith"),
+    ("Zo\u00eb", "O'Example", "Zo\u00eb O'Example"),
+])
+def test_blank_partial_and_trimmed_registered_names(camp, first, last, expected):
+    with sqlite3.connect(camp.database) as connection:
+        connection.execute("UPDATE registrations SET child_first_name=?,child_last_name=? WHERE id=1",
+                           (first, last))
+    camper = camper_id(camp)
+    listing = camp.client.get(attendance.PREFIX + "/campers",
+        query_string={"session_id": "thanksgiving-2026"}, headers=headers())
+    assert listing.json == {"campers": [{"camper_id": camper, "display_name": expected}]}
+    for path in ["/status", "/staff-status"]:
+        response = camp.client.get(attendance.PREFIX + path, query_string=query(camper),
+                                   headers=headers(staff=path == "/staff-status"))
+        assert response.status_code == 200 and response.json["display_name"] == expected
+    requested = post(camp, payload(camper))
+    assert requested.status_code == 200 and requested.json["display_name"] == expected
+    pending = camp.client.get(attendance.PREFIX + "/pending",
+        query_string=query(camper), headers=headers(staff=True))
+    assert pending.json == {"items": [requested.json]}
+
+
+def test_retry_refreshes_name_but_preserves_original_attendance_result(camp):
+    camper = camper_id(camp)
+    original = post(camp, payload(camper)).json
+    # Stored responses deliberately retain the pre-display-name shape.
+    assert "display_name" not in json.loads(
+        read(camp, "SELECT response FROM discord_attendance_idempotency")[0][0])
+    assert post(camp, payload(camper, expected_version=1), staff=True,
+                key="staff-confirm").json["state"] == "present"
+    with sqlite3.connect(camp.database) as connection:
+        connection.execute("UPDATE registrations SET child_first_name='Updated' WHERE id=1")
+    replay = post(camp, payload(camper))
+    assert replay.json == {**original, "display_name": "Updated Camper"}
+    assert read(camp, "SELECT version FROM discord_attendance") == [(2,)]
+    assert link(camp, active=False).status_code == 200
+    assert post(camp, payload(camper)).status_code == 404
+    assert camp.client.get(attendance.PREFIX + "/campers",
+        query_string={"session_id": "thanksgiving-2026"}, headers=headers()).json == {"campers": []}
+    response = camp.client.get(attendance.PREFIX + "/status",
+        query_string=query(camper), headers=headers())
+    assert response.status_code == 404 and response.json == {"error": {"code": "not_found"}}
+
+
+@pytest.mark.parametrize("change", [
+    "UPDATE registrations SET camp_session='Different' WHERE id=1",
+    "UPDATE registrations SET submission_id='HIST_CHANGED' WHERE id=1",
+    "UPDATE discord_campers SET session_label='Different'",
+    "DELETE FROM registrations WHERE id=1",
+])
+def test_ineligible_registration_names_are_never_returned(camp, change):
+    camper = camper_id(camp)
+    assert post(camp, payload(camper)).status_code == 200
+    with sqlite3.connect(camp.database) as connection:
+        connection.execute(change)
+    assert camp.client.get(attendance.PREFIX + "/campers",
+        query_string={"session_id": "thanksgiving-2026"}, headers=headers()).json == {"campers": []}
+    assert camp.client.get(attendance.PREFIX + "/pending",
+        query_string=query(camper), headers=headers(staff=True)).json == {"items": []}
+    for path in ["/status", "/staff-status"]:
+        response = camp.client.get(attendance.PREFIX + path, query_string=query(camper),
+                                   headers=headers(staff=path == "/staff-status"))
+        assert response.status_code == 404
+        assert response.json == {"error": {"code": "not_found"}}
+    assert post(camp, payload(camper)).status_code == 404
+
+
+def test_display_names_are_exact_session_scoped(camp, monkeypatch):
+    sessions = attendance.settings()["sessions"]
+    sessions["other-session"] = {"label": "Other session", "dates": [DAY]}
+    monkeypatch.setenv("DISCORD_ATTENDANCE_SESSIONS", json.dumps(sessions))
+    first = camper_id(camp)
+    other = admin(camp, "/links", {
+        "registration_id": 4, "session_id": "other-session", "discord_user_id": PARENT_ID,
+        "active": True, "verification_reference": "other-session-verified",
+    }).json["camper_id"]
+    assert post(camp, payload(first)).status_code == 200
+    assert post(camp, payload(other, session_id="other-session"), key="other-request").status_code == 200
+    for session_id, handle, name in [
+        ("thanksgiving-2026", first, "Synthetic Camper"),
+        ("other-session", other, "Wrong Session"),
+    ]:
+        assert camp.client.get(attendance.PREFIX + "/campers",
+            query_string={"session_id": session_id}, headers=headers()).json == {"campers": [
+                {"camper_id": handle, "display_name": name}]}
+        pending = camp.client.get(attendance.PREFIX + "/pending",
+            query_string={"session_id": session_id, "date": DAY}, headers=headers(staff=True))
+        assert [(item["camper_id"], item["display_name"]) for item in pending.json["items"]] == [(handle, name)]
+        wrong = other if handle == first else first
+        for path in ["/status", "/staff-status"]:
+            response = camp.client.get(attendance.PREFIX + path,
+                query_string={**query(wrong), "session_id": session_id},
+                headers=headers(staff=path == "/staff-status"))
+            assert response.status_code == 404 and response.json == {"error": {"code": "not_found"}}
+
+
+@pytest.mark.parametrize("auth,expected", [
+    (headers(), 401), (headers(staff=True, user=PARENT_ID), 403),
+    ({**headers(staff=True), "X-Discord-Guild-ID": "999"}, 403),
+    ({**headers(staff=True), "Authorization": ""}, 401),
+])
+def test_staff_name_reads_retain_credentials_guild_and_allowlist(camp, auth, expected):
+    camper = camper_id(camp)
+    assert post(camp, payload(camper)).status_code == 200
+    for path in ["/pending", "/staff-status"]:
+        response = camp.client.get(attendance.PREFIX + path,
+            query_string=query(camper), headers=auth)
+        assert response.status_code == expected
+        assert set(response.json) == {"error"}
+        assert "Synthetic" not in response.get_data(as_text=True)
+
+
 def test_admin_csrf_and_secure_signing_key(camp):
     assert camp.client.post(attendance.ADMIN_PREFIX + "/links", json={}).status_code == 400
     assert admin(camp, "/links", {
@@ -232,7 +384,8 @@ def test_full_flow_requires_explicit_staff_and_current_pickup_roster(camp):
     assert [row[0] for row in events] == [PARENT_ID, "900", PARENT_ID, "900"]
     assert all(row[4].endswith("+00:00") for row in events)
     assert read(camp, "SELECT * FROM attendance") == [("REG_ONE", DAY, "present", "legacy")]
-    assert not any(word in released.get_data(as_text=True) for word in ["Secret", "example.test", "Synthetic authorized"])
+    assert released.json["display_name"] == "Synthetic Camper"
+    assert not any(word in released.get_data(as_text=True) for word in ["example.test", "Synthetic authorized"])
     assert released.headers["Cache-Control"] == "no-store"
 
 

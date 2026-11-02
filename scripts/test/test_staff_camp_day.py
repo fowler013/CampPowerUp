@@ -119,7 +119,8 @@ def test_unlinked_pickup_web_arrival_later_discord_link_and_shared_release(staff
     assert camp.client.get(attendance.PREFIX + "/status", query_string=query,
                            headers=PARENT_HEADERS).json == arrival.json
     assert camp.client.get(attendance.PREFIX + "/campers", query_string={"session_id": SESSION},
-                           headers=PARENT_HEADERS).json == {"campers": [{"camper_id": camper}]}
+                           headers=PARENT_HEADERS).json == {"campers": [
+                               {"camper_id": camper, "display_name": arrival.json["display_name"]}]}
     request = camp.client.post(attendance.PREFIX + "/requests", json={**query, "action": "pickup"},
                                headers={**PARENT_HEADERS, "Idempotency-Key": "parent-request-001"})
     assert request.json["state"] == "pickup_requested" and request.json["version"] == 2
