@@ -208,6 +208,24 @@ def test_discord_attendance_roster_lists_only_matching_eligible_fields(camp, mon
     assert "555-0100" not in response.get_data(as_text=True)
 
 
+def test_discord_attendance_unlinked_registration_cannot_add_pickup(camp, monkeypatch):
+    enable_discord_attendance(camp, monkeypatch)
+    registration_id = camp.add("REG_ATTENDANCE_UNLINKED")
+    response = camp.client.get("/admin/discord-attendance/roster")
+    assert response.status_code == 200
+    camper = response.json["sessions"][0]["registrations"][0]
+    assert camper["registration_id"] == registration_id
+    assert camper["camper_id"] is None
+    assert camper["links"] == []
+    rejected = camp.client.post("/admin/discord-attendance/pickup-roster", json={
+        "camper_id": camper["camper_id"], "session_id": "thanksgiving-2026",
+        "parent_confirmation_reference": "parent-confirmed-unlinked",
+        "active": True, "display_name": "Aunt Sam",
+    }, headers=HEADERS)
+    assert rejected.status_code == 400
+    assert rejected.json == {"error": {"code": "invalid_request"}}
+
+
 def test_discord_attendance_link_and_pickup_mutations_use_audited_endpoints(camp, monkeypatch):
     enable_discord_attendance(camp, monkeypatch)
     registration_id = camp.add("REG_ATTENDANCE_ROUNDTRIP")

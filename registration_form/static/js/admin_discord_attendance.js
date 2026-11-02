@@ -73,8 +73,7 @@
                 : "The change was not saved. Reload the page and try again.", true);
             return;
         }
-        showResult(card, successMessage);
-        await loadRoster();
+        await loadRoster(successMessage);
     }
 
     function renderRegistration(session, registration) {
@@ -144,8 +143,22 @@
                 verification_reference: reference,
             }, "Parent link saved.");
         });
-        card.querySelector('[data-action="pickup"]').addEventListener("submit", (event) => {
+        const pickupForm = card.querySelector('[data-action="pickup"]');
+        const pickupPrerequisite = "Add a verified parent link first; authorized pickups can be added afterward.";
+        if (registration.camper_id == null) {
+            for (const control of pickupForm.elements) {
+                control.disabled = true;
+            }
+            const note = document.createElement("p");
+            note.textContent = pickupPrerequisite;
+            pickupForm.before(note);
+        }
+        pickupForm.addEventListener("submit", (event) => {
             event.preventDefault();
+            if (registration.camper_id == null) {
+                showResult(card, pickupPrerequisite, true);
+                return;
+            }
             const form = event.currentTarget;
             const displayName = form.elements.display_name.value.trim();
             const reference = form.elements.parent_confirmation_reference.value.trim();
@@ -164,7 +177,7 @@
         return card;
     }
 
-    async function loadRoster() {
+    async function loadRoster(successMessage = "Discord attendance records loaded.") {
         state.classList.remove("error");
         state.textContent = "Loading Discord attendance records…";
         try {
@@ -193,7 +206,7 @@
                 }
                 sessionsRoot.append(section);
             }
-            state.textContent = "Discord attendance records loaded.";
+            state.textContent = successMessage;
         } catch (_error) {
             showUnavailable("attendance_unavailable");
         }
