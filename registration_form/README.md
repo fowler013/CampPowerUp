@@ -198,3 +198,10 @@ For technical support or questions about the registration system, please contact
 ---
 
 **Camp Power-Up 2025** - Empowering young gamers through technology and community! 🎮⚡
+# Private Discord attendance
+
+The opt-in, disabled-by-default parent-request/staff-confirmation backend is
+documented in [Discord attendance API](../docs/development/DISCORD_ATTENDANCE.md).
+It requires staff-approved family linkage and a privately maintained,
+parent-confirmed pickup roster. Discord requests never confirm physical arrival
+or release. Photo ID and WhatsApp are not part of this integration.
