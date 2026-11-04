@@ -134,6 +134,10 @@ Railway/SendGrid environment selection, and mocks outgoing emails. Do not import
 the registration app from a directory containing a live database just to run tests:
 the application initializes its database during import.
 
+The GitHub Actions CI pipeline runs the isolated registration, attendance, camp
+league and browser suites on pull requests and pushes to `main`. Legacy live
+integration scripts that send email or modify running services are not CI tests.
+
 Optional browser checks use Python Playwright and a local-only server, never the
 live registration site:
 
