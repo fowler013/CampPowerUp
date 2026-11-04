@@ -967,37 +967,26 @@ def medical_alerts():
     """Get campers with allergies/medical needs for easy reference."""
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
-    
+
     medical_needs = []
-    
-    # Get campers with allergies
-    allergy_cursor = conn.execute("""
-        SELECT first_name, last_name, allergy_description 
-        FROM campers 
+    query = """
+        SELECT first_name, last_name, 'Allergies' AS type, allergy_description AS description
+        FROM campers
         WHERE has_allergies = 'Yes' AND allergy_description != ''
-    """)
-    
-    for row in allergy_cursor:
-        medical_needs.append({
-            'name': f"{row['first_name']} {row['last_name']}",
-            'type': 'Allergies',
-            'description': row['allergy_description']
-        })
-    
-    # Get campers with sensory issues
-    sensory_cursor = conn.execute("""
-        SELECT first_name, last_name, sensory_description 
-        FROM campers 
+        UNION ALL
+        SELECT first_name, last_name, 'Sensory Issues' AS type, sensory_description AS description
+        FROM campers
         WHERE has_sensory_issues = 'Yes' AND sensory_description != ''
-    """)
-    
-    for row in sensory_cursor:
+        ORDER BY last_name, first_name
+    """
+
+    for row in conn.execute(query):
         medical_needs.append({
             'name': f"{row['first_name']} {row['last_name']}",
-            'type': 'Sensory Issues',
-            'description': row['sensory_description']
+            'type': row['type'],
+            'description': row['description']
         })
-    
+
     conn.close()
     return jsonify(medical_needs)
 
