@@ -27,6 +27,7 @@ def main():
                 str(root / "scripts" / "test" / "test_admin_workflows.py"),
                 str(root / "scripts" / "test" / "test_discord_attendance.py"),
                 str(root / "scripts" / "test" / "test_startup_secret_logging.py"),
+                str(root / "scripts" / "test" / "test_healthz.py"),
                 *extra_args,
             ])
         finally:

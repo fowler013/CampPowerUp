@@ -75,6 +75,8 @@ app.config['pricing'] = CAMP_CONFIG.get('pricing', {
 @app.before_request
 def load_request_configuration():
     """Read settings per request so every worker uses the same saved configuration."""
+    if request.endpoint == "healthz":
+        return None
     if request.path.startswith((DISCORD_ATTENDANCE_PREFIX, DISCORD_ATTENDANCE_ADMIN_PREFIX,
                                 DISCORD_ATTENDANCE_CAMP_DAY_PREFIX)):
         # This API authenticates before opening its database and owns its session scope.
@@ -792,6 +794,12 @@ def debug_all_registrations():
             "error": str(e),
             "traceback": traceback.format_exc()
         }), 500
+
+@app.route('/healthz', methods=['GET'])
+def healthz():
+    """Report public reachability without accessing camp data or configuration."""
+    return jsonify(status="ok"), 200
+
 
 @app.route('/')
 def home():
