@@ -1,0 +1,289 @@
+# Kit AI Bot Configuration
+# Project: CampPowerUp Registration System
+
+project:
+  name: "CampPowerUp"
+  description: "Nintendo Switch Gaming Camp Registration System"
+  repository: "github.com/fowler013/CampPowerUp"
+  language: "Python"
+  framework: "Flask"
+  
+# GitHub Integration
+github:
+  enabled: true
+  auto_labels: true
+  auto_milestones: true
+  branch_protection:
+    - main
+    - production
+  
+# Issue Management
+issues:
+  auto_create:
+    enabled: true
+    from_logs: true
+    from_errors: true
+    severity_labels:
+      critical: "🔴 critical"
+      high: "🟠 high"
+      medium: "🟡 medium"
+      low: "🟢 low"
+  
+  labels:
+    - name: "bug"
+      color: "d73a4a"
+      description: "Something isn't working"
+    - name: "enhancement"
+      color: "a2eeef"
+      description: "New feature or request"
+    - name: "security"
+      color: "ee0701"
+      description: "Security vulnerability"
+    - name: "documentation"
+      color: "0075ca"
+      description: "Improvements to documentation"
+    - name: "testing"
+      color: "7057ff"
+      description: "Testing improvements"
+    - name: "database"
+      color: "008672"
+      description: "Database related"
+    - name: "frontend"
+      color: "fbca04"
+      description: "Frontend UI/UX"
+    - name: "backend"
+      color: "0e8a16"
+      description: "Backend logic"
+
+# Pull Request Management
+pull_requests:
+  auto_review:
+    enabled: true
+    rules:
+      - name: "Code Style"
+        checks:
+          - pylint
+          - black
+          - isort
+        required: true
+      
+      - name: "Testing"
+        checks:
+          - pytest
+          - coverage >= 80%
+        required: true
+      
+      - name: "Security"
+        checks:
+          - bandit
+          - safety
+        required: true
+  
+  auto_merge:
+    enabled: false  # Manual approval required
+    conditions:
+      - all_checks_passed
+      - approved_by >= 1
+      - no_merge_conflicts
+  
+  templates:
+    - name: "feature"
+      file: ".github/PULL_REQUEST_TEMPLATE/feature.md"
+    - name: "bugfix"
+      file: ".github/PULL_REQUEST_TEMPLATE/bugfix.md"
+    - name: "security"
+      file: ".github/PULL_REQUEST_TEMPLATE/security.md"
+
+# CI/CD Pipeline
+deployment:
+  environments:
+    staging:
+      url: "https://camppowerup-staging.up.railway.app"
+      auto_deploy: true
+      branch: "develop"
+      checks_required: true
+    
+    production:
+      url: "https://camppowerup-registration.up.railway.app"
+      auto_deploy: true
+      branch: "main"
+      checks_required: true
+      approval_required: false
+  
+  notifications:
+    on_success:
+      - slack: "#deployments"
+      - discord: "deployments"
+    on_failure:
+      - slack: "#alerts"
+      - discord: "alerts"
+      - email: "camppowerup2025@gmail.com"
+
+# Code Quality
+quality:
+  linters:
+    - name: "pylint"
+      enabled: true
+      config: ".pylintrc"
+    - name: "flake8"
+      enabled: true
+    - name: "mypy"
+      enabled: true
+  
+  formatters:
+    - name: "black"
+      enabled: true
+    - name: "isort"
+      enabled: true
+  
+  security_scanners:
+    - name: "bandit"
+      enabled: true
+    - name: "safety"
+      enabled: true
+
+# Testing
+testing:
+  frameworks:
+    - pytest
+  
+  coverage:
+    minimum: 80
+    report: true
+    fail_under: true
+  
+  test_suites:
+    - name: "unit"
+      path: "tests/unit"
+      required: true
+    - name: "integration"
+      path: "tests/integration"
+      required: true
+    - name: "security"
+      path: "tests/security"
+      required: true
+
+# Documentation
+documentation:
+  auto_generate:
+    enabled: true
+    from_docstrings: true
+    format: "markdown"
+    output: "docs/api"
+  
+  required_for_pr:
+    - README.md updates for new features
+    - API docs for new endpoints
+    - Architecture diagrams for major changes
+
+# Monitoring & Alerts
+monitoring:
+  error_tracking:
+    enabled: true
+    create_issues: true
+    severity_threshold: "high"
+  
+  performance:
+    enabled: true
+    alert_on:
+      - response_time > 1000ms
+      - memory_usage > 80%
+      - cpu_usage > 75%
+  
+  uptime:
+    enabled: true
+    check_interval: "5m"
+    alert_threshold: 99%
+
+# Notifications
+notifications:
+  channels:
+    slack:
+      enabled: false  # Configure when ready
+      webhook: "${SLACK_WEBHOOK_URL}"
+    
+    discord:
+      enabled: false  # Configure when ready
+      webhook: "${DISCORD_WEBHOOK_URL}"
+    
+    email:
+      enabled: true
+      to: "camppowerup2025@gmail.com"
+  
+  events:
+    - deployment_success
+    - deployment_failure
+    - security_vulnerability
+    - test_failure
+    - high_priority_issue
+
+# CS Course Integration
+education:
+  courses:
+    - code: "CYBV301"
+      name: "Cybersecurity Fundamentals"
+      skills:
+        - "Input validation"
+        - "SQL injection prevention"
+        - "XSS protection"
+        - "Authentication"
+        - "Session management"
+      mapped_files:
+        - "src/shared/security.py"
+        - "src/shared/auth.py"
+        - "tests/security/"
+    
+    - code: "APCV360"
+      name: "Database Design"
+      skills:
+        - "Database normalization"
+        - "Query optimization"
+        - "Transaction management"
+        - "Backup & recovery"
+      mapped_files:
+        - "src/shared/database.py"
+        - "data/migrations/"
+        - "tests/integration/test_database.py"
+    
+    - code: "CYBV302"
+      name: "System Integration"
+      skills:
+        - "API design"
+        - "Service integration"
+        - "Error handling"
+        - "Logging"
+      mapped_files:
+        - "src/*/routes.py"
+        - "src/shared/email.py"
+
+# Bot Behavior
+bot:
+  response_time: "1s"
+  command_prefix: "/kit"
+  
+  commands:
+    - name: "status"
+      description: "Get project status"
+    - name: "deploy"
+      description: "Trigger deployment"
+    - name: "test"
+      description: "Run test suite"
+    - name: "report"
+      description: "Generate report"
+  
+  ai_features:
+    code_review: true
+    bug_detection: true
+    refactoring_suggestions: true
+    documentation_generation: true
+
+# Rate Limiting
+rate_limits:
+  api_calls: "1000/hour"
+  deployments: "10/hour"
+  notifications: "100/hour"
+
+---
+# Version: 1.0
+# Last Updated: December 2, 2025
+# Maintained by: Kit AI Bot + Tevin Fowler
