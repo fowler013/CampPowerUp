@@ -3,6 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
+    "healthcheckPath": "/healthz",
     "startCommand": "python registration_form/app.py"
   },
   "environments": {

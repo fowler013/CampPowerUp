@@ -52,6 +52,13 @@ The deployed entry point is `wsgi_railway:app`, which loads
 `registration_form\app.py` and `registration_form\camp_config.py`. The similarly
 named root dashboard and backup application files are not this registration service.
 
+`GET /healthz` is a public reachability probe for Railway and Kit. It returns HTTP
+200 with `Content-Type: application/json` and exactly `{"status":"ok"}` (plus a
+trailing newline). It requires no credentials, reads no database or saved camp
+settings, and exposes no environment values or camper/registration data. It is
+not a database-readiness check. The repository's Railway configuration points its
+healthcheck at this route; no live settings or variables need to be changed.
+
 - Sign in at `/admin` using `ADMIN_USERNAME` (default `campadmin`) and the
   deployment's `ADMIN_PASSWORD`. Set a strong, stable `SECRET_KEY` shared by all
   workers. Change passwords through Railway Variables, not source code.
@@ -126,6 +133,10 @@ The runner uses a temporary working directory and synthetic databases, disables
 Railway/SendGrid environment selection, and mocks outgoing emails. Do not import
 the registration app from a directory containing a live database just to run tests:
 the application initializes its database during import.
+
+The GitHub Actions CI pipeline runs the isolated registration, attendance, camp
+league and browser suites on pull requests and pushes to `main`. Legacy live
+integration scripts that send email or modify running services are not CI tests.
 
 Optional browser checks use Python Playwright and a local-only server, never the
 live registration site:
