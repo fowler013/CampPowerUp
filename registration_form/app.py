@@ -56,6 +56,7 @@ else:
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+app.config['CONTACT_EMAIL'] = os.environ.get('CONTACT_EMAIL', 'camppowerup2025@gmail.com')
 
 # Configure pricing in Flask config for templates (from camp_config)
 app.config['pricing'] = CAMP_CONFIG.get('pricing', {
@@ -144,6 +145,12 @@ def admin_csrf_token():
     if "admin_csrf_token" not in session:
         session["admin_csrf_token"] = secrets.token_urlsafe(32)
     return session["admin_csrf_token"]
+
+
+@app.context_processor
+def parent_contact_helpers():
+    """Expose the parent contact address without changing per-session camp settings."""
+    return {"contact_email": app.config["CONTACT_EMAIL"]}
 
 
 @app.context_processor
@@ -569,7 +576,7 @@ def send_parent_confirmation_email(registration_data):
                     </div>
                     
                     <h3>❓ Questions or Need to Make Changes?</h3>
-                    <p>Email us at: <a href="mailto:camppowerup2026@gmail.com">camppowerup2026@gmail.com</a></p>
+                    <p>Email us at: <a href="mailto:{app.config['CONTACT_EMAIL']}">{app.config['CONTACT_EMAIL']}</a></p>
                     <p>Include your confirmation ID: <code>{submission_id}</code></p>
                     
                     <p style="margin-top: 30px;">We can't wait to see {child_name.split()[0]} at camp!</p>
@@ -619,7 +626,7 @@ def send_parent_confirmation_email(registration_data):
         3. Mark your calendar: {camp_dates_display}
         4. Pay final {final_payment} before {final_due_display}
         
-        Questions? Email: camppowerup2026@gmail.com
+        Questions? Email: {app.config['CONTACT_EMAIL']}
         Include your confirmation ID: {submission_id}
         
         View online: https://camppowerup-registration.up.railway.app/confirmation/{submission_id}

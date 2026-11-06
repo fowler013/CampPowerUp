@@ -730,6 +730,8 @@
             saveTimeout = setTimeout(saveFormData, 2000); // Save after 2 seconds of inactivity
         });
 
+        const contactEmail = {{ contact_email | tojson }};
+
         // Form submission
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -764,7 +766,7 @@
                 });
                 
                 if (!response.headers.get('content-type')?.includes('application/json')) {
-                    throw new Error('The server returned an unexpected response. Contact the camp to check whether your registration was saved before submitting again.');
+                    throw new Error('The server returned an unexpected response. Contact ' + contactEmail + ' to check whether your registration was saved before submitting again.');
                 }
                 const result = await response.json();
 
@@ -784,9 +786,9 @@
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    alert('The request timed out and may already have been saved. Contact the camp before submitting again to avoid a duplicate registration.');
+                    alert('The request timed out and may already have been saved. Contact ' + contactEmail + ' before submitting again to avoid a duplicate registration.');
                 } else {
-                    alert('We could not confirm your registration: ' + error.message + ' Check with the camp before retrying.');
+                    alert('We could not confirm your registration: ' + error.message + ' Check with ' + contactEmail + ' before retrying.');
                 }
             } finally {
                 clearTimeout(timeoutId);

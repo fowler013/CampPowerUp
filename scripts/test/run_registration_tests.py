@@ -24,6 +24,7 @@ def main():
             return pytest.main([
                 "-q",
                 str(root / "scripts" / "test" / "test_thanksgiving_session.py"),
+                str(root / "scripts" / "test" / "test_parent_contact.py"),
                 str(root / "scripts" / "test" / "test_admin_workflows.py"),
                 str(root / "scripts" / "test" / "test_discord_attendance.py"),
                 str(root / "scripts" / "test" / "test_startup_secret_logging.py"),
