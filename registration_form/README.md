@@ -58,6 +58,14 @@ python3 app.py
    child's first name and last initial, submission ID, linked Discord IDs, and
    active pickup names.
 
+## Parent contact configuration
+
+The registration form's error messages, confirmation page, FAQ contact link, and
+parent confirmation email bodies share `CONTACT_EMAIL`. Set this environment
+variable before starting the app to override the default `camppowerup2025@gmail.com`.
+It is independent of `SENDGRID_FROM_EMAIL` (the verified sending address) and
+`CAMP_EMAIL` (the admin notification recipient); changing it does not change either.
+
 ## 📋 Form Fields
 
 The registration form captures the following information:
