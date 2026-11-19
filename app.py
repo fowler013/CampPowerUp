@@ -9,6 +9,11 @@ import os
 import math
 from collections import Counter, defaultdict
 
+_COMBINED_CAMPER_CACHE = {
+    'files': None,
+    'data': []
+}
+
 from camp_league import (
     BUILD_BATTLE_RUBRIC,
     BUILD_BATTLE_THEMES,
@@ -319,10 +324,23 @@ def fetch_leaderboard_data():
     finally:
         conn.close()
 
-def get_combined_camper_data():
-    """Get combined camper data from both historical CSV and new registrations."""
+def _get_data_file_cache_key():
+    """Return a stable key for the current SQLite dataset versions."""
+    files = (DB_FILE, REGISTRATION_DB)
+    cache_key = []
+    for path in files:
+        if os.path.exists(path):
+            stat = os.stat(path)
+            cache_key.append((path, stat.st_mtime_ns, stat.st_size))
+        else:
+            cache_key.append((path, -1, -1))
+    return tuple(cache_key)
+
+
+def _load_combined_camper_data():
+    """Load and normalize camper data from both SQLite sources."""
     combined_data = []
-    
+
     # 1. Load historical data from main database
     if os.path.exists(DB_FILE):
         conn = sqlite3.connect(DB_FILE)
@@ -331,13 +349,13 @@ def get_combined_camper_data():
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='campers'")
             if cursor.fetchone():
                 cursor.execute("""
-                    SELECT first_name, last_name, email, age, grade, is_returning, 
+                    SELECT first_name, last_name, email, age, grade, is_returning,
                            has_allergies, allergy_description, has_sensory_issues, sensory_description,
                            bringing_switch, favorite_games, game_behavior
                     FROM campers
                 """)
                 historical_records = cursor.fetchall()
-                
+
                 for record in historical_records:
                     combined_data.append({
                         'first_name': record[0] or '',
@@ -348,7 +366,7 @@ def get_combined_camper_data():
                         'is_returning': record[5] == 'Yes',
                         'has_allergies': record[6] == 'Yes',
                         'allergy_details': record[7] or '',
-                        'has_sensory_issues': record[8] == 'Yes', 
+                        'has_sensory_issues': record[8] == 'Yes',
                         'sensory_details': record[9] or '',
                         'bringing_switch': record[10] == 'Yes',
                         'favorite_games': record[11] or '',
@@ -362,7 +380,7 @@ def get_combined_camper_data():
             print(f"Warning: Could not load historical data: {e}")
         finally:
             conn.close()
-    
+
     # 2. Load new registration data
     if os.path.exists(REGISTRATION_DB):
         conn = sqlite3.connect(REGISTRATION_DB)
@@ -370,18 +388,18 @@ def get_combined_camper_data():
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT child_first_name, child_last_name, parent_email, child_age, child_grade,
-                       is_returning_camper, has_allergies, allergy_details, has_sensory_issues, 
+                       is_returning_camper, has_allergies, allergy_details, has_sensory_issues,
                        sensory_details, bringing_own_switch, favorite_games, gaming_behavior,
                        submission_id, timestamp, status
                 FROM registrations
                 ORDER BY timestamp DESC
             """)
             new_records = cursor.fetchall()
-            
+
             for record in new_records:
                 combined_data.append({
                     'first_name': record[0] or '',
-                    'last_name': record[1] or '', 
+                    'last_name': record[1] or '',
                     'email': record[2] or '',
                     'age': record[3] or 0,
                     'grade': record[4] or '',
@@ -402,8 +420,17 @@ def get_combined_camper_data():
             print(f"Warning: Could not load new registration data: {e}")
         finally:
             conn.close()
-    
+
     return combined_data
+
+
+def get_combined_camper_data():
+    """Get combined camper data with a lightweight file-based cache."""
+    cache_key = _get_data_file_cache_key()
+    if _COMBINED_CAMPER_CACHE['files'] != cache_key:
+        _COMBINED_CAMPER_CACHE['files'] = cache_key
+        _COMBINED_CAMPER_CACHE['data'] = _load_combined_camper_data()
+    return _COMBINED_CAMPER_CACHE['data']
 
 def clean_and_combine_data():
     """Loads, cleans, and combines data from the CSV file."""
